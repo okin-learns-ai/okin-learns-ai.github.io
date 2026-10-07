@@ -17,7 +17,7 @@
    `python tools/build.py` (escapes `<pre>`, adds PWA head tags, rebuilds the
    search index and `sw.js`).
 9. Hosting: GitHub Pages from `main` / root of
-   `englishsakalu-cloud/ai-mastery-docs`. Live at
-   https://englishsakalu-cloud.github.io/ai-mastery-docs/. Deploy = build,
+   `okin-learns-ai/okin-learns-ai.github.io` (free GitHub org). Live at
+   https://okin-learns-ai.github.io/. Deploy = build,
    commit, `git push`.
 8. AI tooling changes fast: put a "Last verified" date on tool-specific pages.
