@@ -14,5 +14,10 @@
 5. Code examples are in Scala (Scala 3) and Python.
 6. Diagrams are inline SVG using the `d-*` CSS classes so they work in dark mode.
 7. After adding/editing pages: register in `assets/js/nav.js`, then run
-   `python tools/build_search_index.py`.
+   `python tools/build.py` (escapes `<pre>`, adds PWA head tags, rebuilds the
+   search index and `sw.js`).
+9. Hosting: GitHub Pages from `main` / root of
+   `englishsakalu-cloud/ai-mastery-docs`. Live at
+   https://englishsakalu-cloud.github.io/ai-mastery-docs/. Deploy = build,
+   commit, `git push`.
 8. AI tooling changes fast: put a "Last verified" date on tool-specific pages.
