@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI Agents 101 | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>08 &middot; AI Agents 101</h1>
+<p class="lead">An agent is a model that can <b>act</b>: it reads, runs, observes and repeats until a goal is reached.
+Agents are the biggest shift in how software gets built since version control. This page explains how they work and how to
+supervise them well.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">40 min</span><span class="pill">Track 7 &middot; Agents</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Describe the agent loop and the role of tools.</li>
+  <li>Explain tool/function calling with a concrete example.</li>
+  <li>Distinguish levels of autonomy, from suggestions to background agents.</li>
+  <li>Use planning, sub-agents and checkpoints, and avoid the classic failure modes.</li>
+</ul></div>
+
+<h2>From chatbot to agent</h2>
+<p>A chatbot answers. An <b>agent</b> pursues a goal. The difference is three things wrapped around the model:</p>
+<ol>
+  <li><b>Tools</b>: functions it can call (read file, edit file, run command, search, call an API, query a database).</li>
+  <li><b>A loop</b>: after each tool call, the result goes back into context and the model decides what to do next.</li>
+  <li><b>A goal and a stopping condition</b>: "tests pass", "the user's question is answered", "the PR is open".</li>
+</ol>
+
+<h2>The agent loop</h2>
+<figure class="diagram">
+<svg viewBox="0 0 720 300" width="720" role="img" aria-label="Agent loop">
+  <defs><marker id="a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="20"  y="120" width="130" height="56" rx="10"/><text class="d-title" x="85" y="145" text-anchor="middle">Goal</text><text class="d-small" x="85" y="162" text-anchor="middle">from you</text>
+  <rect class="d-box2" x="230" y="30"  width="150" height="60" rx="30"/><text class="d-title" x="305" y="57" text-anchor="middle">Think / plan</text><text class="d-small" x="305" y="74" text-anchor="middle">what next?</text>
+  <rect class="d-box3" x="470" y="120" width="150" height="60" rx="30"/><text class="d-title" x="545" y="147" text-anchor="middle">Act</text><text class="d-small" x="545" y="164" text-anchor="middle">call a tool</text>
+  <rect class="d-box4" x="230" y="210" width="150" height="60" rx="30"/><text class="d-title" x="305" y="237" text-anchor="middle">Observe</text><text class="d-small" x="305" y="254" text-anchor="middle">tool result &rarr; context</text>
+  <path class="d-line" d="M150 140 L228 70" marker-end="url(#a8)"/>
+  <path class="d-line" d="M380 65 C 450 70, 520 90, 540 118" marker-end="url(#a8)"/>
+  <path class="d-line" d="M540 182 C 520 220, 450 240, 384 240" marker-end="url(#a8)"/>
+  <path class="d-line" d="M260 210 C 200 170, 220 120, 270 92" marker-end="url(#a8)"/>
+  <rect class="d-box"  x="610" y="20" width="100" height="50" rx="10"/><text class="d-text" x="660" y="50" text-anchor="middle">Done &#10003;</text>
+  <path class="d-dash" d="M380 50 C 480 30, 560 40, 606 44" marker-end="url(#a8)"/>
+  <text class="d-small" x="500" y="28" text-anchor="middle">goal met</text>
+  <g class="d-small"><text x="630" y="210">tools:</text><text x="630" y="226">read / edit file</text><text x="630" y="242">run command</text><text x="630" y="258">search code / web</text><text x="630" y="274">MCP tools</text></g>
+</svg>
+<figcaption>Think &rarr; act &rarr; observe, repeated. Each loop adds tool results to the context, which is why context management (page 04) matters so much for agents.</figcaption>
+</figure>
+
+<h3>A real trace (simplified)</h3>
+<pre data-lang="text" data-title="Agent trace: 'Fix the failing test in OrderServiceSuite'">
+THINK  I should see the failure first.
+ACT    run_command("sbt \"core/testOnly *OrderServiceSuite\"")
+OBSERVE  1 failed: "total should include tax" expected 107.00 but got 100.00
+
+THINK  Look at how total is computed.
+ACT    search_code("def total")
+OBSERVE  modules/core/src/main/scala/orders/OrderService.scala:42
+
+ACT    read_file("modules/core/.../OrderService.scala", lines 30-60)
+OBSERVE  total = items.map(_.price).sum   // tax not applied
+
+THINK  Tax is defined in TaxPolicy. Apply it.
+ACT    edit_file(... total = TaxPolicy.applyTo(items.map(_.price).sum) ...)
+ACT    run_command("sbt \"core/testOnly *OrderServiceSuite\"")
+OBSERVE  all 12 tests passed
+
+ACT    run_command("sbt test")
+OBSERVE  all 148 tests passed
+DONE   "Fixed: OrderService.total now applies TaxPolicy. All tests pass."
+</pre>
+
+<h2>How tool calling works</h2>
+<p>The model doesn't execute anything itself. The application gives it a list of <b>tool definitions</b> (name, description,
+JSON schema of parameters). When the model wants a tool, it outputs a structured <em>tool call</em>. The <b>application</b>
+executes it and sends back the result.</p>
+<figure class="diagram">
+<svg viewBox="0 0 720 220" width="720" role="img" aria-label="Tool calling sequence">
+  <defs><marker id="a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="20"  y="10" width="160" height="36" rx="8"/><text class="d-title" x="100" y="33" text-anchor="middle">Model</text>
+  <rect class="d-box3" x="280" y="10" width="160" height="36" rx="8"/><text class="d-title" x="360" y="33" text-anchor="middle">App / agent host</text>
+  <rect class="d-box4" x="540" y="10" width="160" height="36" rx="8"/><text class="d-title" x="620" y="33" text-anchor="middle">Tool / system</text>
+  <line class="d-dash" x1="100" y1="46" x2="100" y2="210"/><line class="d-dash" x1="360" y1="46" x2="360" y2="210"/><line class="d-dash" x1="620" y1="46" x2="620" y2="210"/>
+  <path class="d-line" d="M360 70 H104" marker-end="url(#a9)"/><text class="d-small" x="230" y="64" text-anchor="middle">prompt + tool definitions</text>
+  <path class="d-line" d="M100 100 H356" marker-end="url(#a9)"/><text class="d-small" x="230" y="94" text-anchor="middle">tool_call: get_weather(city="Oslo")</text>
+  <path class="d-line" d="M360 125 H616" marker-end="url(#a9)"/><text class="d-small" x="490" y="119" text-anchor="middle">execute (after permission check)</text>
+  <path class="d-line" d="M620 150 H364" marker-end="url(#a9)"/><text class="d-small" x="490" y="144" text-anchor="middle">{"temp_c": 4, "sky": "rain"}</text>
+  <path class="d-line" d="M360 175 H104" marker-end="url(#a9)"/><text class="d-small" x="230" y="169" text-anchor="middle">tool result added to context</text>
+  <text class="d-small" x="100" y="200" text-anchor="middle">"It's 4&deg;C and raining in Oslo."</text>
+</svg>
+</figure>
+<pre data-lang="json" data-title="A tool definition (generic shape)">
+{
+  "name": "run_tests",
+  "description": "Run the test suite for a module. Use after changing code to verify it.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "module":  { "type": "string", "description": "sbt project name, e.g. core" },
+      "pattern": { "type": "string", "description": "optional test class glob" }
+    },
+    "required": ["module"]
+  }
+}
+</pre>
+<p>Three practical consequences:</p>
+<ul>
+  <li><b>The description is everything.</b> The model chooses tools by reading their names and descriptions, the same as with skills.</li>
+  <li><b>The host is the security boundary.</b> It decides what is allowed and asks you for permission.</li>
+  <li><b>MCP</b> (page 09) is simply a standard way to provide tool definitions and execute them across many apps.</li>
+</ul>
+
+<h2>Levels of autonomy</h2>
+<table>
+  <thead><tr><th>Level</th><th>What the AI does</th><th>Your role</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><b>0 &middot; Suggest</b></td><td>Completes code as you type</td><td>Author</td><td>Inline completion</td></tr>
+    <tr><td><b>1 &middot; Answer</b></td><td>Explains and drafts in chat</td><td>Author, copy-paste</td><td>Chat / Ask mode</td></tr>
+    <tr><td><b>2 &middot; Edit</b></td><td>Proposes diffs you accept</td><td>Editor-in-chief</td><td>Inline edit</td></tr>
+    <tr><td><b>3 &middot; Supervised agent</b></td><td>Multi-step work, asks before risky actions</td><td>Supervisor</td><td>IDE agent mode, terminal agent</td></tr>
+    <tr><td><b>4 &middot; Background agent</b></td><td>Works alone in a sandbox and returns a PR</td><td>Reviewer / manager</td><td>Cloud coding agents</td></tr>
+    <tr><td><b>5 &middot; Multi-agent</b></td><td>Several agents plan, implement, review in parallel</td><td>Architect / orchestrator</td><td>Parallel agents, orchestrators (Level 3)</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Autonomy follows clarity</span>
+The clearer the goal and the better the automated checks (types, tests, linters), the more autonomy you can safely give.
+Vague goals with no tests need tight supervision. This is why investing in tests pays off twice in the AI era.</div>
+
+<h2>Key agent techniques</h2>
+<h3>Plan first</h3>
+<p>For non-trivial tasks, ask for a plan (or use a plan mode) and review it before any code is written. A plan
+typically lists files to change, steps, risks and how to verify. Fixing a plan takes seconds. Fixing 500 lines of wrong
+code takes an hour.</p>
+<h3>Give it a way to check itself</h3>
+<p>Agents improve dramatically when they can run a compiler, tests, linters or a type checker. State the verification
+commands in <code>AGENTS.md</code> and in your prompt ("Done = <code>sbt test</code> passes").</p>
+<h3>Sub-agents</h3>
+<p>A main agent can delegate a self-contained task (for example "find every place we parse dates") to a <b>sub-agent</b>
+with its own fresh context. The sub-agent explores and returns only a short summary, which keeps the main context clean.
+Sub-agents can also run in parallel.</p>
+<h3>Checkpoints and git</h3>
+<p>Commit (or use the tool's checkpoint feature) before letting an agent loose. If it goes wrong, revert and retry with a
+better prompt. That is often faster than trying to steer a confused agent back.</p>
+<h3>Human-in-the-loop</h3>
+<p>Good agents ask questions when requirements are ambiguous. Encourage it: "If something is unclear, stop and ask rather
+than guess."</p>
+
+<h2>How agents fail (and what to do)</h2>
+<table>
+  <thead><tr><th>Failure</th><th>Looks like</th><th>Prevention</th></tr></thead>
+  <tbody>
+    <tr><td><b>Goal drift</b></td><td>Solves a different problem than you meant</td><td>Precise goal + plan review</td></tr>
+    <tr><td><b>Test gaming</b></td><td>Weakens or deletes tests, hard-codes expected values</td><td>"Never modify existing tests without asking"; review test diffs carefully</td></tr>
+    <tr><td><b>Looping</b></td><td>Repeats the same failing fix</td><td>Stop it, give a hint or more context, or restart fresh</td></tr>
+    <tr><td><b>Scope creep</b></td><td>Refactors half the repo</td><td>"Change only what is needed; list other suggestions separately"</td></tr>
+    <tr><td><b>Hallucinated APIs</b></td><td>Calls methods that don't exist</td><td>Compiler and tests in the loop; ground with docs</td></tr>
+    <tr><td><b>Unsafe actions</b></td><td>Deletes files, force-pushes, touches prod</td><td>Permissions, sandboxes, hooks; never give agents production credentials</td></tr>
+    <tr><td><b>Context overflow</b></td><td>Forgets early instructions on long tasks</td><td>Break into sessions; progress notes; sub-agents</td></tr>
+    <tr><td><b>Prompt injection</b></td><td>Follows instructions hidden in a web page, issue or file</td><td>Treat external content as untrusted; require approval for sensitive tools (page 14)</td></tr>
+  </tbody>
+</table>
+
+<h2>What makes a great agent prompt</h2>
+<pre data-lang="text" data-title="Template">
+Goal: &lt;what and why, 1-3 sentences>
+Context: &lt;relevant files / modules / similar existing code to follow>
+Requirements:
+  1. ...
+  2. ...
+Constraints: &lt;what must not change; no new deps; style rules>
+Verification: &lt;exact commands that must pass>
+Process: First propose a short plan and wait for my OK. Ask if anything is ambiguous.
+</pre>
+<pre data-lang="text" data-title="Example">
+Goal: Add pagination to GET /orders so the mobile app can load orders in pages of 50.
+Context: Routes in modules/http/.../OrderRoutes.scala; repository in modules/db/.../OrderRepo.scala.
+  Follow the pattern used for GET /customers (CustomerRoutes.scala), which already paginates.
+Requirements:
+  1. Query params `limit` (default 50, max 200) and `cursor` (opaque string).
+  2. Response includes `nextCursor` (null when no more data).
+  3. Stable ordering by (createdAt, id).
+Constraints: No breaking change for clients that send no params. No new dependencies.
+Verification: sbt scalafmtCheckAll "http/test" "db/test" must pass; add tests for limit bounds and cursor.
+Process: Propose the plan first and wait for my OK.
+</pre>
+
+<h2>Agents beyond code</h2>
+<p>The same loop powers research agents (search &rarr; read &rarr; synthesise), data agents (query &rarr; check &rarr;
+chart), operations agents (read logs &rarr; diagnose &rarr; propose a fix) and "computer use" agents that operate a browser or
+desktop through screenshots and clicks. Page 12 explores these across IT.</p>
+
+<div class="callout tip"><span class="c-title">Try it (20 min)</span>
+Give your IDE or terminal agent a small, well-defined task with tests, using the template above. Watch the trace of
+tool calls. Count how many loop iterations it took, and note one moment where you would have done something differently.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Agent = model + <b>tools</b> + <b>loop</b> + <b>goal</b>.</li>
+  <li>The model requests tool calls and the host executes them. Tool descriptions drive tool choice.</li>
+  <li>More autonomy needs clearer goals and stronger automated checks.</li>
+  <li>Plan first, verify automatically, use git checkpoints, use sub-agents for exploration.</li>
+  <li>Know the failure modes, especially test gaming and prompt injection.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

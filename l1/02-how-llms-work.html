@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>How LLMs Actually Work | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>02 &middot; How LLMs Actually Work</h1>
+<p class="lead">You don't need the maths to understand how an LLM works. You do need the right mental model. With it you
+can predict when the model will shine, when it will fail, and why prompting and context matter so much.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">45 min</span><span class="pill">Track 2 &middot; LLMs &amp; internals</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain "next-token prediction" and why it produces such capable behaviour.</li>
+  <li>Describe tokens, embeddings, attention and the Transformer at an intuitive level.</li>
+  <li>Outline how a model is trained: pre-training, fine-tuning, preference tuning.</li>
+  <li>Use the settings that control generation: temperature, top-p, max tokens, context window.</li>
+  <li>Explain why hallucinations happen and what reasoning models change.</li>
+</ul></div>
+
+<h2>The core idea: predict the next token</h2>
+<p>An LLM does one thing over and over. Given some text, it predicts <b>what piece of text comes next</b>, adds that piece,
+and repeats. Everything else (answering questions, writing code, translating, reasoning) <em>emerges</em> from doing this
+extremely well after training on a vast amount of text.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 220" width="720" role="img" aria-label="Autoregressive generation loop">
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box" x="20" y="30" width="250" height="44" rx="8"/><text class="d-text" x="145" y="57" text-anchor="middle">"def add(a: Int, b: Int) ="</text>
+  <rect class="d-box2" x="320" y="22" width="130" height="60" rx="10"/><text class="d-title" x="385" y="50" text-anchor="middle">LLM</text><text class="d-small" x="385" y="68" text-anchor="middle">billions of weights</text>
+  <rect class="d-box3" x="500" y="20" width="200" height="66" rx="8"/>
+  <text class="d-small" x="512" y="40">" a"  &#8594; 0.81</text><text class="d-small" x="512" y="56">" b"  &#8594; 0.07</text><text class="d-small" x="512" y="72">" {"  &#8594; 0.04  &#8230;</text>
+  <path class="d-line" d="M270 52 H315" marker-end="url(#a2)"/><path class="d-line" d="M450 52 H495" marker-end="url(#a2)"/>
+  <text class="d-accent" x="600" y="112" text-anchor="middle">pick one token: " a"</text>
+  <path class="d-dash" d="M600 120 V170 H145 V80" marker-end="url(#a2)"/>
+  <text class="d-small" x="370" y="190" text-anchor="middle">append it to the input and repeat &rarr; "def add(a: Int, b: Int) = a + b"</text>
+</svg>
+<figcaption>Autoregressive generation: one token at a time. Each new token becomes part of the input for the next prediction.</figcaption>
+</figure>
+
+<div class="callout analogy"><span class="c-title">Analogy: the world's best autocomplete</span>
+Your phone keyboard suggests the next word from your recent typing. An LLM is the same idea scaled up enormously. It has
+learned from a large part of the public internet, books and code, and it considers thousands of previous tokens at once.
+To predict the next line of a Scala proof well, it has to "understand" a lot about Scala.</div>
+
+<h2>Tokens: how models see text</h2>
+<p>Models don't read characters or words. They read <b>tokens</b>: chunks of text from a fixed vocabulary, typically 30,000
+to 200,000+ entries. A <b>tokenizer</b> splits text into tokens and maps each one to an integer ID.</p>
+<pre data-lang="text" data-title="How a tokenizer might split text (illustrative)">
+"Scala is functional"       -> ["Sc", "ala", " is", " functional"]
+"val total = xs.sum"        -> ["val", " total", " =", " xs", ".", "sum"]
+"unbelievably"              -> ["un", "belie", "vably"]
+"    def f():" (Python)     -> ["    ", "def", " f", "():"]
+</pre>
+<ul>
+  <li><b>Rule of thumb:</b> in English, 1 token &asymp; 4 characters &asymp; &frac34; of a word. 1,000 tokens &asymp; 750 words.
+  Code, non-English text and unusual identifiers often use <em>more</em> tokens.</li>
+  <li><b>Why it matters:</b> pricing, speed and the <em>context window</em> are all measured in tokens.</li>
+  <li><b>Quirks it explains:</b> models sometimes struggle to count letters in a word or reverse strings, because they see
+  tokens, not individual letters.</li>
+</ul>
+
+<h2>Embeddings: meaning as numbers</h2>
+<p>Each token ID is turned into an <b>embedding</b>: a list of hundreds or thousands of numbers (a vector). Training arranges these
+vectors so that <em>similar meanings end up close together</em>.</p>
+<figure class="diagram">
+<svg viewBox="0 0 620 260" width="620" role="img" aria-label="Embedding space clusters">
+  <rect class="d-box" x="10" y="10" width="600" height="240" rx="10"/>
+  <circle class="d-box2" cx="140" cy="80" r="52"/><text class="d-small" x="140" y="34" text-anchor="middle">collections</text>
+  <text class="d-text" x="110" y="70">List</text><text class="d-text" x="150" y="95">Vector</text><text class="d-text" x="105" y="110">Seq</text><text class="d-text" x="150" y="62">Array</text>
+  <circle class="d-box3" cx="430" cy="80" r="52"/><text class="d-small" x="430" y="34" text-anchor="middle">concurrency</text>
+  <text class="d-text" x="400" y="72">Future</text><text class="d-text" x="430" y="98">IO</text><text class="d-text" x="455" y="70">Task</text>
+  <circle class="d-box4" cx="290" cy="185" r="52"/><text class="d-small" x="290" y="250" text-anchor="middle">animals</text>
+  <text class="d-text" x="262" y="180">cat</text><text class="d-text" x="295" y="200">dog</text><text class="d-text" x="300" y="170">horse</text>
+  <text class="d-small" x="520" y="225">(real space: ~1,000+ dimensions)</text>
+</svg>
+<figcaption>Embeddings place related concepts near each other. This is also the basis of semantic search and RAG (Level 2).</figcaption>
+</figure>
+<p>You can do "maths with meaning". The classic example is that <code>king &minus; man + woman</code> lands near <code>queen</code>.
+Embeddings are also used <em>outside</em> the LLM to search documents by meaning. That is the foundation of RAG.</p>
+
+<h2>The Transformer and attention</h2>
+<p>The Transformer is the neural network architecture behind modern LLMs. Its key trick is <b>attention</b>: for every token,
+the model decides <em>which other tokens in the context are relevant</em> and blends information from them.</p>
+<figure class="diagram">
+<svg viewBox="0 0 680 190" width="680" role="img" aria-label="Attention connecting tokens">
+  <g class="d-text">
+    <rect class="d-box" x="20"  y="130" width="70" height="34" rx="6"/><text x="55"  y="152" text-anchor="middle">The</text>
+    <rect class="d-box" x="100" y="130" width="90" height="34" rx="6"/><text x="145" y="152" text-anchor="middle">function</text>
+    <rect class="d-box" x="200" y="130" width="90" height="34" rx="6"/><text x="245" y="152" text-anchor="middle">returns</text>
+    <rect class="d-box" x="300" y="130" width="60" height="34" rx="6"/><text x="330" y="152" text-anchor="middle">an</text>
+    <rect class="d-box" x="370" y="130" width="90" height="34" rx="6"/><text x="415" y="152" text-anchor="middle">Option</text>
+    <rect class="d-box" x="470" y="130" width="70" height="34" rx="6"/><text x="505" y="152" text-anchor="middle">so</text>
+    <rect class="d-box2" x="550" y="130" width="110" height="34" rx="6"/><text x="605" y="152" text-anchor="middle">it &#8230;?</text>
+  </g>
+  <path class="d-line" d="M605 128 C 560 30, 200 30, 145 128" style="stroke:var(--accent);stroke-width:3"/>
+  <path class="d-line" d="M605 128 C 560 70, 450 70, 415 128" style="stroke:var(--accent);stroke-width:4"/>
+  <path class="d-dash" d="M605 128 C 580 90, 280 70, 245 128"/>
+  <text class="d-small" x="340" y="28" text-anchor="middle">thick lines = high attention weight</text>
+</svg>
+<figcaption>To understand "it", the model attends strongly to "function" and "Option". This is how it tracks meaning across a long context.</figcaption>
+</figure>
+<p>A Transformer stacks dozens of layers of attention plus small feed-forward networks. Early layers pick up syntax and
+local patterns. Deeper layers represent more abstract things: types, intent, style, logic. Attention works in parallel
+across all tokens, so Transformers train efficiently on GPUs, and that is why they scaled.</p>
+<details><summary>Deep dive: query, key, value (optional)</summary>
+<p>Each token produces three vectors: a <b>query</b> ("what am I looking for?"), a <b>key</b> ("what do I contain?") and a
+<b>value</b> ("what information do I pass on?"). The attention weight between two tokens is the similarity between one token's
+query and the other's key, normalised with softmax. The output is the weighted sum of values. "Multi-head" attention runs many of
+these in parallel, each specialising in different relationships. Level 4 implements this in code.</p></details>
+
+<h2>How a model is trained</h2>
+<figure class="diagram">
+<svg viewBox="0 0 760 170" width="760" role="img" aria-label="LLM training pipeline">
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="40" width="160" height="90" rx="10"/><text class="d-title" x="90" y="68" text-anchor="middle">1. Pre-training</text><text class="d-small" x="90" y="88" text-anchor="middle">trillions of tokens</text><text class="d-small" x="90" y="104" text-anchor="middle">predict next token</text><text class="d-small" x="90" y="120" text-anchor="middle">weeks on GPU clusters</text>
+  <rect class="d-box2" x="200" y="40" width="160" height="90" rx="10"/><text class="d-title" x="280" y="68" text-anchor="middle">2. Fine-tuning (SFT)</text><text class="d-small" x="280" y="88" text-anchor="middle">curated examples of</text><text class="d-small" x="280" y="104" text-anchor="middle">good conversations</text><text class="d-small" x="280" y="120" text-anchor="middle">&rarr; follows instructions</text>
+  <rect class="d-box3" x="390" y="40" width="160" height="90" rx="10"/><text class="d-title" x="470" y="68" text-anchor="middle">3. Preference / RL</text><text class="d-small" x="470" y="88" text-anchor="middle">humans/AI rank answers;</text><text class="d-small" x="470" y="104" text-anchor="middle">rewards for verified</text><text class="d-small" x="470" y="120" text-anchor="middle">correct code &amp; maths</text>
+  <rect class="d-box4" x="580" y="40" width="170" height="90" rx="10"/><text class="d-title" x="665" y="68" text-anchor="middle">4. Evaluate &amp; ship</text><text class="d-small" x="665" y="88" text-anchor="middle">benchmarks, red-teaming,</text><text class="d-small" x="665" y="104" text-anchor="middle">safety tuning</text><text class="d-small" x="665" y="120" text-anchor="middle">&rarr; released model</text>
+  <path class="d-line" d="M170 85 H195" marker-end="url(#a3)"/><path class="d-line" d="M360 85 H385" marker-end="url(#a3)"/><path class="d-line" d="M550 85 H575" marker-end="url(#a3)"/>
+</svg>
+<figcaption>Pre-training creates a "base model" that knows a lot but just continues text. Post-training (steps 2&ndash;3) turns it into a helpful assistant.</figcaption>
+</figure>
+<ul>
+  <li><b>Parameters / weights:</b> the numbers the model learns. Model sizes range from about 1 billion (runs on a laptop) to hundreds of billions or more.</li>
+  <li><b>Knowledge cutoff:</b> the model only "knows" data up to when training data was collected. Anything newer must be given in the prompt or through tools such as search.</li>
+  <li><b>RLHF</b> (Reinforcement Learning from Human Feedback) and related methods teach style, helpfulness, honesty and refusal behaviour.</li>
+  <li><b>RL with verifiable rewards</b>: models practise on problems where answers can be checked automatically (tests pass, maths is correct). This is a big reason coding ability improved so quickly.</li>
+</ul>
+
+<h2>Inference: generating an answer</h2>
+<p>When you send a prompt, the model runs <b>inference</b>. It computes a probability for every possible next token, picks one
+according to the <b>sampling settings</b>, and repeats until it emits a stop token or hits the limit.</p>
+<table>
+  <thead><tr><th>Setting</th><th>What it does</th><th>Developer guidance</th></tr></thead>
+  <tbody>
+    <tr><td><b>Temperature</b></td><td>0 = almost always pick the most likely token (focused, repeatable). Higher (0.8&ndash;1.2) = more varied and creative, and more errors.</td><td>Code, extraction, classification: low (0&ndash;0.3). Brainstorming and naming: higher.</td></tr>
+    <tr><td><b>Top-p</b> (nucleus)</td><td>Only sample from the smallest set of tokens whose probabilities add up to p (e.g. 0.9).</td><td>Usually adjust temperature <em>or</em> top-p, not both.</td></tr>
+    <tr><td><b>Max output tokens</b></td><td>Hard limit on answer length.</td><td>Set high enough for full code files, or output will be cut off.</td></tr>
+    <tr><td><b>Stop sequences</b></td><td>Strings that end generation.</td><td>Useful when parsing output programmatically.</td></tr>
+    <tr><td><b>Seed</b></td><td>Makes sampling more repeatable (where supported).</td><td>Helps with tests and evals.</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Even temperature 0 is not perfectly deterministic</span>
+Large-scale serving (batching, floating-point maths on GPUs) can produce small differences between runs. Never build
+systems that assume identical outputs every time. Validate the output instead.</div>
+
+<h2>The context window</h2>
+<p>The <b>context window</b> is the maximum number of tokens the model can consider at once: the system prompt, conversation
+history, files, tool results <em>and</em> its own answer. Modern models range from tens of thousands to a million or more tokens.</p>
+<figure class="diagram">
+<svg viewBox="0 0 720 120" width="720" role="img" aria-label="Context window composition">
+  <rect class="d-box"  x="10"  y="30" width="700" height="50" rx="8"/>
+  <rect class="d-box2" x="10"  y="30" width="110" height="50" rx="8"/><text class="d-small" x="65"  y="60" text-anchor="middle">system prompt</text>
+  <rect class="d-box3" x="120" y="30" width="120" height="50"/><text class="d-small" x="180" y="60" text-anchor="middle">rules / AGENTS.md</text>
+  <rect class="d-box4" x="240" y="30" width="200" height="50"/><text class="d-small" x="340" y="60" text-anchor="middle">history + files + tool results</text>
+  <rect class="d-box2" x="440" y="30" width="110" height="50"/><text class="d-small" x="495" y="60" text-anchor="middle">your prompt</text>
+  <rect class="d-box3" x="550" y="30" width="110" height="50"/><text class="d-small" x="605" y="60" text-anchor="middle">model's answer</text>
+  <text class="d-small" x="685" y="60" text-anchor="middle">free</text>
+  <text class="d-small" x="360" y="105" text-anchor="middle">everything shares one budget, measured in tokens</text>
+</svg>
+<figcaption>When the window fills up, older content is truncated or summarised. The model cannot see what is not in the window.</figcaption>
+</figure>
+<ul>
+  <li><b>The model has no memory between calls.</b> Each request sends the whole conversation again. "Memory" features are the product re-inserting saved notes.</li>
+  <li><b>More context is not always better.</b> Models can lose track of details buried in the middle of very long contexts ("lost in the middle"), and long contexts cost more and run slower. See <a href="04-context-engineering.html">Context Engineering</a>.</li>
+</ul>
+
+<h2>Messages and roles</h2>
+<p>Chat models receive a list of <b>messages</b>, each with a role:</p>
+<pre data-lang="json" data-title="A chat request (generic shape)">
+{
+  "messages": [
+    { "role": "system",    "content": "You are a senior Scala 3 reviewer. Be concise." },
+    { "role": "user",      "content": "Review this function: def avg(xs: List[Int]) = xs.sum / xs.size" },
+    { "role": "assistant", "content": "It throws ArithmeticException on an empty list..." },
+    { "role": "user",      "content": "Fix it using Option." }
+  ],
+  "temperature": 0.2,
+  "max_tokens": 800
+}
+</pre>
+<ul>
+  <li><b>system</b> (sometimes called developer): sets the persona, rules and constraints. It carries higher priority.</li>
+  <li><b>user</b>: your requests.</li>
+  <li><b>assistant</b>: the model's previous replies.</li>
+  <li><b>tool</b>: results returned from tools the model called (agents, MCP; see pages 08&ndash;09).</li>
+</ul>
+
+<h2>Why hallucinations happen</h2>
+<p>A <b>hallucination</b> is fluent, confident output that is false: a made-up API, a non-existent library version, a fake citation.
+It happens because the model is trained to produce <em>plausible</em> continuations, not to check facts. When the true answer was
+rare or absent in its training data, a plausible-looking guess often wins.</p>
+<ul class="checklist">
+  <li>Ground the model: paste the real docs, error output or source code into context.</li>
+  <li>Let it use tools: compile, run tests, search docs (agents do this).</li>
+  <li>Ask for sources or "say if you are unsure", and treat that as a hint only.</li>
+  <li>Verify anything critical: versions, APIs, security, money, legal, medical.</li>
+</ul>
+
+<h2>Reasoning ("thinking") models</h2>
+<p>Many current models can spend extra tokens <b>thinking before answering</b>: they work through a problem step by step
+internally, check intermediate results, and then give a final answer. This uses more <em>test-time compute</em>. It helps with
+multi-step logic, debugging, maths and planning. It adds latency and cost and is unnecessary for simple tasks.</p>
+<table>
+  <thead><tr><th>Task</th><th>Fast/standard model</th><th>Reasoning model / high effort</th></tr></thead>
+  <tbody>
+    <tr><td>Rename variables, write docstrings, boilerplate</td><td>&#10003; Best choice</td><td>Overkill</td></tr>
+    <tr><td>Explain a stack trace</td><td>&#10003; Usually fine</td><td>For subtle concurrency bugs</td></tr>
+    <tr><td>Design a migration plan, tricky algorithm, cross-file refactor</td><td>Might miss things</td><td>&#10003; Better</td></tr>
+  </tbody>
+</table>
+
+<h2>Open-weight vs closed models</h2>
+<div class="compare">
+  <div><h4>Closed / hosted (API)</h4><p>Accessed over the internet. Usually the most capable. No hardware needed. Your data goes to the provider, so check their data policies. Pay per token.</p></div>
+  <div><h4>Open-weight (downloadable)</h4><p>Weights are published. You can run them locally (Ollama, LM Studio, MLX on a Mac) or on your own servers. Full privacy and control. Often smaller and less capable, but improving fast.</p></div>
+</div>
+
+<h2>Build intuition: a toy next-word model</h2>
+<p>Real LLMs use neural networks. A tiny <b>bigram model</b> (next word based only on the previous word) still shows the core loop:
+learn probabilities from data, then sample.</p>
+<pre data-lang="python" data-title="toy_bigram.py">
+import random
+from collections import defaultdict, Counter
+
+corpus = "the cat sat on the mat . the dog sat on the log . the cat saw the dog ."
+words = corpus.split()
+
+# 1. "Training": count which word follows which
+follows: dict[str, Counter] = defaultdict(Counter)
+for prev, nxt in zip(words, words[1:]):
+    follows[prev][nxt] += 1
+
+# 2. "Inference": sample the next word, with temperature
+def next_word(prev: str, temperature: float = 1.0) -> str:
+    options = follows[prev]
+    weights = [count ** (1 / temperature) for count in options.values()]
+    return random.choices(list(options), weights=weights)[0]
+
+def generate(start: str, n: int = 8, temperature: float = 1.0) -> str:
+    out = [start]
+    for _ in range(n):
+        out.append(next_word(out[-1], temperature))
+    return " ".join(out)
+
+print(generate("the", temperature=0.3))  # focused
+print(generate("the", temperature=2.0))  # more random
+</pre>
+<pre data-lang="scala" data-title="ToyBigram.scala (run with: scala-cli ToyBigram.scala)">
+//> using scala 3
+import scala.util.Random
+
+@main def toyBigram(): Unit =
+  val words = "the cat sat on the mat . the dog sat on the log . the cat saw the dog .".split(" ").toVector
+
+  // 1. "Training": count transitions
+  val follows: Map[String, Map[String, Int]] =
+    words.zip(words.tail)
+      .groupMap(_._1)(_._2)
+      .view.mapValues(_.groupMapReduce(identity)(_ => 1)(_ + _)).toMap
+
+  // 2. "Inference": sample with temperature
+  def nextWord(prev: String, temperature: Double): String =
+    val opts    = follows(prev).toVector
+    val weights = opts.map((_, c) => math.pow(c, 1 / temperature))
+    var r       = Random.nextDouble() * weights.sum
+    opts.zip(weights).find { case (_, w) => r -= w; r &lt;= 0 }.map(_._1._1).getOrElse(opts.last._1)
+
+  def generate(start: String, n: Int, t: Double): String =
+    Iterator.iterate(start)(w => nextWord(w, t)).take(n + 1).mkString(" ")
+
+  println(generate("the", 8, 0.3))
+  println(generate("the", 8, 2.0))
+</pre>
+<p>An LLM replaces "count the previous word" with "a Transformer with billions of parameters that looks at thousands of previous tokens".
+The <em>loop</em> is the same.</p>
+
+<div class="callout tip"><span class="c-title">Try it</span>
+Run either script above. Then ask an AI assistant: <em>"Explain how this toy bigram model differs from a Transformer LLM, in
+5 bullet points."</em> Then: <em>"Modify it to be a trigram model."</em> Run the result and verify it works.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>LLMs generate one <b>token</b> at a time by predicting what comes next.</li>
+  <li><b>Embeddings</b> turn tokens into meaning-vectors. <b>Attention</b> lets every token use relevant context.</li>
+  <li>Pre-training gives knowledge. Post-training (SFT + preference/RL) gives helpfulness.</li>
+  <li><b>Temperature</b> controls randomness. Use it low for code.</li>
+  <li>The <b>context window</b> is the model's entire working memory. It has no memory between calls.</li>
+  <li>Hallucinations are a natural side-effect of predicting plausible text. Ground the model and verify.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

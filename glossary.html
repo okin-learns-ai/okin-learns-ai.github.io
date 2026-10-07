@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Glossary A–Z | AI Mastery</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="">
+<article class="content" id="content">
+
+<h1>Glossary A&ndash;Z</h1>
+<p class="lead">Plain-language definitions of the AI terms you will meet in these docs and at work. Use search
+(<kbd>/</kbd>) to jump to any term. Links point to the page that explains the term in depth.</p>
+
+<div class="letters">
+  <a href="#a">A</a><a href="#b">B</a><a href="#c">C</a><a href="#d">D</a><a href="#e">E</a><a href="#f">F</a><a href="#g">G</a><a href="#h">H</a><a href="#i">I</a><a href="#j">J</a><a href="#k">K</a><a href="#l">L</a><a href="#m">M</a><a href="#n">N</a><a href="#o">O</a><a href="#p">P</a><a href="#q">Q</a><a href="#r">R</a><a href="#s">S</a><a href="#t">T</a><a href="#u">U</a><a href="#v">V</a><a href="#w">W</a><a href="#z">Z</a>
+</div>
+
+<h2 id="a">A</h2>
+<dl class="gloss">
+<dt>A2A (Agent2Agent protocol)</dt><dd>An open protocol for agents built by different vendors or teams to discover each other and collaborate on tasks. Complements MCP (agent&harr;tools).</dd>
+<dt>ACP (Agent Client Protocol)</dt><dd>An open protocol connecting editors/IDEs to coding agents, so you can use an agent of your choice inside an editor. Supported by several IDEs, including JetBrains IDEs and Xcode. <a href="l1/06-ai-in-the-ide.html">Page 06</a>.</dd>
+<dt>Agent</dt><dd>A model that uses tools in a loop (think &rarr; act &rarr; observe) to achieve a goal. <a href="l1/08-agents-101.html">Page 08</a>.</dd>
+<dt>Agent harness</dt><dd>The software around a model that turns it into an agent: system prompt, tools, loop, permissions, context management. The same model can behave very differently in different harnesses.</dd>
+<dt>Agentic coding</dt><dd>Software development where AI agents carry out multi-step tasks (editing files, running builds and tests) under human supervision.</dd>
+<dt>AGENTS.md</dt><dd>An open convention: a Markdown file of project instructions (commands, conventions, boundaries) that many coding agents read automatically. <a href="l1/07-instructions-skills-agents.html">Page 07</a>.</dd>
+<dt>Agent Skills</dt><dd>An open format for packaging know-how as a folder with a <code>SKILL.md</code> file plus optional scripts and references, loaded on demand. <a href="l1/07-instructions-skills-agents.html">Page 07</a>.</dd>
+<dt>AGI (Artificial General Intelligence)</dt><dd>A hypothetical AI matching humans across essentially all cognitive tasks. Its definition and timeline are debated.</dd>
+<dt>AI (Artificial Intelligence)</dt><dd>The broad field of making machines perform tasks associated with human intelligence. <a href="l1/01-what-is-ai.html">Page 01</a>.</dd>
+<dt>Alignment</dt><dd>Making AI systems behave according to human intentions and values: helpful, honest, harmless.</dd>
+<dt>Attention</dt><dd>The Transformer mechanism that lets each token weigh and use information from other tokens in the context. <a href="l1/02-how-llms-work.html">Page 02</a>.</dd>
+<dt>Automation bias</dt><dd>The human tendency to over-trust automated output. A key risk when reviewing AI work.</dd>
+<dt>Autoregressive</dt><dd>Generating output one token at a time, each conditioned on everything generated so far.</dd>
+</dl>
+
+<h2 id="b">B</h2>
+<dl class="gloss">
+<dt>Base model</dt><dd>A model after pre-training only. It continues text but isn't tuned to follow instructions or chat.</dd>
+<dt>Benchmark</dt><dd>A standard test set for comparing models (coding, maths, reasoning). Useful but imperfect. Always test on your own tasks.</dd>
+<dt>Bias (in AI)</dt><dd>Systematic skew in outputs inherited from training data or design, e.g. stereotypes or unequal performance across groups.</dd>
+<dt>BPE (Byte-Pair Encoding)</dt><dd>A common tokenisation algorithm that builds a vocabulary by merging frequent character sequences.</dd>
+</dl>
+
+<h2 id="c">C</h2>
+<dl class="gloss">
+<dt>Chain of thought (CoT)</dt><dd>Having the model reason step by step before answering. Reasoning models do this internally.</dd>
+<dt>Chunking</dt><dd>Splitting documents into pieces for embedding and retrieval in RAG.</dd>
+<dt>Classification</dt><dd>An ML task that assigns inputs to categories (spam/not spam, ticket type).</dd>
+<dt>Compaction</dt><dd>Summarising older conversation history to free context space during long agent sessions.</dd>
+<dt>Computer use</dt><dd>Agents operating a GUI (browser or desktop) via screenshots, clicks and typing.</dd>
+<dt>Context</dt><dd>Everything the model sees for one response: system prompt, rules, history, files, tool results, your prompt. <a href="l1/04-context-engineering.html">Page 04</a>.</dd>
+<dt>Context engineering</dt><dd>The practice of curating what goes into the context: write, select, compress, isolate.</dd>
+<dt>Context rot</dt><dd>Quality degradation as a session accumulates long, noisy history.</dd>
+<dt>Context window</dt><dd>The maximum number of tokens a model can handle at once (input + output).</dd>
+<dt>Cosine similarity</dt><dd>A measure of how similar two vectors (embeddings) are, based on the angle between them. Used in semantic search.</dd>
+<dt>Custom agent</dt><dd>A named configuration of instructions, allowed tools and optionally a model, for a specific role (planner, reviewer).</dd>
+</dl>
+
+<h2 id="d">D</h2>
+<dl class="gloss">
+<dt>Deep learning</dt><dd>Machine learning with multi-layer neural networks.</dd>
+<dt>Diffusion model</dt><dd>A generative model (common for images/video) that learns to turn noise into data step by step.</dd>
+<dt>Distillation</dt><dd>Training a smaller "student" model to imitate a larger "teacher" model.</dd>
+<dt>DPO (Direct Preference Optimization)</dt><dd>A post-training method that tunes a model directly on preferred-vs-rejected answer pairs, without a separate reward model.</dd>
+</dl>
+
+<h2 id="e">E</h2>
+<dl class="gloss">
+<dt>Elicitation (MCP)</dt><dd>An MCP client feature that lets a server ask the user for additional input mid-task. <a href="l1/09-mcp-101.html">Page 09</a>.</dd>
+<dt>Embedding</dt><dd>A vector of numbers representing the meaning of a token, text or code. Similar meanings get nearby vectors.</dd>
+<dt>Emergent abilities</dt><dd>Capabilities that appear as models scale, without being explicitly trained for.</dd>
+<dt>Epoch</dt><dd>One full pass through the training dataset.</dd>
+<dt>Evals</dt><dd>Systematic tests of AI system quality: datasets, rubrics, automated grading. Level 3.</dd>
+</dl>
+
+<h2 id="f">F</h2>
+<dl class="gloss">
+<dt>Few-shot prompting</dt><dd>Including a few examples in the prompt so the model copies the pattern.</dd>
+<dt>Fine-tuning</dt><dd>Further training a pre-trained model on specific data to specialise it.</dd>
+<dt>Foundation model</dt><dd>A large general-purpose model adaptable to many tasks.</dd>
+<dt>Frontier model</dt><dd>One of the most capable models available at a given time.</dd>
+<dt>Function calling / tool calling</dt><dd>A model API feature where the model outputs a structured request to call a defined function. The application executes it.</dd>
+</dl>
+
+<h2 id="g">G</h2>
+<dl class="gloss">
+<dt>Generative AI (GenAI)</dt><dd>AI that creates new content: text, code, images, audio, video.</dd>
+<dt>GGUF</dt><dd>A file format for (often quantised) model weights used by llama.cpp and many local runners.</dd>
+<dt>GPU</dt><dd>A graphics processor. Its massively parallel maths is ideal for training and running neural networks.</dd>
+<dt>Grounding</dt><dd>Giving the model authoritative information (docs, code, data, tool results) so its answers are based on facts.</dd>
+<dt>Guardrails</dt><dd>Checks around a model that block or fix unsafe or invalid inputs and outputs.</dd>
+</dl>
+
+<h2 id="h">H</h2>
+<dl class="gloss">
+<dt>Hallucination</dt><dd>Fluent, confident output that is false or fabricated. <a href="l1/14-safety-privacy-ethics.html">Page 14</a>.</dd>
+<dt>Hooks</dt><dd>Commands that run automatically on agent lifecycle events (before/after tool calls, on stop). They give deterministic guarantees.</dd>
+<dt>Host (MCP)</dt><dd>The AI application (IDE, chat app, agent) that connects to MCP servers through clients.</dd>
+<dt>Human-in-the-loop</dt><dd>Designs where humans approve, correct or guide AI actions at key points.</dd>
+<dt>Hyperparameter</dt><dd>A setting chosen before training (learning rate, batch size), as opposed to learned parameters.</dd>
+</dl>
+
+<h2 id="i">I</h2>
+<dl class="gloss">
+<dt>Inference</dt><dd>Running a trained model to produce output.</dd>
+<dt>Inline edit</dt><dd>An IDE mode where you select code, give an instruction, and accept or reject a proposed diff.</dd>
+<dt>Instruction tuning</dt><dd>Fine-tuning on instruction&rarr;response examples so a model follows requests (part of SFT).</dd>
+</dl>
+
+<h2 id="j">J</h2>
+<dl class="gloss">
+<dt>Jailbreak</dt><dd>A prompt crafted to make a model ignore its safety rules.</dd>
+<dt>JSON mode / structured output</dt><dd>Constraining model output to valid JSON, often matching a given JSON Schema.</dd>
+<dt>JSON-RPC</dt><dd>A lightweight remote-procedure-call format using JSON. The message format of MCP and LSP.</dd>
+</dl>
+
+<h2 id="k">K</h2>
+<dl class="gloss">
+<dt>Knowledge cutoff</dt><dd>The date after which a model has no training data. Newer facts must come from context or tools.</dd>
+<dt>KV cache</dt><dd>Stored attention keys/values from previous tokens that speed up generation. Level 4.</dd>
+</dl>
+
+<h2 id="l">L</h2>
+<dl class="gloss">
+<dt>Latency</dt><dd>Time until a response (or its first token) arrives.</dd>
+<dt>LLM (Large Language Model)</dt><dd>A large neural network trained on text and code to predict the next token. It powers chat and coding assistants.</dd>
+<dt>LLM-as-judge</dt><dd>Using a model to grade other model outputs against a rubric. Powerful, but it has biases.</dd>
+<dt>LoRA (Low-Rank Adaptation)</dt><dd>An efficient fine-tuning method that trains small add-on matrices instead of all weights.</dd>
+<dt>Lost in the middle</dt><dd>The tendency of models to under-use information placed in the middle of long contexts.</dd>
+<dt>LSP (Language Server Protocol)</dt><dd>The protocol between editors and language servers (e.g. Metals for Scala). It inspired MCP's design.</dd>
+</dl>
+
+<h2 id="m">M</h2>
+<dl class="gloss">
+<dt>Machine learning (ML)</dt><dd>Systems that learn patterns from data rather than following hand-written rules.</dd>
+<dt>MCP (Model Context Protocol)</dt><dd>An open standard for connecting AI applications to tools and data via servers exposing tools, resources and prompts. <a href="l1/09-mcp-101.html">Page 09</a>.</dd>
+<dt>MCP server</dt><dd>A program exposing capabilities to AI apps over MCP, either locally via stdio or remotely via HTTP.</dd>
+<dt>Memory (product feature)</dt><dd>Facts an AI product stores and re-inserts into future prompts. It is not model learning.</dd>
+<dt>Metals</dt><dd>The Scala language server used by VS Code and other editors. Recent versions include an MCP server for agents. <a href="l1/10-scala-with-ai.html">Page 10</a>.</dd>
+<dt>Mixture of Experts (MoE)</dt><dd>An architecture where only some sub-networks ("experts") activate per token, giving large capacity at lower compute cost.</dd>
+<dt>MLX</dt><dd>Apple's open-source machine-learning framework optimised for Apple silicon.</dd>
+<dt>Model card</dt><dd>Documentation of a model's intended use, training data, performance and limitations.</dd>
+<dt>Multimodal</dt><dd>Handling multiple data types (text, images, audio, video).</dd>
+</dl>
+
+<h2 id="n">N</h2>
+<dl class="gloss">
+<dt>Neural network</dt><dd>Layers of simple mathematical units whose connection strengths (weights) are learned from data.</dd>
+<dt>Next-token prediction</dt><dd>The core LLM task: predict the probability of each possible next token.</dd>
+<dt>NLP (Natural Language Processing)</dt><dd>The field of computers working with human language.</dd>
+</dl>
+
+<h2 id="o">O</h2>
+<dl class="gloss">
+<dt>Open-weight model</dt><dd>A model whose weights are published for download and self-hosting (licences vary).</dd>
+<dt>OpenAI-compatible API</dt><dd>A widely copied HTTP API shape for chat completions, supported by many providers and local runners.</dd>
+<dt>Orchestrator</dt><dd>An agent or program that coordinates other agents or steps in a workflow.</dd>
+<dt>Overfitting</dt><dd>When a model memorises training data and performs poorly on new data.</dd>
+</dl>
+
+<h2 id="p">P</h2>
+<dl class="gloss">
+<dt>Parameters / weights</dt><dd>The learned numbers inside a model. Model size is usually quoted in parameters (e.g. 8B = 8 billion).</dd>
+<dt>Perplexity (metric)</dt><dd>A measure of how well a language model predicts text. Lower is better.</dd>
+<dt>Pre-training</dt><dd>The first, largest training phase: next-token prediction on huge datasets.</dd>
+<dt>Progressive disclosure</dt><dd>Loading information only as needed, e.g. skills exposing only name and description until relevant.</dd>
+<dt>Prompt</dt><dd>The input you give a model. <a href="l1/03-prompting-fundamentals.html">Page 03</a>.</dd>
+<dt>Prompt engineering</dt><dd>The craft of designing prompts that reliably produce desired outputs.</dd>
+<dt>Prompt file</dt><dd>A saved, reusable prompt invoked by name (slash command).</dd>
+<dt>Prompt injection</dt><dd>Malicious instructions embedded in content the model processes, causing it to act against the user. "Indirect" when they arrive via documents, web pages or tool results.</dd>
+<dt>Prompts (MCP)</dt><dd>Reusable prompt templates exposed by an MCP server.</dd>
+</dl>
+
+<h2 id="q">Q</h2>
+<dl class="gloss">
+<dt>Quantisation</dt><dd>Storing weights with fewer bits (e.g. 4-bit instead of 16-bit) to shrink models and speed them up, at some quality cost.</dd>
+<dt>Query, key, value</dt><dd>The three vectors each token produces in attention: what it looks for, what it offers, what it passes on.</dd>
+</dl>
+
+<h2 id="r">R</h2>
+<dl class="gloss">
+<dt>RAG (Retrieval-Augmented Generation)</dt><dd>Retrieving relevant documents (often by embedding search) and adding them to the prompt so answers are grounded. Level 2.</dd>
+<dt>Reasoning model</dt><dd>A model trained to "think" (generate internal reasoning) before answering, trading latency for accuracy on hard problems.</dd>
+<dt>Red-teaming</dt><dd>Deliberately attacking a system to find safety and security weaknesses.</dd>
+<dt>Regression (ML)</dt><dd>Predicting a continuous number (price, duration).</dd>
+<dt>Reinforcement learning (RL)</dt><dd>Learning by trial and error from rewards.</dd>
+<dt>Re-ranking</dt><dd>A second retrieval step that reorders candidate documents by relevance using a stronger model.</dd>
+<dt>Resources (MCP)</dt><dd>Read-only data exposed by an MCP server via URIs.</dd>
+<dt>RLHF</dt><dd>Reinforcement Learning from Human Feedback: tuning a model using human preference judgements.</dd>
+<dt>Roots (MCP)</dt><dd>Directories or projects the host allows a server to operate within.</dd>
+</dl>
+
+<h2 id="s">S</h2>
+<dl class="gloss">
+<dt>Sampling (decoding)</dt><dd>Choosing the next token from the model's probability distribution, controlled by temperature, top-p, top-k.</dd>
+<dt>Sampling (MCP)</dt><dd>An MCP feature letting a server request a completion from the host's LLM.</dd>
+<dt>Scaling laws</dt><dd>Empirical relationships showing model performance improves predictably with more parameters, data and compute.</dd>
+<dt>Self-supervised learning</dt><dd>Learning where labels come from the data itself (e.g. the next word).</dd>
+<dt>Semantic search</dt><dd>Searching by meaning using embeddings, rather than exact keywords.</dd>
+<dt>SFT (Supervised Fine-Tuning)</dt><dd>Fine-tuning on curated example responses.</dd>
+<dt>Skill</dt><dd>See <em>Agent Skills</em>.</dd>
+<dt>Slopsquatting</dt><dd>Registering malicious packages under names that AI models commonly hallucinate.</dd>
+<dt>stdio transport</dt><dd>MCP transport where the host launches the server as a local process and talks over standard input/output.</dd>
+<dt>Stop sequence</dt><dd>A string that ends generation when produced.</dd>
+<dt>Streamable HTTP</dt><dd>MCP transport for remote servers over HTTP, with streaming support.</dd>
+<dt>Streaming</dt><dd>Receiving output token by token as it is generated.</dd>
+<dt>Structured output</dt><dd>See <em>JSON mode</em>.</dd>
+<dt>Sub-agent</dt><dd>An agent delegated a sub-task by a main agent, working in its own context and returning a summary.</dd>
+<dt>Supervised learning</dt><dd>Learning from labelled input&rarr;output examples.</dd>
+<dt>Synthetic data</dt><dd>Data generated (often by AI) for testing, evaluation or training.</dd>
+<dt>System prompt</dt><dd>High-priority instructions setting a model's role, rules and behaviour for a conversation.</dd>
+</dl>
+
+<h2 id="t">T</h2>
+<dl class="gloss">
+<dt>Temperature</dt><dd>A sampling setting: low means focused and repeatable, high means varied and creative.</dd>
+<dt>Test-time compute</dt><dd>Spending more computation during inference (thinking, multiple attempts, verification) to improve answers.</dd>
+<dt>Throughput</dt><dd>How many tokens or requests a system processes per second.</dd>
+<dt>Token</dt><dd>A chunk of text (word piece, symbol, whitespace) that models read and write. About 4 characters of English on average.</dd>
+<dt>Tokenizer</dt><dd>The component that converts text to token IDs and back.</dd>
+<dt>Tool</dt><dd>A function an agent can call (read file, run tests, query DB). In MCP, a server-exposed callable with a JSON Schema.</dd>
+<dt>Top-k / Top-p</dt><dd>Sampling limits: only consider the k most likely tokens, or the smallest set whose probabilities sum to p.</dd>
+<dt>Transfer learning</dt><dd>Reusing knowledge from one task or model to accelerate learning another.</dd>
+<dt>Transformer</dt><dd>The neural architecture (2017) based on attention that underlies modern LLMs.</dd>
+</dl>
+
+<h2 id="u">U</h2>
+<dl class="gloss">
+<dt>Unsupervised learning</dt><dd>Finding structure (clusters, anomalies) in unlabelled data.</dd>
+</dl>
+
+<h2 id="v">V</h2>
+<dl class="gloss">
+<dt>Vector</dt><dd>An ordered list of numbers. Embeddings are vectors.</dd>
+<dt>Vector database</dt><dd>A store optimised for similarity search over embeddings (e.g. pgvector, Qdrant).</dd>
+<dt>Vibe coding</dt><dd>Informal term for building software by prompting AI and accepting output with little review. Fine for throwaway prototypes, risky for production.</dd>
+<dt>Vision-language model (VLM)</dt><dd>A model that understands images together with text.</dd>
+</dl>
+
+<h2 id="w">W</h2>
+<dl class="gloss">
+<dt>Weights</dt><dd>See <em>Parameters</em>.</dd>
+<dt>Workflow (vs agent)</dt><dd>A predefined sequence of LLM calls and code steps. An agent decides its own steps dynamically. Workflows are more predictable.</dd>
+</dl>
+
+<h2 id="z">Z</h2>
+<dl class="gloss">
+<dt>Zero-shot</dt><dd>Asking a model to do a task with no examples in the prompt.</dd>
+</dl>
+
+</article>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/search-index.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

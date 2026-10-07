@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Instructions, Rules, Skills &amp; Custom Agents | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>07 &middot; Instructions, Rules, Skills &amp; Custom Agents</h1>
+<p class="lead">Without customisation, an AI assistant treats every project like a stranger's. With it, the assistant
+follows your stack, conventions, commands and workflows every time. This page covers each customisation type, when to use
+it, and working examples.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">50 min</span><span class="pill">Track 6 &middot; Customisation</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain the difference between always-on instructions, scoped rules, prompt files, skills, custom agents, hooks and plugins.</li>
+  <li>Write a high-quality <code>AGENTS.md</code> for a Scala or Python project.</li>
+  <li>Create a simple Agent Skill (<code>SKILL.md</code>) and a custom agent.</li>
+  <li>Know where each tool looks for these files.</li>
+</ul></div>
+
+<h2>The customisation toolbox</h2>
+<figure class="diagram">
+<svg viewBox="0 0 740 320" width="740" role="img" aria-label="Customisation types by when they load">
+  <g class="d-text">
+    <text class="d-title" x="20" y="24">When does it enter the context?</text>
+    <rect class="d-box2" x="20"  y="40"  width="220" height="80" rx="10"/><text class="d-accent" x="130" y="64" text-anchor="middle">Always</text><text x="130" y="86" text-anchor="middle">Project instructions</text><text class="d-small" x="130" y="104" text-anchor="middle">AGENTS.md, copilot-instructions.md</text>
+    <rect class="d-box3" x="260" y="40"  width="220" height="80" rx="10"/><text class="d-accent" x="370" y="64" text-anchor="middle">When files match</text><text x="370" y="86" text-anchor="middle">Scoped rules</text><text class="d-small" x="370" y="104" text-anchor="middle">applyTo: "**/*.scala"</text>
+    <rect class="d-box4" x="500" y="40"  width="220" height="80" rx="10"/><text class="d-accent" x="610" y="64" text-anchor="middle">When relevant (AI decides)</text><text x="610" y="86" text-anchor="middle">Skills</text><text class="d-small" x="610" y="104" text-anchor="middle">SKILL.md, progressive disclosure</text>
+    <rect class="d-box"  x="20"  y="140" width="220" height="80" rx="10"/><text class="d-accent" x="130" y="164" text-anchor="middle">When you invoke it</text><text x="130" y="186" text-anchor="middle">Prompt files / commands</text><text class="d-small" x="130" y="204" text-anchor="middle">/write-tests, /release-notes</text>
+    <rect class="d-box2" x="260" y="140" width="220" height="80" rx="10"/><text class="d-accent" x="370" y="164" text-anchor="middle">When you switch to it</text><text x="370" y="186" text-anchor="middle">Custom agents</text><text class="d-small" x="370" y="204" text-anchor="middle">reviewer.agent.md (role+tools)</text>
+    <rect class="d-box3" x="500" y="140" width="220" height="80" rx="10"/><text class="d-accent" x="610" y="164" text-anchor="middle">On lifecycle events</text><text x="610" y="186" text-anchor="middle">Hooks</text><text class="d-small" x="610" y="204" text-anchor="middle">run formatter after each edit</text>
+    <rect class="d-box4" x="20"  y="240" width="460" height="64" rx="10"/><text class="d-accent" x="250" y="264" text-anchor="middle">Packaging &amp; sharing</text><text class="d-small" x="250" y="286" text-anchor="middle">Plugins bundle skills + agents + hooks + MCP servers for a team</text>
+    <rect class="d-box"  x="500" y="240" width="220" height="64" rx="10"/><text class="d-accent" x="610" y="264" text-anchor="middle">Live external data</text><text class="d-small" x="610" y="286" text-anchor="middle">MCP servers (page 09)</text>
+  </g>
+</svg>
+<figcaption>The key question for each type is when it loads. Always-on content costs tokens on every request, so keep it short. On-demand content can be detailed.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Type</th><th>What it is</th><th>Use it for</th></tr></thead>
+  <tbody>
+    <tr><td><b>Project instructions</b></td><td>A Markdown file automatically added to every request in this repo.</td><td>Stack, versions, build/test commands, architecture, conventions, "never do X".</td></tr>
+    <tr><td><b>Scoped rules</b></td><td>Instructions attached only for matching files or tasks.</td><td>"In <code>*.scala</code>, prefer <code>Either</code>." "In <code>migrations/</code>, never edit old files."</td></tr>
+    <tr><td><b>Prompt files / slash commands</b></td><td>Saved prompts you trigger by name.</td><td>Repeated tasks you start yourself: write tests, PR description, explain module.</td></tr>
+    <tr><td><b>Skills</b></td><td>A folder with <code>SKILL.md</code> (and optional scripts/references) that the agent loads when the task matches the description.</td><td>Detailed procedures: "how we add an HTTP endpoint", "release checklist", "Spark job tuning".</td></tr>
+    <tr><td><b>Custom agents</b></td><td>A named persona with its own instructions, allowed tools and sometimes a model.</td><td>Roles: Planner (read-only), Reviewer, Test-writer, Docs-writer.</td></tr>
+    <tr><td><b>Hooks</b></td><td>Shell commands that run automatically on events (before/after a tool call, at session start, on stop).</td><td>Deterministic guarantees: format code, block dangerous commands, run lint.</td></tr>
+    <tr><td><b>Plugins</b></td><td>Installable bundles of the above.</td><td>Sharing a team's whole setup in one install.</td></tr>
+    <tr><td><b>Memories</b></td><td>Facts the product saves and re-inserts.</td><td>Personal preferences. Review them regularly.</td></tr>
+  </tbody>
+</table>
+
+<h2>Project instructions: AGENTS.md</h2>
+<p><code>AGENTS.md</code> is an open, tool-neutral convention: a Markdown file at the repository root (and optionally in
+sub-folders) that agents read for project guidance. Many tools read it directly, including Codex, Copilot in VS Code,
+Xcode agents and others. Some tools prefer their own file name (<code>CLAUDE.md</code>,
+<code>.github/copilot-instructions.md</code>, <code>.junie/guidelines.md</code>). A common practice is to keep the content in
+<code>AGENTS.md</code> and make the tool-specific file point to it.</p>
+<h3>What to put in it</h3>
+<ul class="checklist">
+  <li>One-paragraph project overview and architecture map.</li>
+  <li>Exact <b>commands</b>: build, test, single test, lint, format, run.</li>
+  <li>Languages and <b>versions</b>.</li>
+  <li><b>Conventions</b> the AI would not guess: error handling, naming, module boundaries, testing style.</li>
+  <li><b>Boundaries</b>: folders not to touch, dependencies that need approval, generated code.</li>
+  <li>How to verify a change is done.</li>
+</ul>
+<h3>What NOT to put in it</h3>
+<ul>
+  <li>Generic advice the model already follows ("write clean code").</li>
+  <li>Long tutorials. Move those to skills or docs and link to them.</li>
+  <li>Secrets, tokens or internal URLs you would not want in git.</li>
+</ul>
+<pre data-lang="markdown" data-title="AGENTS.md (Scala service example)">
+# AGENTS.md
+
+## Project
+`orders-service`: HTTP service for order management. Scala 3.5, JDK 21, sbt 1.10.
+Stack: http4s (Ember), Cats Effect 3, Doobie + Postgres, Circe, MUnit + munit-cats-effect.
+
+## Layout
+- `modules/domain`  pure domain model & logic (no IO, no dependencies on other modules)
+- `modules/core`    services, ports (traits), business workflows in IO
+- `modules/http`    http4s routes, JSON codecs
+- `modules/db`      Doobie repositories implementing ports
+- `modules/it`      integration tests (need Docker)
+
+## Commands
+- Compile:        `sbt compile`
+- Unit tests:     `sbt test`
+- One test:       `sbt "core/testOnly *OrderServiceSuite"`
+- Format:         `sbt scalafmtAll`      (CI runs `scalafmtCheckAll`)
+- Integration:    `sbt it/test`          (requires Docker running)
+
+## Conventions
+- Scala 3 syntax, significant indentation, `given`/`using` (no Scala 2 implicits).
+- Recoverable errors: `Either[DomainError, A]` or `EitherT`; never throw in domain code.
+- Prefer `opaque type` for IDs (`OrderId`, `CustomerId`).
+- New public functions need scaladoc and at least one MUnit test.
+- Don't add dependencies without asking.
+
+## Done means
+`sbt scalafmtCheckAll compile test` passes and new behaviour has tests.
+</pre>
+<pre data-lang="markdown" data-title="AGENTS.md (Python package example)">
+# AGENTS.md
+
+## Project
+`pricing-lib`: Python 3.12 library for price calculations. Managed with uv.
+
+## Commands
+- Install:   `uv sync`
+- Tests:     `uv run pytest -q`
+- One test:  `uv run pytest tests/test_discounts.py::test_bulk -q`
+- Lint/fmt:  `uv run ruff check . --fix && uv run ruff format .`
+- Types:     `uv run mypy src`
+
+## Conventions
+- Full type hints; `mypy --strict` must pass.
+- Money is `decimal.Decimal`, never float.
+- Pure functions in `src/pricing/core/`; I/O only in `src/pricing/adapters/`.
+- Tests: pytest, one test file per module, use `hypothesis` for numeric logic.
+</pre>
+<div class="callout tip"><span class="c-title">Let the AI draft it, then you edit</span>
+Ask the agent: "Explore this repository and draft an AGENTS.md with overview, layout, exact commands, and
+conventions you can infer. Mark anything you are unsure about with TODO." Then fix the TODOs yourself. Many tools have an
+<code>/init</code>-style command that does this.</div>
+
+<h2>Scoped rules</h2>
+<p>Scoped rules apply only to some files or tasks, so they don't cost tokens elsewhere. In VS Code, for example, a file in
+<code>.github/instructions/</code> with an <code>applyTo</code> glob:</p>
+<pre data-lang="markdown" data-title=".github/instructions/scala-tests.instructions.md">
+---
+description: Conventions for Scala test code
+applyTo: "**/src/test/**/*.scala"
+---
+- Use MUnit (`munit.FunSuite`, or `munit.CatsEffectSuite` for IO).
+- One suite per production class, named `&lt;ClassName>Suite`.
+- Prefer table-driven tests with a `List` of cases over copy-pasted tests.
+- Never use `Thread.sleep`; use `TestControl` from cats-effect-testkit for time.
+</pre>
+<p>Other tools have equivalents, such as rules folders with glob metadata, or <code>AGENTS.md</code> files in sub-folders
+that apply to that sub-tree.</p>
+
+<h2>Prompt files (slash commands)</h2>
+<p>Prompt files are saved prompts you trigger by name, e.g. <code>/write-tests</code>. In VS Code they are
+<code>*.prompt.md</code> files. Other tools call them commands. Note that some tools now recommend <b>skills</b>
+instead, because a skill can be both invoked manually and discovered automatically.</p>
+<pre data-lang="markdown" data-title=".github/prompts/explain-module.prompt.md">
+---
+description: Explain a module for a newcomer
+---
+Explain the selected module to a developer new to this codebase:
+1. Purpose in 2 sentences.
+2. Key types and how data flows between them (include a small ASCII diagram).
+3. Where it is called from.
+4. The 3 things most likely to surprise a newcomer.
+</pre>
+
+<h2>Agent Skills (SKILL.md)</h2>
+<p><b>Agent Skills</b> are an open format for packaging know-how. A skill is a <em>folder</em> containing a
+<code>SKILL.md</code> file with YAML front-matter (<code>name</code>, <code>description</code>) and Markdown instructions, plus optional
+<code>scripts/</code>, <code>references/</code> and <code>assets/</code>.</p>
+<h3>Progressive disclosure: why skills scale</h3>
+<figure class="diagram">
+<svg viewBox="0 0 720 170" width="720" role="img" aria-label="Progressive disclosure of skills">
+  <defs><marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="10"  y="30" width="210" height="100" rx="10"/><text class="d-title" x="115" y="56" text-anchor="middle">1. At start-up</text><text class="d-small" x="115" y="78" text-anchor="middle">only name + description</text><text class="d-small" x="115" y="94" text-anchor="middle">of every skill</text><text class="d-small" x="115" y="110" text-anchor="middle">(~50&ndash;100 tokens each)</text>
+  <rect class="d-box3" x="255" y="30" width="210" height="100" rx="10"/><text class="d-title" x="360" y="56" text-anchor="middle">2. Task matches</text><text class="d-small" x="360" y="78" text-anchor="middle">agent loads the full</text><text class="d-small" x="360" y="94" text-anchor="middle">SKILL.md body</text><text class="d-small" x="360" y="110" text-anchor="middle">into context</text>
+  <rect class="d-box4" x="500" y="30" width="210" height="100" rx="10"/><text class="d-title" x="605" y="56" text-anchor="middle">3. As needed</text><text class="d-small" x="605" y="78" text-anchor="middle">reads references/ files,</text><text class="d-small" x="605" y="94" text-anchor="middle">runs scripts/</text><text class="d-small" x="605" y="110" text-anchor="middle">one at a time</text>
+  <path class="d-line" d="M220 80 H250" marker-end="url(#a7)"/><path class="d-line" d="M465 80 H495" marker-end="url(#a7)"/>
+  <text class="d-small" x="360" y="160" text-anchor="middle">you can install dozens of skills without filling the context window</text>
+</svg>
+</figure>
+<p>Because only the <code>description</code> is visible up front, <b>the description decides whether the skill is used</b>.
+Write it with clear trigger words: what the skill does <em>and when to use it</em>.</p>
+<pre data-lang="text" data-title="Skill folder layout">
+.agents/skills/add-http-endpoint/      # cross-tool location; some tools use their own (e.g. .github/skills, .claude/skills)
+├── SKILL.md
+├── references/
+│   └── error-mapping.md
+└── scripts/
+    └── check_routes.sh
+</pre>
+<pre data-lang="markdown" data-title=".agents/skills/add-http-endpoint/SKILL.md">
+---
+name: add-http-endpoint
+description: Add a new REST endpoint to the orders-service (http4s + Cats Effect). Use when the
+  user asks to add, expose or create an API route/endpoint, or wire a service method to HTTP.
+metadata:
+  author: sanat
+  version: "1.0"
+---
+# Add an HTTP endpoint
+
+## Steps
+1. Define request/response case classes in `modules/http/.../dto/` with Circe codecs
+   (`derives Codec.AsObject`).
+2. Add or extend the service trait in `modules/core` and return `IO[Either[DomainError, A]]`.
+3. Add the route in the matching `*Routes.scala`. Map errors with `ErrorMapping.toResponse`
+   (see references/error-mapping.md for the status-code table).
+4. Register the route in `HttpApp.scala`.
+5. Tests: one `munit.CatsEffectSuite` for the route using `org.http4s.client.Client.fromHttpApp`,
+   covering 200, 400 (validation) and 404.
+6. Run `sbt "http/test"` and `scripts/check_routes.sh`. Both must pass.
+
+## Don'ts
+- Don't put business logic in routes.
+- Don't return 500 for domain errors.
+</pre>
+<p>Skills work across many tools because they follow an open specification. The same skill folder can serve VS Code,
+terminal agents and other compatible products. Level 2 has a full chapter on writing excellent skills.</p>
+
+<h2>Custom agents</h2>
+<p>A custom agent bundles a role, instructions, a set of allowed tools and sometimes a preferred model. For example, a
+<b>read-only planner</b> that cannot edit files, or a <b>reviewer</b> that only reads diffs and comments.</p>
+<pre data-lang="markdown" data-title=".github/agents/reviewer.agent.md (VS Code-style example)">
+---
+name: reviewer
+description: Strict senior code reviewer. Reads the diff and reports issues; never edits files.
+tools: ['search', 'read', 'changes']
+---
+You are a strict senior Scala/Python reviewer.
+- Review only the current changes.
+- Report findings as [BLOCKER], [SHOULD], [NIT] with file:line.
+- Check correctness, error handling, concurrency, security, tests, naming.
+- Never modify files. If a fix is obvious, show it as a suggested snippet.
+</pre>
+<p><b>Sub-agents</b> are custom agents that the main agent delegates to. They run in their own context and return a summary,
+which keeps the main context clean (page 08).</p>
+
+<h2>Hooks</h2>
+<p>Instructions are <em>requests</em> the model usually follows. Hooks are <em>guarantees</em>: real commands that run on events,
+whatever the model decides.</p>
+<table>
+  <thead><tr><th>Event (typical)</th><th>Example use</th></tr></thead>
+  <tbody>
+    <tr><td>Before a tool call</td><td>Block <code>git push --force</code> or edits under <code>secrets/</code>.</td></tr>
+    <tr><td>After a file edit</td><td>Run <code>scalafmt</code> / <code>ruff format</code> on the changed file.</td></tr>
+    <tr><td>Session start</td><td>Print the current branch and failing tests into context.</td></tr>
+    <tr><td>On stop</td><td>Run the test suite and refuse to finish if it fails.</td></tr>
+  </tbody>
+</table>
+<p>Hook configuration formats differ by tool (JSON settings files). Check your tool's docs. Rule of thumb: <b>if it must
+always happen, make it a hook. If it is judgement, make it an instruction.</b></p>
+
+<h2>Where each tool looks (quick reference)</h2>
+<table>
+  <thead><tr><th>Tool</th><th>Always-on</th><th>Scoped / other</th></tr></thead>
+  <tbody>
+    <tr><td>GitHub Copilot (VS Code)</td><td><code>.github/copilot-instructions.md</code>, <code>AGENTS.md</code></td><td><code>.github/instructions/*.instructions.md</code>, <code>*.prompt.md</code>, <code>*.agent.md</code>, skills</td></tr>
+    <tr><td>OpenAI Codex</td><td><code>AGENTS.md</code> (root + sub-folders)</td><td>Skills, config file</td></tr>
+    <tr><td>Claude Code</td><td><code>CLAUDE.md</code></td><td><code>.claude/rules</code>, <code>.claude/skills</code>, <code>.claude/agents</code>, hooks in settings</td></tr>
+    <tr><td>JetBrains Junie</td><td><code>.junie/guidelines.md</code> (AGENTS.md support varies by version)</td><td>IDE settings</td></tr>
+    <tr><td>Xcode agents</td><td><code>AGENTS.md</code> / <code>CLAUDE.md</code> as used by the configured agent</td><td>Agent environment settings</td></tr>
+    <tr><td>Cross-tool skills</td><td colspan="2"><code>.agents/skills/&lt;name&gt;/SKILL.md</code> (many tools also read their own skills folder)</td></tr>
+  </tbody>
+</table>
+<p class="lead" style="font-size:.95rem">Locations evolve. Check the docs of the tool you use, which usually have a "customisation" page.</p>
+
+<h2>Decision guide</h2>
+<table>
+  <thead><tr><th>If you want&hellip;</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td>The AI to always know build commands and conventions</td><td>AGENTS.md</td></tr>
+    <tr><td>Rules only for tests / SQL / a folder</td><td>Scoped rules</td></tr>
+    <tr><td>A detailed multi-step procedure used sometimes</td><td>Skill</td></tr>
+    <tr><td>A shortcut you trigger yourself</td><td>Prompt file / command (or a skill)</td></tr>
+    <tr><td>A different "personality" with limited tools</td><td>Custom agent</td></tr>
+    <tr><td>Something that must happen every time</td><td>Hook</td></tr>
+    <tr><td>Access to an external system (tickets, DB, docs)</td><td>MCP server</td></tr>
+    <tr><td>To give your team all of the above</td><td>Plugin, or commit the files to the repo</td></tr>
+  </tbody>
+</table>
+
+<h2>Writing instructions that work</h2>
+<ul>
+  <li><b>Be concrete:</b> "Use <code>Either[DomainError, A]</code>" beats "handle errors properly".</li>
+  <li><b>Give the reason:</b> "Money is <code>BigDecimal</code> because floating-point rounding causes billing errors". With the why, the model can generalise.</li>
+  <li><b>Keep always-on files short</b> (aim for under ~200 lines) and move detail into skills.</li>
+  <li><b>Test them:</b> start a new session and give a task that should trigger the rule. Did it follow?</li>
+  <li><b>Version them in git</b> and review changes like code.</li>
+  <li><b>Prune:</b> outdated instructions are worse than none.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (25 min)</span>
+<ol>
+  <li>In a real or sample repo, ask your agent to draft an <code>AGENTS.md</code>. Edit it until it is accurate.</li>
+  <li>Create one skill for a procedure you repeat (e.g. "add a new MUnit suite" or "add a pytest fixture").</li>
+  <li>New session: give a task that should trigger the skill <em>without naming it</em>. Did the agent load it? If not, improve the description.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Customisation types differ by <b>when they load</b>: always, scoped, on demand, manual, persona, event.</li>
+  <li><code>AGENTS.md</code> is the portable foundation. Put commands, versions, conventions and boundaries there.</li>
+  <li>Skills (<code>SKILL.md</code>) carry detailed know-how cheaply through progressive disclosure, and the description triggers them.</li>
+  <li>Custom agents set roles and tool limits. Hooks give guarantees.</li>
+  <li>Keep it short, concrete and versioned, and test it.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

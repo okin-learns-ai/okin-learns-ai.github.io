@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI Across IT: DevOps, QA, Data, Security | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>12 &middot; AI Across IT: DevOps, QA, Data, Security and More</h1>
+<p class="lead">Coding is only part of IT work. AI helps across the whole software lifecycle: requirements, architecture,
+testing, operations, security, data, documentation and communication. This page is a tour of high-value uses in each area,
+with starter prompts and the cautions that matter.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">45 min</span><span class="pill">Track 17 &middot; AI across IT</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Identify AI opportunities at every stage of the software lifecycle.</li>
+  <li>Use starter prompts for DevOps, SRE, QA, data, security, architecture, docs and project work.</li>
+  <li>Know which tasks need extra caution or human sign-off.</li>
+</ul></div>
+
+<h2>AI across the software lifecycle</h2>
+<figure class="diagram">
+<svg viewBox="0 0 740 300" width="740" role="img" aria-label="Software lifecycle with AI touchpoints">
+  <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <g class="d-text">
+    <rect class="d-box2" x="20"  y="30"  width="160" height="70" rx="10"/><text class="d-title" x="100" y="56" text-anchor="middle">Plan</text><text class="d-small" x="100" y="74" text-anchor="middle">user stories, specs,</text><text class="d-small" x="100" y="89" text-anchor="middle">estimates, risks</text>
+    <rect class="d-box3" x="200" y="30"  width="160" height="70" rx="10"/><text class="d-title" x="280" y="56" text-anchor="middle">Design</text><text class="d-small" x="280" y="74" text-anchor="middle">architecture options,</text><text class="d-small" x="280" y="89" text-anchor="middle">ADRs, diagrams</text>
+    <rect class="d-box4" x="380" y="30"  width="160" height="70" rx="10"/><text class="d-title" x="460" y="56" text-anchor="middle">Build</text><text class="d-small" x="460" y="74" text-anchor="middle">code, refactor,</text><text class="d-small" x="460" y="89" text-anchor="middle">migrations</text>
+    <rect class="d-box"  x="560" y="30"  width="160" height="70" rx="10"/><text class="d-title" x="640" y="56" text-anchor="middle">Test</text><text class="d-small" x="640" y="74" text-anchor="middle">unit/property/e2e,</text><text class="d-small" x="640" y="89" text-anchor="middle">test data, coverage</text>
+    <rect class="d-box2" x="560" y="190" width="160" height="70" rx="10"/><text class="d-title" x="640" y="216" text-anchor="middle">Review &amp; secure</text><text class="d-small" x="640" y="234" text-anchor="middle">AI code review,</text><text class="d-small" x="640" y="249" text-anchor="middle">vuln triage</text>
+    <rect class="d-box3" x="380" y="190" width="160" height="70" rx="10"/><text class="d-title" x="460" y="216" text-anchor="middle">Deploy</text><text class="d-small" x="460" y="234" text-anchor="middle">CI/CD, IaC,</text><text class="d-small" x="460" y="249" text-anchor="middle">release notes</text>
+    <rect class="d-box4" x="200" y="190" width="160" height="70" rx="10"/><text class="d-title" x="280" y="216" text-anchor="middle">Operate</text><text class="d-small" x="280" y="234" text-anchor="middle">logs, incidents,</text><text class="d-small" x="280" y="249" text-anchor="middle">runbooks, postmortems</text>
+    <rect class="d-box"  x="20"  y="190" width="160" height="70" rx="10"/><text class="d-title" x="100" y="216" text-anchor="middle">Learn</text><text class="d-small" x="100" y="234" text-anchor="middle">analytics, feedback,</text><text class="d-small" x="100" y="249" text-anchor="middle">docs, knowledge</text>
+  </g>
+  <path class="d-line" d="M180 65 H196" marker-end="url(#c1)"/><path class="d-line" d="M360 65 H376" marker-end="url(#c1)"/><path class="d-line" d="M540 65 H556" marker-end="url(#c1)"/>
+  <path class="d-line" d="M640 100 V186" marker-end="url(#c1)"/>
+  <path class="d-line" d="M560 225 H544" marker-end="url(#c1)"/><path class="d-line" d="M380 225 H364" marker-end="url(#c1)"/><path class="d-line" d="M200 225 H184" marker-end="url(#c1)"/>
+  <path class="d-line" d="M100 190 V104" marker-end="url(#c1)"/>
+  <text class="d-accent" x="370" y="150" text-anchor="middle">AI assists at every stage</text>
+</svg>
+</figure>
+
+<h2>Requirements, planning &amp; project management</h2>
+<ul>
+  <li>Turn meeting notes into user stories with acceptance criteria.</li>
+  <li>Find gaps and contradictions in a spec. Generate edge cases.</li>
+  <li>Break an epic into tasks, flag dependencies and risks.</li>
+  <li>Draft status updates, release announcements, stakeholder emails.</li>
+</ul>
+<pre data-lang="text">Here are rough notes from a product meeting. Turn them into user stories in the format
+"As a &lt;role>, I want &lt;goal>, so that &lt;benefit>" with Given/When/Then acceptance criteria.
+Then list ambiguities I must clarify with the product owner.
+&lt;notes></pre>
+<div class="callout warn"><span class="c-title">Caution</span>Estimates from AI are guesses. Use them to structure discussion, not to commit dates.</div>
+
+<h2>Architecture &amp; design</h2>
+<ul>
+  <li>Generate and compare design options with trade-off tables.</li>
+  <li>Draft Architecture Decision Records (ADRs).</li>
+  <li>Create diagrams as code (Mermaid, PlantUML, C4) from a description or from code.</li>
+  <li>"Pre-mortem": ask the AI how the design will fail in production.</li>
+</ul>
+<pre data-lang="text">Act as a principal engineer. Here is my proposed design for an event-driven order pipeline
+(Kafka + Scala services). Run a pre-mortem: list the 10 most likely ways this fails in production
+(ordering, duplicates, poison messages, back-pressure, schema evolution...), and for each the
+mitigation. Then write an ADR draft for the final design.</pre>
+
+<h2>QA &amp; testing</h2>
+<ul>
+  <li>Generate unit tests, property-based tests and parametrised cases.</li>
+  <li>Derive test cases from requirements (boundary values, equivalence classes).</li>
+  <li>Generate realistic, anonymised test data and fixtures.</li>
+  <li>Write end-to-end test scripts (e.g. Playwright) and explain flaky tests from logs.</li>
+  <li>Review a test suite for gaps: "which behaviours of this class are untested?"</li>
+</ul>
+<pre data-lang="text">Given this function and its existing tests, list behaviours that are NOT tested, ranked by risk.
+Then write the 5 most valuable missing tests.</pre>
+
+<h2>DevOps, CI/CD &amp; infrastructure as code</h2>
+<ul>
+  <li>Write and debug CI pipelines (GitHub Actions, GitLab CI, Jenkins) for sbt or uv projects.</li>
+  <li>Generate Dockerfiles, Kubernetes manifests, Helm charts, Terraform modules.</li>
+  <li>Explain cryptic build failures and dependency conflicts (sbt eviction warnings!).</li>
+  <li>Optimise pipelines: caching, parallelism, splitting test suites.</li>
+</ul>
+<pre data-lang="text">Write a GitHub Actions workflow for an sbt multi-module Scala 3 project: JDK 21, cache Coursier
+and sbt, run scalafmtCheckAll, compile, test in parallel per module, and upload test reports.
+Explain every step in comments.</pre>
+<div class="callout danger"><span class="c-title">High-risk area</span>
+IaC and pipeline changes can delete infrastructure or leak secrets. Always run <code>terraform plan</code> / dry-runs and
+review them yourself. Never give agents production credentials. Check that AI-written pipelines don't print secrets to logs.</div>
+
+<h2>SRE, operations &amp; incident response</h2>
+<ul>
+  <li>Summarise huge logs and find the first error and its probable cause.</li>
+  <li>Explain stack traces, GC logs, thread dumps (JVM!) and heap histograms.</li>
+  <li>Draft runbooks from past incidents. Write blameless postmortems from timelines.</li>
+  <li>Write queries for observability tools (PromQL, LogQL, SQL over logs) from plain English.</li>
+</ul>
+<pre data-lang="text">Here is a JVM thread dump from a Scala service that stopped responding. Identify deadlocks,
+thread-pool starvation (esp. blocking on a compute pool), and the threads most likely responsible.
+Explain in plain language and suggest the fix.
+&lt;thread dump></pre>
+<div class="callout warn"><span class="c-title">Caution</span>Logs often contain personal data, tokens and internal hostnames. Redact them, or use an approved internal or local model.</div>
+
+<h2>Data engineering &amp; analytics</h2>
+<ul>
+  <li>Write and optimise SQL. Explain query plans.</li>
+  <li>Generate Spark jobs (Scala or PySpark) and explain physical plans.</li>
+  <li>Design schemas and migrations. Generate data-quality checks.</li>
+  <li>Exploratory analysis in notebooks: profiling, charts, anomaly spotting.</li>
+  <li>Translate business questions into metrics definitions.</li>
+</ul>
+<pre data-lang="text">Schema below (Postgres). Write a SQL query for monthly active customers per region for the last
+12 months, where "active" = at least one paid order. Explain the query, then list assumptions
+I should verify (time zones, refunds, test accounts).
+&lt;schema></pre>
+<div class="callout tip"><span class="c-title">Always validate generated SQL</span>Check results on a small sample where you know the answer. Text-to-SQL is often <em>almost</em> right: a missing filter, a wrong join type, double counting.</div>
+
+<h2>Security (DevSecOps)</h2>
+<ul>
+  <li>Explain vulnerabilities (CVEs) in plain language and whether your usage is affected.</li>
+  <li>Review code for injection, authz gaps, unsafe deserialisation, secrets in code.</li>
+  <li>Draft threat models (STRIDE) for a feature.</li>
+  <li>Triage scanner output: separate real issues from noise.</li>
+  <li>Write secure defaults: CSP headers, input validation, least-privilege IAM policies.</li>
+</ul>
+<pre data-lang="text">Create a STRIDE threat model for this feature: users upload CSV files that are parsed by a
+Scala service and stored in S3, with results shown in a web UI. Output a table:
+threat, STRIDE category, likelihood, impact, mitigation.</pre>
+<div class="callout warn"><span class="c-title">Caution</span>AI review is an <em>extra</em> layer and does not replace security tooling (SAST/DAST/dependency scanning) or expert review for sensitive systems.</div>
+
+<h2>Documentation &amp; communication</h2>
+<ul>
+  <li>Generate READMEs, API docs, onboarding guides, and docs from code.</li>
+  <li>Keep docs in sync: "Here is the diff. Which parts of the docs are now outdated?"</li>
+  <li>Rewrite for different audiences: executive summary, engineer details, customer notes.</li>
+  <li>Improve clarity and tone of emails, PR descriptions and design docs.</li>
+  <li>Translate documentation between human languages.</li>
+</ul>
+
+<h2>Frontend, UI &amp; accessibility</h2>
+<ul>
+  <li>Turn screenshots or sketches into UI code. Multimodal models read images.</li>
+  <li>Check accessibility: missing labels, contrast, keyboard navigation, ARIA usage.</li>
+  <li>Generate component variations and design-system documentation.</li>
+</ul>
+
+<h2>Mobile &amp; Apple platforms</h2>
+<ul>
+  <li>Xcode's coding intelligence and agents build, test and search Apple documentation (page 06).</li>
+  <li>On-device AI in apps: Apple's Foundation Models framework gives Swift apps access to the on-device model for summarisation, extraction and generation, with privacy benefits. Core ML and MLX cover custom models.</li>
+  <li>AI helps with App Store copy, localisation and privacy-manifest explanations.</li>
+</ul>
+
+<h2>IT operations, support &amp; sysadmin</h2>
+<ul>
+  <li>Write and explain shell/PowerShell scripts, cron expressions, regexes, <code>awk</code>/<code>jq</code> one-liners.</li>
+  <li>Troubleshoot networking (DNS, TLS, proxies) from command output.</li>
+  <li>Draft knowledge-base articles from resolved tickets.</li>
+  <li>Classify and route support tickets (a classic LLM application, covered in Level 2).</li>
+</ul>
+<pre data-lang="text">Explain this command piece by piece, then tell me if it is safe to run:
+find / -name "*.log" -mtime +7 -exec rm {} \;</pre>
+<div class="callout danger"><span class="c-title">Never run commands you don't understand</span>
+Especially commands involving <code>rm</code>, <code>chmod -R</code>, <code>dd</code>, <code>curl | sh</code>, firewall rules or production databases. Ask the AI to explain and to propose a dry-run first.</div>
+
+<h2>Your career &amp; soft skills</h2>
+<ul>
+  <li>Rehearse interviews (system design, coding, behavioural) with feedback.</li>
+  <li>Prepare for difficult conversations: role-play the stakeholder.</li>
+  <li>Turn your work into a clear brag document or promotion case.</li>
+  <li>Learn new domains (finance, healthcare, logistics) fast enough to talk to experts. See page 13.</li>
+</ul>
+
+<h2>Risk matrix: how much to trust AI per task</h2>
+<table>
+  <thead><tr><th>Risk</th><th>Examples</th><th>Approach</th></tr></thead>
+  <tbody>
+    <tr><td><b>Low</b></td><td>Explanations, drafts, brainstorming, throwaway scripts, test ideas</td><td>Use freely, skim-check</td></tr>
+    <tr><td><b>Medium</b></td><td>Production code, SQL for reports, docs, CI changes</td><td>Review fully + automated checks</td></tr>
+    <tr><td><b>High</b></td><td>Security, IaC, data migrations, financial calculations, anything touching production</td><td>Expert review, dry-runs, staged rollout, two-person rule</td></tr>
+    <tr><td><b>Not appropriate</b></td><td>Unreviewed decisions about people (hiring, performance), legal/medical advice, autonomous production changes</td><td>Human decision, with AI only as a helper</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><span class="c-title">Try it (15 min)</span>
+Pick the area of IT you touch least, for example CI/CD or incident response. Use one starter prompt from this page on a
+real or realistic example. Write down what you learned about that area, as well as what the AI produced.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>AI adds value at every lifecycle stage: plan, design, build, test, review, deploy, operate, learn.</li>
+  <li>The best uses are explaining, drafting, generating options, summarising and translating.</li>
+  <li>Scale your verification to the risk. IaC, security, data and production need extra care.</li>
+  <li>Redact sensitive data and use approved tools.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

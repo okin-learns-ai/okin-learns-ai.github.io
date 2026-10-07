@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Prompting Fundamentals | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>03 &middot; Prompting Fundamentals</h1>
+<p class="lead">A prompt is a specification. The clearer the spec, the better the result. Here you learn the anatomy of a
+strong prompt, the core techniques, and a library of developer prompts you can reuse every day.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">50 min</span><span class="pill">Track 3 &middot; Prompt engineering</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Write prompts with the six building blocks: role, task, context, constraints, format, examples.</li>
+  <li>Use zero-shot, few-shot, step-by-step, self-critique and "ask me questions" techniques.</li>
+  <li>Turn a vague request into a precise one, and iterate when the answer is wrong.</li>
+  <li>Reuse ready-made prompts for explaining, debugging, testing, refactoring and reviewing code.</li>
+</ul></div>
+
+<h2>Why prompting matters</h2>
+<p>From <a href="02-how-llms-work.html">page 02</a> you know the model predicts the most plausible continuation of
+<em>everything in its context</em>. A vague prompt has many plausible continuations, and the model picks a generic one. A precise
+prompt narrows the possibilities down to what you actually want.</p>
+<div class="callout analogy"><span class="c-title">Analogy: briefing a brilliant new colleague</span>
+Imagine a very smart contractor who joined today. They know every language and framework, but nothing about your
+project, team, constraints or taste. What would you tell them before handing over a task? That is your prompt.</div>
+
+<h2>The anatomy of a great prompt</h2>
+<figure class="diagram">
+<svg viewBox="0 0 720 230" width="720" role="img" aria-label="Six building blocks of a prompt">
+  <g>
+    <rect class="d-box2" x="10"  y="20"  width="225" height="88" rx="10"/><text class="d-title" x="122" y="48" text-anchor="middle">1. Role</text><text class="d-small" x="122" y="68" text-anchor="middle">who should it act as?</text><text class="d-small" x="122" y="86" text-anchor="middle">"senior Scala reviewer"</text>
+    <rect class="d-box3" x="248" y="20"  width="225" height="88" rx="10"/><text class="d-title" x="360" y="48" text-anchor="middle">2. Task</text><text class="d-small" x="360" y="68" text-anchor="middle">what exactly to do</text><text class="d-small" x="360" y="86" text-anchor="middle">"refactor to use Either"</text>
+    <rect class="d-box4" x="486" y="20"  width="225" height="88" rx="10"/><text class="d-title" x="598" y="48" text-anchor="middle">3. Context</text><text class="d-small" x="598" y="68" text-anchor="middle">background, code, errors</text><text class="d-small" x="598" y="86" text-anchor="middle">"Scala 3.5, Cats Effect"</text>
+    <rect class="d-box4" x="10"  y="125" width="225" height="88" rx="10"/><text class="d-title" x="122" y="153" text-anchor="middle">4. Constraints</text><text class="d-small" x="122" y="173" text-anchor="middle">rules and boundaries</text><text class="d-small" x="122" y="191" text-anchor="middle">"no new dependencies"</text>
+    <rect class="d-box2" x="248" y="125" width="225" height="88" rx="10"/><text class="d-title" x="360" y="153" text-anchor="middle">5. Output format</text><text class="d-small" x="360" y="173" text-anchor="middle">shape of the answer</text><text class="d-small" x="360" y="191" text-anchor="middle">"diff + 3-bullet summary"</text>
+    <rect class="d-box3" x="486" y="125" width="225" height="88" rx="10"/><text class="d-title" x="598" y="153" text-anchor="middle">6. Examples</text><text class="d-small" x="598" y="173" text-anchor="middle">show, don't just tell</text><text class="d-small" x="598" y="191" text-anchor="middle">"like this existing test&#8230;"</text>
+  </g>
+</svg>
+<figcaption>Not every prompt needs all six. For anything non-trivial, task + context + format are the minimum.</figcaption>
+</figure>
+
+<h3>Vague vs precise</h3>
+<div class="compare">
+  <div class="bad"><h4>Vague</h4>
+  <pre data-lang="text">Write a function to parse dates.</pre>
+  <p>Which language? Which formats? What happens on failure? Time zones? The model will guess.</p></div>
+  <div class="good"><h4>Precise</h4>
+  <pre data-lang="text">Role: You are a senior Scala 3 developer.
+Task: Write a function parseDate(s: String): Either[String, LocalDate].
+Context: Inputs come from CSV files; formats are
+  "2024-03-15", "15/03/2024" and "Mar 15, 2024".
+Constraints: java.time only, no exceptions escape,
+  no external libraries.
+Format: the code, then 4 MUnit tests, then 2 lines
+  on edge cases you handled.</pre></div>
+</div>
+
+<h2>Ten principles that always apply</h2>
+<ol>
+  <li><b>Be specific about the goal.</b> Say what "done" looks like.</li>
+  <li><b>Give the context the model lacks.</b> Versions, frameworks, error messages, relevant code, business rules.</li>
+  <li><b>Say what to do, not only what to avoid.</b> "Use immutable case classes" works better than "don't use vars".</li>
+  <li><b>Specify the output format.</b> Code only? Diff? Table? JSON? Bullets? Length?</li>
+  <li><b>Show examples.</b> One good example of the style you want is worth a paragraph of description.</li>
+  <li><b>Separate instructions from data.</b> Use delimiters such as <code>```</code>, <code>&lt;code&gt;...&lt;/code&gt;</code> or headings, so pasted text is not mistaken for instructions.</li>
+  <li><b>Break big tasks into steps.</b> Plan first, then implement piece by piece.</li>
+  <li><b>Let it ask questions.</b> "Before you start, ask me up to 3 clarifying questions."</li>
+  <li><b>Ask it to check its work.</b> "Review your answer for bugs and edge cases, then fix them."</li>
+  <li><b>Iterate.</b> The first answer is a draft. Refine with targeted feedback.</li>
+</ol>
+
+<h2>Core techniques</h2>
+<h3>Zero-shot</h3>
+<p>Just ask, with no examples. Works well for common tasks.</p>
+<pre data-lang="text">Convert this Python list comprehension to idiomatic Scala 3:
+[x * 2 for x in nums if x % 2 == 0]</pre>
+
+<h3>Few-shot</h3>
+<p>Give 2&ndash;5 examples of input &rarr; output so the model copies the pattern. This is excellent for consistent formats, naming
+conventions and classification.</p>
+<pre data-lang="text">Convert log lines to JSON.
+
+Input: 2026-01-03 12:00:01 ERROR PaymentService timeout after 30s
+Output: {"ts":"2026-01-03T12:00:01","level":"ERROR","svc":"PaymentService","msg":"timeout after 30s"}
+
+Input: 2026-01-03 12:00:05 INFO  UserService login ok id=42
+Output: {"ts":"2026-01-03T12:00:05","level":"INFO","svc":"UserService","msg":"login ok id=42"}
+
+Input: 2026-01-03 12:01:17 WARN  CacheLayer eviction rate high
+Output:</pre>
+
+<h3>Step-by-step (chain of thought)</h3>
+<p>For reasoning tasks, ask the model to work through the problem before giving the answer. Reasoning models do this
+internally, but asking for an explicit plan still helps you check the logic.</p>
+<pre data-lang="text">This Spark job produces duplicate rows after the join. First list the possible causes,
+ranked by likelihood given the code below. Then explain how to confirm each one.
+Only then propose a fix.
+```scala
+...code...
+```</pre>
+
+<h3>Role / persona</h3>
+<p>A role sets vocabulary, depth and priorities: "Act as a security reviewer", "Explain like a patient teacher to a
+beginner", "Respond as a strict code reviewer who blocks merges for missing tests".</p>
+
+<h3>Ask me questions first</h3>
+<pre data-lang="text">I want to design a rate limiter for our Scala HTTP service.
+Before proposing anything, ask me the 5 most important questions you need answered.</pre>
+<p>This one technique prevents a large share of bad answers, because the model stops guessing at your requirements.</p>
+
+<h3>Self-critique and refine</h3>
+<pre data-lang="text">Now act as a strict reviewer of the code you just wrote.
+List concrete problems (bugs, edge cases, performance, readability), then output a corrected version.</pre>
+
+<h3>Generate options, then choose</h3>
+<pre data-lang="text">Give me 3 different approaches to caching these results (in-memory, Redis, HTTP caching).
+Compare them in a table: complexity, consistency, ops cost, failure modes. Recommend one for a
+single-instance service with 200 req/s.</pre>
+
+<h3>Structured output</h3>
+<pre data-lang="text">Analyse the stack trace and return ONLY JSON matching:
+{"root_cause": string, "file": string, "line": number, "confidence": "low"|"medium"|"high", "fix": string}</pre>
+<p>Level 2 covers <em>enforced</em> structured output with JSON Schema through APIs.</p>
+
+<h2>The iteration loop</h2>
+<figure class="diagram">
+<svg viewBox="0 0 640 210" width="640" role="img" aria-label="Prompt iteration loop">
+  <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="20"  y="80" width="120" height="50" rx="25"/><text class="d-text" x="80"  y="110" text-anchor="middle">Prompt</text>
+  <rect class="d-box3" x="190" y="80" width="120" height="50" rx="25"/><text class="d-text" x="250" y="110" text-anchor="middle">Answer</text>
+  <rect class="d-box4" x="360" y="80" width="120" height="50" rx="25"/><text class="d-text" x="420" y="110" text-anchor="middle">Evaluate</text>
+  <rect class="d-box"  x="510" y="80" width="110" height="50" rx="25"/><text class="d-text" x="565" y="110" text-anchor="middle">Accept</text>
+  <path class="d-line" d="M140 105 H185" marker-end="url(#a4)"/><path class="d-line" d="M310 105 H355" marker-end="url(#a4)"/><path class="d-line" d="M480 105 H505" marker-end="url(#a4)"/>
+  <path class="d-dash" d="M420 80 C 420 20, 80 20, 80 75" marker-end="url(#a4)"/>
+  <text class="d-small" x="250" y="34" text-anchor="middle">refine: add context, constraints, an example, or split the task</text>
+  <text class="d-small" x="420" y="152" text-anchor="middle">run it, test it, read it</text>
+</svg>
+<figcaption>Experts iterate quickly with <em>specific</em> feedback ("the second test is wrong because&hellip;"), not "try again".</figcaption>
+</figure>
+<table>
+  <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Generic, shallow answer</td><td>Too little context</td><td>Add the code, versions, constraints and goal.</td></tr>
+    <tr><td>Uses wrong library/version</td><td>Model assumed defaults</td><td>State versions explicitly, and paste docs if the version is new.</td></tr>
+    <tr><td>Answer ignores part of the request</td><td>Too many asks at once</td><td>Split into steps, or number the requirements.</td></tr>
+    <tr><td>Too verbose</td><td>No format given</td><td>"Code only", "max 5 bullets", "no explanations".</td></tr>
+    <tr><td>Keeps repeating the same mistake</td><td>Polluted conversation</td><td>Start a fresh chat with a better prompt and the lesson learned.</td></tr>
+    <tr><td>Invents APIs</td><td>Knowledge gap</td><td>Give the real API signature or docs, or let an agent compile and check.</td></tr>
+  </tbody>
+</table>
+<div class="callout tip"><span class="c-title">Start fresh more often than you think</span>
+Long conversations collect wrong turns, and the model keeps "seeing" its old mistakes. When a thread goes off track,
+open a new chat and write one clean prompt that includes what you learned.</div>
+
+<h2>Developer prompt library</h2>
+<p>Copy, adapt and save these. Page 07 shows how to turn your favourites into reusable <b>prompt files / skills</b>.</p>
+
+<h3>Explain unfamiliar code</h3>
+<pre data-lang="text">Explain this code to me. I know Python well but I'm new to Scala 3.
+1) One-paragraph summary of what it does.
+2) Walk through it block by block.
+3) Point out any Scala features I may not know (givens, extension methods, for-comprehensions, etc.)
+   and compare each to the closest Python equivalent.
+```scala
+&lt;paste code>
+```</pre>
+
+<h3>Debug an error</h3>
+<pre data-lang="text">I get this error when running `sbt test`:
+```
+&lt;paste full error and stack trace>
+```
+Relevant code:
+```scala
+&lt;paste code>
+```
+Environment: Scala 3.x, sbt 1.x, JDK 21.
+What I expected: ...  What happened: ...  What I already tried: ...
+Give the most likely root cause first, how to confirm it, then the fix.</pre>
+
+<h3>Write tests</h3>
+<pre data-lang="text">Write MUnit tests for the function below. Cover: happy path, empty input, boundary values,
+invalid input, and one property-style test. Follow the style of this existing test:
+```scala
+&lt;paste an existing test>
+```
+Code under test:
+```scala
+&lt;paste code>
+```</pre>
+
+<h3>Refactor safely</h3>
+<pre data-lang="text">Refactor this to be more idiomatic and readable WITHOUT changing behaviour.
+Constraints: keep the public API identical; no new dependencies; prefer immutability.
+Output: the refactored code, then a bullet list of each change and why.</pre>
+
+<h3>Code review</h3>
+<pre data-lang="text">Review this diff as a strict senior engineer. Categorise findings as
+[BLOCKER] / [SHOULD] / [NIT]. Check: correctness, edge cases, error handling, concurrency,
+security, performance, naming, tests. Be specific with line references. Don't praise.
+```diff
+&lt;paste diff>
+```</pre>
+
+<h3>Design discussion</h3>
+<pre data-lang="text">I'm designing &lt;feature>. Constraints: &lt;...>. Propose 2-3 designs, compare them in a table
+(complexity, scalability, failure modes, testability), recommend one, and list the open
+questions I must answer before implementing.</pre>
+
+<h3>Learn a concept</h3>
+<pre data-lang="text">Teach me &lt;concept> step by step. Start with an intuitive explanation and analogy, then a minimal
+Scala example, then a Python example, then common mistakes. After that, quiz me with
+3 questions, one at a time, and wait for my answer.</pre>
+
+<h3>Commit message / PR description</h3>
+<pre data-lang="text">Write a commit message for this diff. Format: imperative subject under 60 chars, blank line,
+body explaining WHY (not what), bullet list of notable changes.
+```diff
+&lt;paste diff>
+```</pre>
+
+<h2>Prompting agents vs chatting</h2>
+<p>When you prompt an <b>agent</b> (which can read files and run commands), the same principles apply, with additions:</p>
+<ul>
+  <li>State the <b>goal and the definition of done</b>: "All tests in <code>core/</code> pass and <code>sbt scalafmtCheck</code> is clean."</li>
+  <li>Point to <b>where</b> to look: files, modules, similar existing code to copy.</li>
+  <li>State <b>boundaries</b>: "Don't modify the public API. Don't touch the <code>legacy/</code> folder. Ask before adding dependencies."</li>
+  <li>Ask for a <b>plan first</b> on big tasks, review it, then let it execute.</li>
+</ul>
+<p>More in <a href="08-agents-101.html">Agents 101</a>.</p>
+
+<h2>Anti-patterns</h2>
+<ul>
+  <li><b>"Make it better."</b> Better how? Faster, shorter, safer, more readable?</li>
+  <li><b>Mega-prompts with 20 requirements</b> and no structure. Number them, or split the task.</li>
+  <li><b>Pasting secrets</b>, customer data or proprietary code into tools you are not allowed to use. See <a href="14-safety-privacy-ethics.html">page 14</a>.</li>
+  <li><b>Accepting code you don't understand.</b> Ask it to explain, or don't merge it.</li>
+  <li><b>Threats, bribes or ALL CAPS.</b> Clear and specific beats emotional. Modern models respond best to calm, precise instructions.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (15 min)</span>
+<ol>
+  <li>Ask an assistant: "Write a function to validate email addresses." Note what it assumes.</li>
+  <li>Now rewrite the prompt using all six building blocks (pick Scala or Python, define what is valid, error type, tests, format).</li>
+  <li>Compare the two answers. Then ask: "What questions should I have asked myself before writing that prompt?"</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>A prompt is a spec: <b>role, task, context, constraints, format, examples</b>.</li>
+  <li>Few-shot examples, step-by-step, ask-questions-first and self-critique are your core tools.</li>
+  <li>Iterate with specific feedback, and restart fresh when a thread gets polluted.</li>
+  <li>Build a personal prompt library. You will turn it into skills later.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>The AI Tools Landscape | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>05 &middot; The AI Tools Landscape</h1>
+<p class="lead">There are hundreds of AI tools, and new ones appear every week. Instead of memorising products, learn the
+<b>categories</b> and the <b>layers</b> they sit on. Then any new tool takes five minutes to place.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">35 min</span><span class="pill">Track 5 &middot; Tools</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Place any AI tool into one of the layers of the AI stack.</li>
+  <li>Know the main categories: models, chat apps, IDE assistants, terminal agents, cloud agents, local runners, frameworks, data stores, evaluation tools and protocols.</li>
+  <li>Choose tools using sound criteria rather than hype.</li>
+</ul></div>
+
+<div class="callout note"><span class="c-title">About product names</span>
+Product names below are <b>examples</b> to make categories concrete. This is not an endorsement or a complete list.
+Features and names change often, so check each tool's current docs. Your company may also have an approved list. Follow it.</div>
+
+<h2>The AI stack in layers</h2>
+<figure class="diagram">
+<svg viewBox="0 0 720 330" width="720" role="img" aria-label="Layers of the AI stack">
+  <g class="d-text">
+    <rect class="d-box2" x="20" y="10"  width="680" height="46" rx="8"/><text class="d-title" x="40" y="38">6 &middot; Experiences</text><text class="d-small" x="250" y="38">chat apps &middot; IDE assistants &middot; terminal agents &middot; cloud agents &middot; AI features in apps</text>
+    <rect class="d-box3" x="20" y="64"  width="680" height="46" rx="8"/><text class="d-title" x="40" y="92">5 &middot; Customisation</text><text class="d-small" x="250" y="92">instructions &middot; rules &middot; skills &middot; custom agents &middot; hooks &middot; plugins</text>
+    <rect class="d-box4" x="20" y="118" width="680" height="46" rx="8"/><text class="d-title" x="40" y="146">4 &middot; Protocols</text><text class="d-small" x="250" y="146">MCP (tools/data) &middot; ACP (editor&#8596;agent) &middot; A2A (agent&#8596;agent) &middot; function calling</text>
+    <rect class="d-box"  x="20" y="172" width="680" height="46" rx="8"/><text class="d-title" x="40" y="200">3 &middot; Frameworks &amp; SDKs</text><text class="d-small" x="250" y="200">provider SDKs &middot; agent frameworks &middot; RAG libraries &middot; eval &amp; observability</text>
+    <rect class="d-box2" x="20" y="226" width="680" height="46" rx="8"/><text class="d-title" x="40" y="254">2 &middot; Models</text><text class="d-small" x="250" y="254">hosted frontier models &middot; open-weight models &middot; embedding models &middot; on-device models</text>
+    <rect class="d-box3" x="20" y="280" width="680" height="46" rx="8"/><text class="d-title" x="40" y="308">1 &middot; Infrastructure</text><text class="d-small" x="250" y="308">GPUs / Apple silicon &middot; cloud AI platforms &middot; local runners &middot; vector databases</text>
+  </g>
+</svg>
+<figcaption>When you meet a new tool, ask: which layer is it? What does it sit on top of? What does it replace?</figcaption>
+</figure>
+
+<h2>Models (layer 2)</h2>
+<table>
+  <thead><tr><th>Kind</th><th>What it is</th><th>Examples (illustrative)</th></tr></thead>
+  <tbody>
+    <tr><td><b>Hosted frontier models</b></td><td>The most capable general models, used through an API or app.</td><td>OpenAI GPT family, Anthropic Claude family, Google Gemini family</td></tr>
+    <tr><td><b>Open-weight models</b></td><td>Downloadable weights you can run yourself.</td><td>Meta Llama, Mistral, Qwen, DeepSeek, Google Gemma, Microsoft Phi, OpenAI gpt-oss</td></tr>
+    <tr><td><b>Coding-specialised models</b></td><td>Tuned for code generation and agentic coding.</td><td>Code-tuned variants from most model families</td></tr>
+    <tr><td><b>Embedding models</b></td><td>Turn text or code into vectors for search and RAG.</td><td>Provider embedding APIs, open models on Hugging Face</td></tr>
+    <tr><td><b>On-device models</b></td><td>Small models running on phones and laptops.</td><td>Apple's on-device Foundation Models (Apple Intelligence), small open models via MLX / Core ML</td></tr>
+    <tr><td><b>Multimodal / media</b></td><td>Image, speech, audio and video generation or understanding.</td><td>Speech-to-text (e.g. Whisper), image and video generators</td></tr>
+  </tbody>
+</table>
+<p><b>Model hubs</b> such as Hugging Face host hundreds of thousands of open models, datasets and demos.</p>
+
+<h2>Chat assistants</h2>
+<p>General-purpose apps (web, desktop, mobile) for conversation, writing, analysis, research and learning. Typical
+features: file upload, web search, code execution/analysis, image understanding, "projects" with shared files, memory,
+and connectors (often via MCP).</p>
+<p>Examples: ChatGPT, Claude, Gemini, Microsoft Copilot, Perplexity (search-first), NotebookLM (research over your own sources).</p>
+
+<h2>IDE assistants</h2>
+<p>AI built into the editor: completion, chat, inline edits and agent mode. Covered in depth on <a href="06-ai-in-the-ide.html">page 06</a>.</p>
+<table>
+  <thead><tr><th>Type</th><th>Examples (illustrative)</th></tr></thead>
+  <tbody>
+    <tr><td>Built into the IDE</td><td>Xcode coding intelligence (with built-in model integrations and agents), JetBrains AI Assistant and the Junie agent (IntelliJ IDEA), Copilot Chat in VS Code</td></tr>
+    <tr><td>Extensions / plugins</td><td>GitHub Copilot (VS Code, JetBrains, Xcode, others), Gemini Code Assist, Continue (open-source), Cline (open-source), Tabnine</td></tr>
+    <tr><td>AI-first editors</td><td>Editors designed around AI agents, e.g. Cursor, Zed and others (often forks of VS Code)</td></tr>
+  </tbody>
+</table>
+
+<h2>Terminal (CLI) agents</h2>
+<p>Agents that run in your terminal. They read and edit files, run commands and tests, and use git. They work with any
+editor, and many integrate with IDEs and with each other through protocols.</p>
+<p>Examples: Claude Code, OpenAI Codex CLI, Gemini CLI, GitHub Copilot CLI, Aider (open-source), OpenCode (open-source).</p>
+
+<h2>Cloud / background agents</h2>
+<p>Agents that run on remote machines. You hand them a task (often from an issue or chat), they work in a sandbox, and
+they come back with a pull request. Good for parallelising well-specified work.</p>
+<p>Examples: GitHub Copilot coding agent, OpenAI Codex (cloud), and similar offerings from other vendors.</p>
+
+<h2>Local model runners</h2>
+<table>
+  <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><b>Ollama</b></td><td>Simple CLI/server to download and run open models locally with an OpenAI-compatible API.</td></tr>
+    <tr><td><b>LM Studio</b></td><td>Desktop app to discover, run and chat with local models. Exposes a local API server.</td></tr>
+    <tr><td><b>llama.cpp</b></td><td>The high-performance C/C++ engine underneath many local tools (GGUF format).</td></tr>
+    <tr><td><b>MLX</b></td><td>Apple's open-source array framework for machine learning on Apple silicon. Runs and fine-tunes models efficiently on Macs.</td></tr>
+    <tr><td><b>vLLM / TGI</b></td><td>High-throughput servers for hosting models on GPUs (Level 4).</td></tr>
+  </tbody>
+</table>
+<div class="callout tip"><span class="c-title">When local makes sense</span>
+Sensitive data that must not leave the machine, offline work, experiments, cost control, or learning how models behave.
+Local models are usually less capable than frontier hosted models, so match the model to the task.</div>
+
+<h2>Frameworks &amp; SDKs</h2>
+<table>
+  <thead><tr><th>Category</th><th>Python</th><th>JVM / Scala</th></tr></thead>
+  <tbody>
+    <tr><td>Provider SDKs</td><td>Official SDKs from model providers</td><td>Official Java SDKs from several providers (usable from Scala); <code>sttp-openai</code> (Scala)</td></tr>
+    <tr><td>LLM app / agent frameworks</td><td>LangChain &amp; LangGraph, LlamaIndex, Pydantic AI, DSPy, vendor agent SDKs</td><td>LangChain4j, Spring AI, Semantic Kernel (Java)</td></tr>
+    <tr><td>MCP SDKs</td><td>Official Python SDK (incl. FastMCP-style API)</td><td>Official Java/Kotlin SDKs (usable from Scala)</td></tr>
+    <tr><td>Classical ML / DL</td><td>scikit-learn, PyTorch, JAX, Hugging Face Transformers</td><td>Spark MLlib, DJL (Deep Java Library)</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Frameworks are optional</span>
+Many experienced teams call model APIs directly and add a framework only when it clearly saves effort. Learn the raw API
+first (Level 2). Then you will understand what any framework is doing for you.</div>
+
+<h2>Data: vector databases &amp; search</h2>
+<p>Store embeddings and search by similarity. This is the backbone of RAG.</p>
+<p>Examples: <b>pgvector</b> (Postgres extension), Qdrant, Weaviate, Milvus, Chroma, Pinecone, and vector search in Elasticsearch/OpenSearch, Redis and cloud databases.</p>
+
+<h2>Evaluation &amp; observability</h2>
+<p>Measure quality, trace agent runs, track cost and catch regressions (Level 3).</p>
+<p>Examples: promptfoo, Langfuse, LangSmith, Arize Phoenix, Weights &amp; Biases, and OpenTelemetry's semantic conventions for GenAI.</p>
+
+<h2>Protocols and open standards</h2>
+<table>
+  <thead><tr><th>Standard</th><th>Connects</th><th>Page</th></tr></thead>
+  <tbody>
+    <tr><td><b>MCP</b> (Model Context Protocol)</td><td>AI apps &harr; tools &amp; data sources</td><td><a href="09-mcp-101.html">09</a></td></tr>
+    <tr><td><b>ACP</b> (Agent Client Protocol)</td><td>Editors/IDEs &harr; coding agents (bring your own agent into an editor)</td><td><a href="06-ai-in-the-ide.html">06</a></td></tr>
+    <tr><td><b>A2A</b> (Agent2Agent)</td><td>Agents &harr; other agents across systems</td><td>Level 3</td></tr>
+    <tr><td><b>AGENTS.md</b></td><td>A conventional Markdown file of project instructions read by many agents</td><td><a href="07-instructions-skills-agents.html">07</a></td></tr>
+    <tr><td><b>Agent Skills</b> (<code>SKILL.md</code>)</td><td>An open format for portable, on-demand agent know-how</td><td><a href="07-instructions-skills-agents.html">07</a></td></tr>
+    <tr><td><b>OpenAI-compatible API</b></td><td>A de-facto HTTP API shape many providers and local runners support</td><td>Level 2</td></tr>
+  </tbody>
+</table>
+
+<h2>How to choose a tool</h2>
+<table>
+  <thead><tr><th>Criterion</th><th>Questions to ask</th></tr></thead>
+  <tbody>
+    <tr><td><b>Policy &amp; privacy</b></td><td>Is it approved by my organisation? Where does my code go? Is data used for training? Is there an enterprise or zero-retention option?</td></tr>
+    <tr><td><b>Fit to stack</b></td><td>Does it support my IDE (IntelliJ for Scala, Xcode for Swift, VS Code)? Does it understand my build tool (sbt, Mill, Gradle)?</td></tr>
+    <tr><td><b>Model choice</b></td><td>Can I pick models? Bring my own key? Use local models?</td></tr>
+    <tr><td><b>Agent capabilities</b></td><td>Can it run tests and commands? Is there a permission model? Does it support MCP, skills and AGENTS.md?</td></tr>
+    <tr><td><b>Quality on <em>your</em> code</b></td><td>Try the same 3 real tasks in each candidate. Benchmarks don't predict your codebase.</td></tr>
+    <tr><td><b>Cost</b></td><td>Seat price vs usage-based pricing. Limits on premium models.</td></tr>
+    <tr><td><b>Lock-in</b></td><td>Are configs in open formats (AGENTS.md, SKILL.md, MCP) that I can carry to another tool?</td></tr>
+  </tbody>
+</table>
+<div class="callout tip"><span class="c-title">Expert habit: a personal benchmark</span>
+Keep 5&ndash;10 real tasks from your own work (a tricky Scala type error, a Spark optimisation, a refactor, a test
+suite to write). When a new tool or model appears, run your benchmark. In 30 minutes you will know more than any review could tell you.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Think in <b>layers</b>: infrastructure &rarr; models &rarr; frameworks &rarr; protocols &rarr; customisation &rarr; experiences.</li>
+  <li>The main categories are chat apps, IDE assistants, terminal agents, cloud agents, local runners, frameworks, vector DBs, evals and protocols.</li>
+  <li>Open standards (MCP, AGENTS.md, Agent Skills) make your setup portable between tools.</li>
+  <li>Choose with policy, fit, quality on your own tasks, cost and lock-in in mind.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

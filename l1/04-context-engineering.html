@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Context Engineering Basics | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>04 &middot; Context Engineering Basics</h1>
+<p class="lead">Prompting is what you <em>say</em>. Context engineering is everything the model can <em>see</em> when it
+answers. In modern AI development it is the skill that separates average results from excellent ones.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">35 min</span><span class="pill">Track 4 &middot; Context &amp; memory</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>List the sources of context in an AI-enabled IDE and how each gets into the model.</li>
+  <li>Decide what to include, what to leave out, and when to start a new session.</li>
+  <li>Use @-mentions, selections, rules files and docs to ground the model.</li>
+  <li>Recognise context rot, "lost in the middle" and context pollution, and fix them.</li>
+</ul></div>
+
+<h2>What is context?</h2>
+<p><b>Context</b> is the complete set of tokens the model receives for a single response. In a modern coding assistant, that is
+much more than your message:</p>
+<figure class="diagram">
+<svg viewBox="0 0 720 300" width="720" role="img" aria-label="Sources of context feeding the model">
+  <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="270" y="115" width="180" height="70" rx="12"/><text class="d-title" x="360" y="145" text-anchor="middle">Context window</text><text class="d-small" x="360" y="165" text-anchor="middle">&rarr; model &rarr; answer</text>
+  <g class="d-text">
+    <rect class="d-box" x="10"  y="10"  width="200" height="40" rx="8"/><text x="110" y="35" text-anchor="middle">Tool's system prompt</text>
+    <rect class="d-box" x="10"  y="70"  width="200" height="40" rx="8"/><text x="110" y="95" text-anchor="middle">Rules / AGENTS.md</text>
+    <rect class="d-box" x="10"  y="130" width="200" height="40" rx="8"/><text x="110" y="155" text-anchor="middle">Your prompt</text>
+    <rect class="d-box" x="10"  y="190" width="200" height="40" rx="8"/><text x="110" y="215" text-anchor="middle">Conversation history</text>
+    <rect class="d-box" x="10"  y="250" width="200" height="40" rx="8"/><text x="110" y="275" text-anchor="middle">Skills (loaded on demand)</text>
+    <rect class="d-box3" x="510" y="10"  width="200" height="40" rx="8"/><text x="610" y="35" text-anchor="middle">Open file / selection</text>
+    <rect class="d-box3" x="510" y="70"  width="200" height="40" rx="8"/><text x="610" y="95" text-anchor="middle">@-mentioned files</text>
+    <rect class="d-box3" x="510" y="130" width="200" height="40" rx="8"/><text x="610" y="155" text-anchor="middle">Codebase search results</text>
+    <rect class="d-box3" x="510" y="190" width="200" height="40" rx="8"/><text x="610" y="215" text-anchor="middle">Tool / MCP results</text>
+    <rect class="d-box3" x="510" y="250" width="200" height="40" rx="8"/><text x="610" y="275" text-anchor="middle">Errors, terminal, tests</text>
+  </g>
+  <path class="d-line" d="M210 30 L268 125" marker-end="url(#a5)"/><path class="d-line" d="M210 90 L268 135" marker-end="url(#a5)"/><path class="d-line" d="M210 150 H266" marker-end="url(#a5)"/><path class="d-line" d="M210 210 L268 165" marker-end="url(#a5)"/><path class="d-line" d="M210 270 L268 175" marker-end="url(#a5)"/>
+  <path class="d-line" d="M510 30 L452 125" marker-end="url(#a5)"/><path class="d-line" d="M510 90 L452 135" marker-end="url(#a5)"/><path class="d-line" d="M510 150 H454" marker-end="url(#a5)"/><path class="d-line" d="M510 210 L452 165" marker-end="url(#a5)"/><path class="d-line" d="M510 270 L452 175" marker-end="url(#a5)"/>
+</svg>
+<figcaption>Left: instructions and history. Right: information gathered from your workspace and tools. All of it competes for the same token budget.</figcaption>
+</figure>
+
+<div class="callout note"><span class="c-title">The central insight</span>
+The model only knows (1) what it learned in training and (2) what is in the context right now. It cannot see your
+repository, your team's conventions, yesterday's chat, or the library version you use <em>unless something puts that
+information into the context</em>.</div>
+
+<h2>Why "more" is not "better"</h2>
+<p>Large windows tempt people to paste everything. That causes problems:</p>
+<table>
+  <thead><tr><th>Problem</th><th>What happens</th><th>Remedy</th></tr></thead>
+  <tbody>
+    <tr><td><b>Lost in the middle</b></td><td>Details buried in a long context get less attention than those at the start or end.</td><td>Put the key instructions and the most relevant code near the end, close to the question.</td></tr>
+    <tr><td><b>Context pollution</b></td><td>Irrelevant files, old failed attempts and wrong turns distract the model.</td><td>Include only what is relevant. Start fresh sessions for new tasks.</td></tr>
+    <tr><td><b>Context rot</b></td><td>Quality degrades as a long session accumulates.</td><td>Summarise and restart, or let the tool "compact" history.</td></tr>
+    <tr><td><b>Conflicting instructions</b></td><td>Old rules and new requests contradict each other.</td><td>Keep rules files current and remove stale ones.</td></tr>
+    <tr><td><b>Cost &amp; latency</b></td><td>Every token is processed (and billed) on every turn.</td><td>Be selective. Use references instead of pasting whole files.</td></tr>
+  </tbody>
+</table>
+
+<h2>The four moves of context engineering</h2>
+<ol class="steps">
+  <li><b>Write</b> durable context once: rules files and <code>AGENTS.md</code> describing the project, stack, commands and conventions (page 07).</li>
+  <li><b>Select</b> the right context per task: @-mention specific files, symbols, docs or a selection, rather than the whole repo.</li>
+  <li><b>Compress</b> what is long: summarise previous work, keep a short "progress notes" file, or ask the tool to compact.</li>
+  <li><b>Isolate</b> unrelated work: one task per session. Let sub-agents explore in their own context and return only a summary (page 08).</li>
+</ol>
+
+<h2>Practical tools in the IDE</h2>
+<table>
+  <thead><tr><th>Mechanism</th><th>What it does</th><th>When to use</th></tr></thead>
+  <tbody>
+    <tr><td><b>Selection</b></td><td>Highlight code, then ask. The selection goes into context.</td><td>Explaining or editing one function.</td></tr>
+    <tr><td><b>@-mentions / #-references</b></td><td>Explicitly attach files, folders, symbols, docs, terminal output or git changes. The syntax varies by tool.</td><td>When the answer depends on specific files.</td></tr>
+    <tr><td><b>Codebase indexing / search</b></td><td>The tool searches your repo (text and/or semantic) and pulls in relevant snippets.</td><td>"Where is X handled?" questions.</td></tr>
+    <tr><td><b>Rules / instructions files</b></td><td>Always-on project knowledge.</td><td>Conventions, commands, architecture.</td></tr>
+    <tr><td><b>Skills</b></td><td>Packaged know-how loaded only when relevant.</td><td>Repeatable procedures (release, migration, review).</td></tr>
+    <tr><td><b>MCP servers</b></td><td>Live data from external systems: docs, tickets, databases, build tools.</td><td>Context that lives outside the repo.</td></tr>
+    <tr><td><b>Images</b></td><td>Screenshots of UIs, diagrams or errors.</td><td>UI bugs, whiteboard designs.</td></tr>
+  </tbody>
+</table>
+
+<h2>Good context checklist</h2>
+<ul class="checklist">
+  <li><b>Goal:</b> what you want and why. The "why" helps the model make good judgement calls.</li>
+  <li><b>Environment:</b> language and versions (Scala 3.x / Python 3.12), build tool, framework, OS.</li>
+  <li><b>Relevant code:</b> the function, its callers or types, an existing example of the pattern to follow.</li>
+  <li><b>Evidence:</b> exact error messages, logs and failing test output. Paste them, don't paraphrase.</li>
+  <li><b>Constraints:</b> performance, compatibility, style, what must not change.</li>
+  <li><b>Definition of done:</b> how you will verify the result.</li>
+</ul>
+
+<h2>Grounding with documentation</h2>
+<p>Models have a training cutoff, and libraries change. If you use a new version of a library (for example a recent
+release of a Scala effect library), the model may confidently use old APIs. Fix it by grounding:</p>
+<ul>
+  <li>Paste the relevant section of the official docs or the changelog.</li>
+  <li>Point the agent at the library's source or <code>.d.ts</code>/<code>.scala</code> signatures in your dependencies.</li>
+  <li>Use a docs MCP server or web search tool if your tool supports it.</li>
+  <li>Let the agent compile. The compiler is the best grounding tool, especially in Scala.</li>
+</ul>
+<div class="callout tip"><span class="c-title">Strong types are context</span>
+In statically typed languages like Scala, type signatures carry a lot of meaning in very few tokens. Showing the model
+<code>def transfer(from: AccountId, to: AccountId, amount: Money): IO[Either[TransferError, Receipt]]</code> tells it more
+than a paragraph of prose. Agents that can compile get immediate feedback when they are wrong.</div>
+
+<h2>Session hygiene</h2>
+<ul>
+  <li><b>One task, one session.</b> Starting a new chat is free. Polluted context is expensive.</li>
+  <li><b>Hand-off notes.</b> At the end of a long session ask: "Summarise what we did, decisions made, and what remains, as a note I can paste into a new session." Paste it into the next session.</li>
+  <li><b>Progress files.</b> For multi-day agent work keep a <code>NOTES.md</code> or <code>PLAN.md</code> in the repo that the agent updates. It survives restarts.</li>
+  <li><b>Delete stale instructions.</b> Outdated rules mislead every future session.</li>
+</ul>
+
+<h2>Memory: what products mean by it</h2>
+<p>Some assistants have "memory" features. Technically this is <em>context engineering done by the product</em>: it saves
+facts ("prefers Scala 3, uses MUnit") and inserts them into future prompts. Treat memories like rules files. Review them,
+keep them accurate, and know they can be wrong or stale.</p>
+
+<div class="callout tip"><span class="c-title">Try it (10 min)</span>
+In your IDE assistant, ask "How are errors handled in this project?" twice: once with no files attached, and once after
+@-mentioning two relevant files. Compare the specificity. Then add one line to a rules file (for example "We use Either
+for recoverable errors, never exceptions") and ask again in a new session.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>The model sees only its context. Your job is to curate it.</li>
+  <li><b>Write, select, compress, isolate.</b></li>
+  <li>Relevant beats more. Put key information close to the question.</li>
+  <li>Ground the model with docs, types, errors and the compiler.</li>
+  <li>Use fresh sessions and hand-off notes to avoid context rot.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

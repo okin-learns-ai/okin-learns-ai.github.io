@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI in the IDE: VS Code, IntelliJ, Xcode | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>06 &middot; AI in the IDE: VS Code, IntelliJ IDEA, Xcode</h1>
+<p class="lead">Your IDE is where AI pays off most. This page explains the four ways AI works inside an editor, then walks
+through three major IDEs: <b>IntelliJ IDEA</b> and <b>VS Code</b> (the main homes for Scala) and <b>Xcode</b> (Apple's
+IDE), and compares them.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">50 min</span><span class="pill">Track 5 &middot; AI-assisted coding</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Use the four interaction modes (completion, chat, inline edit, agent) and pick the right one for a task.</li>
+  <li>Find and configure AI features in VS Code, IntelliJ IDEA and Xcode.</li>
+  <li>Follow a reliable explore &rarr; plan &rarr; implement &rarr; verify &rarr; review workflow.</li>
+  <li>Set agent permissions sensibly.</li>
+</ul></div>
+
+<div class="callout note"><span class="c-title">Menus change, concepts don't</span>
+IDE vendors ship AI updates monthly, so exact menu names and default models will drift. Every IDE here exposes the same
+underlying concepts, and those are what you should learn. Check each IDE's official docs for current details.</div>
+
+<h2>The four interaction modes</h2>
+<figure class="diagram">
+<svg viewBox="0 0 740 200" width="740" role="img" aria-label="Four modes from low to high autonomy">
+  <defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="40" width="165" height="100" rx="10"/><text class="d-title" x="92"  y="68" text-anchor="middle">Completion</text><text class="d-small" x="92" y="90" text-anchor="middle">ghost text as you type;</text><text class="d-small" x="92" y="106" text-anchor="middle">next-edit suggestions</text><text class="d-small" x="92" y="126" text-anchor="middle">Tab to accept</text>
+  <rect class="d-box2" x="195" y="40" width="165" height="100" rx="10"/><text class="d-title" x="277" y="68" text-anchor="middle">Chat / Ask</text><text class="d-small" x="277" y="90" text-anchor="middle">questions, explanations,</text><text class="d-small" x="277" y="106" text-anchor="middle">plans; no file changes</text><text class="d-small" x="277" y="126" text-anchor="middle">side panel</text>
+  <rect class="d-box3" x="380" y="40" width="165" height="100" rx="10"/><text class="d-title" x="462" y="68" text-anchor="middle">Inline edit</text><text class="d-small" x="462" y="90" text-anchor="middle">select code + instruction</text><text class="d-small" x="462" y="106" text-anchor="middle">&rarr; diff to accept/reject</text><text class="d-small" x="462" y="126" text-anchor="middle">one file, one change</text>
+  <rect class="d-box4" x="565" y="40" width="165" height="100" rx="10"/><text class="d-title" x="647" y="68" text-anchor="middle">Agent</text><text class="d-small" x="647" y="90" text-anchor="middle">multi-file changes;</text><text class="d-small" x="647" y="106" text-anchor="middle">runs build/tests/tools;</text><text class="d-small" x="647" y="126" text-anchor="middle">iterates until done</text>
+  <path class="d-line" d="M20 170 H720" marker-end="url(#a6)"/><text class="d-small" x="370" y="190" text-anchor="middle">more autonomy &rarr; more power &rarr; more need for clear goals and review</text>
+</svg>
+</figure>
+<table>
+  <thead><tr><th>Task</th><th>Best mode</th></tr></thead>
+  <tbody>
+    <tr><td>Writing code you already have in your head</td><td>Completion</td></tr>
+    <tr><td>"What does this do?", "Why is this failing?", "Which approach is better?"</td><td>Chat / Ask</td></tr>
+    <tr><td>"Convert this loop to a fold", "Add error handling here"</td><td>Inline edit</td></tr>
+    <tr><td>"Add a new endpoint with service, repository, tests; make the build pass"</td><td>Agent</td></tr>
+    <tr><td>"Plan how to migrate this module to Scala 3"</td><td>Plan mode / Ask, then Agent</td></tr>
+  </tbody>
+</table>
+
+<h2>IntelliJ IDEA (JetBrains)</h2>
+<p>IntelliJ IDEA with the <b>Scala plugin</b> is the most widely used IDE for professional Scala development. It is also
+common for Java and Kotlin.</p>
+<h3>AI features</h3>
+<ul>
+  <li><b>JetBrains AI Assistant</b>: code completion (including local, on-device completion for some languages), chat aware of
+  your project, inline edits, commit-message generation, test generation, explanations, and a choice of models (cloud and local).</li>
+  <li><b>Junie</b>: JetBrains' coding agent. It plans, edits multiple files, runs tests and uses IDE inspections. You review the result.</li>
+  <li><b>Bring your own agent</b>: JetBrains IDEs support external agents through the <b>Agent Client Protocol (ACP)</b> and can act as an MCP client, so other agents and tools can plug in.</li>
+  <li><b>Third-party plugins</b>: GitHub Copilot and others are available for JetBrains IDEs.</li>
+</ul>
+<h3>Scala-specific tips in IntelliJ</h3>
+<ul>
+  <li>Make sure the sbt/Mill/Gradle project is fully <b>imported and indexed</b> before asking AI questions. The AI uses the IDE's understanding of your code.</li>
+  <li>IntelliJ's own inspections and type hints are an excellent check on AI output. Watch for red and yellow highlights after accepting a suggestion.</li>
+  <li>Tell the assistant whether you use Scala 2.13 or Scala 3. The syntax differs (indentation-based syntax, <code>given</code>/<code>using</code>, <code>enum</code>s).</li>
+</ul>
+
+<h2>VS Code</h2>
+<p>VS Code is a lightweight, extensible editor with the largest AI ecosystem. For Scala, install the <b>Metals</b>
+extension (the Scala language server). For Python, install the Python and Pylance extensions.</p>
+<h3>AI features (GitHub Copilot in VS Code)</h3>
+<ul>
+  <li><b>Inline suggestions</b> and <b>next edit suggestions</b> (it predicts the next place you will edit and what).</li>
+  <li><b>Chat view</b> with built-in agent roles such as <em>Ask</em>, <em>Plan</em> and <em>Agent</em>. You can pick the model and the <em>agent harness</em> (Copilot's own, or third-party agents).</li>
+  <li><b>Inline chat</b> (<kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>I</kbd>) for in-place edits.</li>
+  <li><b>Context</b>: <code>#</code>-references and drag-and-drop for files, symbols, terminal output, changes and more.</li>
+  <li><b>Customisation</b>: <code>.github/copilot-instructions.md</code>, <code>AGENTS.md</code>, <code>*.instructions.md</code>, custom agents (<code>*.agent.md</code>), Agent Skills (<code>SKILL.md</code>), hooks, plugins, all managed in an <em>Agent Customizations</em> editor. See <a href="07-instructions-skills-agents.html">page 07</a>.</li>
+  <li><b>MCP servers</b>: add servers per workspace or per user to give agents extra tools (page 09).</li>
+  <li>Other extensions (Continue, Cline, Gemini Code Assist and more) can be installed alongside or instead.</li>
+</ul>
+<h3>Scala in VS Code</h3>
+<ul>
+  <li><b>Metals</b> provides compile errors, go-to-definition, completions and worksheets. AI suggestions that don't compile show up immediately.</li>
+  <li>Recent Metals versions include an <b>MCP server</b> that exposes compilation, symbol inspection, test running and more to AI agents. An agent can then <em>ask the compiler</em> instead of guessing. See <a href="10-scala-with-ai.html">page 10</a>.</li>
+</ul>
+
+<h2>Xcode (Apple)</h2>
+<p>Xcode is Apple's IDE for Swift and Objective-C apps on iOS, macOS, watchOS, tvOS and visionOS. It does not target Scala,
+but it is useful context if you work near Apple platforms, and it shows where the industry is heading.</p>
+<h3>Coding intelligence in Xcode 26</h3>
+<ul>
+  <li><b>Predictive code completion</b> powered by an on-device model trained for Swift and Apple SDKs, so code stays on your Mac.</li>
+  <li><b>Coding assistant</b> chat: set up in <em>Xcode &rarr; Settings &rarr; Intelligence</em>. Built-in integrations include ChatGPT and Claude, and you can add other providers, including local models.</li>
+  <li><b>Agentic coding</b> (Xcode 26.3+): coding agents can work inside Xcode. They break down tasks, edit files, build, read build errors, run tests and search Apple documentation.</li>
+  <li><b>MCP</b>: Xcode exposes its capabilities (build, test, docs search) as an MCP server, so external agents can use them. You enable "Allow external agents to use Xcode tools" in Intelligence settings and connect the agent via <code>xcrun mcpbridge</code>.</li>
+  <li><b>ACP</b>: agents that support the Agent Client Protocol can be added to Xcode as additional agents.</li>
+  <li>A fine-grained <b>permissions system</b> controls what external agents may do.</li>
+</ul>
+<pre data-lang="bash" data-title="Connecting an external CLI agent to Xcode's MCP server (example from Apple docs)">
+# After enabling "Allow external agents to use Xcode tools" in Xcode > Settings > Intelligence
+claude mcp add --transport stdio xcode -- xcrun mcpbridge
+# or
+codex mcp add xcode -- xcrun mcpbridge
+</pre>
+<div class="callout tip"><span class="c-title">The big pattern</span>
+Look at what all three IDEs now do: they expose their deep code intelligence (compiler, indexer, tests, docs) to AI
+agents through <b>open protocols</b> (MCP, ACP). The best results come when the AI can <em>use the IDE's tools</em> instead
+of guessing from text. Expect every serious IDE to work this way.</div>
+
+<h2>Side-by-side comparison</h2>
+<table>
+  <thead><tr><th></th><th>IntelliJ IDEA</th><th>VS Code</th><th>Xcode</th></tr></thead>
+  <tbody>
+    <tr><td><b>Best for</b></td><td>Scala, Java, Kotlin (JVM)</td><td>Polyglot: Scala (Metals), Python, TS, everything</td><td>Swift / Apple platforms</td></tr>
+    <tr><td><b>Language intelligence</b></td><td>Own deep Scala plugin</td><td>Language servers (Metals, Pylance)</td><td>Swift compiler, SourceKit</td></tr>
+    <tr><td><b>Built-in AI</b></td><td>AI Assistant + Junie agent</td><td>Copilot (built-in chat), many extensions</td><td>On-device completion + coding assistant + agents</td></tr>
+    <tr><td><b>Model choice</b></td><td>Multiple cloud + local</td><td>Multiple, plus bring-your-own</td><td>ChatGPT, Claude, other providers, local</td></tr>
+    <tr><td><b>Agent mode</b></td><td>Yes (Junie, ACP agents)</td><td>Yes (Copilot agent, third-party harnesses)</td><td>Yes (26.3+)</td></tr>
+    <tr><td><b>MCP</b></td><td>Client (use servers), and exposes IDE tools</td><td>Client (rich config)</td><td>Exposes Xcode as a server for external agents</td></tr>
+    <tr><td><b>Customisation files</b></td><td>Project guidelines/rules, AGENTS.md</td><td>copilot-instructions.md, AGENTS.md, .instructions.md, .agent.md, SKILL.md</td><td>AGENTS.md / agent config files</td></tr>
+    <tr><td><b>Cost</b></td><td>IDE (Community/Ultimate) + AI subscription</td><td>Free editor + AI subscription (free tiers exist)</td><td>Free; model providers may need accounts</td></tr>
+  </tbody>
+</table>
+<p>Many developers also run a <b>terminal agent</b> (page 05) next to any of these IDEs. It works the same in every editor
+and can be pointed at the IDE's MCP server.</p>
+
+<h2>A reliable daily workflow</h2>
+<ol class="steps">
+  <li><b>Explore.</b> Ask mode: "How does authentication work in this repo? Which files are involved?" Build your own understanding first.</li>
+  <li><b>Plan.</b> For anything over ~30 lines, ask for a plan: files to touch, steps, risks, tests. Edit the plan. It is cheap to fix a plan and expensive to fix code.</li>
+  <li><b>Implement in small steps.</b> Let the agent do one step at a time, or the whole plan if it is well specified.</li>
+  <li><b>Verify automatically.</b> The agent compiles and runs tests. Ask it to add tests for the change.</li>
+  <li><b>Review like a human PR.</b> Read the full diff. Ask "explain this change" for anything unclear. Check edge cases, naming and security.</li>
+  <li><b>Commit in small units.</b> Use git as your undo button: commit before big agent runs and after each good step.</li>
+</ol>
+<div class="callout warn"><span class="c-title">Never skip review</span>
+Agents produce plausible code quickly, including plausible <em>wrong</em> code: tests that test nothing, swallowed
+exceptions, deleted edge-case handling, made-up config keys. "The tests pass" is necessary but not sufficient.</div>
+
+<h2>Agent permissions</h2>
+<p>Agents can run terminal commands, edit files and call tools. Every serious IDE has approval settings:</p>
+<table>
+  <thead><tr><th>Setting</th><th>Recommendation for beginners</th></tr></thead>
+  <tbody>
+    <tr><td>File edits</td><td>Allow inside the workspace, and review the diffs.</td></tr>
+    <tr><td>Terminal commands</td><td>Require approval, or auto-approve only a safe allow-list (<code>sbt test</code>, <code>pytest</code>, <code>git status</code>).</td></tr>
+    <tr><td>Destructive commands</td><td>Always require approval: <code>rm -rf</code>, <code>git push --force</code>, database migrations, deployments.</td></tr>
+    <tr><td>MCP tools</td><td>Only enable servers you trust. Approve tool calls that write or send data.</td></tr>
+    <tr><td>Network / web</td><td>Be careful: fetched web content can contain prompt injections (page 14).</td></tr>
+  </tbody>
+</table>
+
+<h2>Productivity habits</h2>
+<ul>
+  <li>Learn your IDE's AI keyboard shortcuts: accept suggestion, accept next word, open inline chat, open chat, attach context.</li>
+  <li>When a completion is almost right, accept it and fix it. Don't keep retrying.</li>
+  <li>Write a good comment or function signature first. Completions follow intent.</li>
+  <li>Keep an <code>AGENTS.md</code> with build/test commands so agents can verify their own work.</li>
+  <li>Use the agent for chores (dependency bumps, test scaffolding, renames across files) and keep the hard thinking for yourself, with the AI as a sparring partner.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (20 min)</span>
+In your IDE, pick a small real bug or feature. (1) Ask mode: have the AI explain the relevant code. (2) Ask for a plan
+with files and tests. (3) Switch to agent mode and let it implement. (4) Review the diff line by line and write down one thing
+it did well and one thing you had to fix.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Four modes: <b>completion, chat, inline edit, agent</b>. Match the mode to the task.</li>
+  <li>IntelliJ IDEA and VS Code + Metals are the Scala homes. Xcode is Apple's IDE with on-device completion and agents.</li>
+  <li>All three are converging on <b>MCP and ACP</b>, so agents can use real IDE tools.</li>
+  <li>Workflow: explore &rarr; plan &rarr; implement &rarr; verify &rarr; review &rarr; commit.</li>
+  <li>Set permissions deliberately. Review everything.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

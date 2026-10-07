@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>What Is AI? The Big Picture | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>01 &middot; What Is AI? The Big Picture</h1>
+<p class="lead">Before using AI tools well, you need a clear mental map: what "AI" means, how machine learning, deep
+learning, generative AI and LLMs fit together, and what these systems are and are not good at.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">30 min</span><span class="pill">Track 1 &middot; Foundations</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain the difference between AI, ML, deep learning, generative AI and LLMs to a non-technical friend.</li>
+  <li>Name the main ways machines learn (supervised, unsupervised, self-supervised, reinforcement).</li>
+  <li>Describe the key milestones that led to today's AI.</li>
+  <li>Separate a <em>model</em>, a <em>product</em> and an <em>agent</em>.</li>
+  <li>Predict roughly where AI will help you and where it will fail.</li>
+</ul></div>
+
+<h2>Artificial Intelligence in one sentence</h2>
+<p><b>Artificial Intelligence (AI)</b> is the field of building computer systems that perform tasks we normally associate
+with human intelligence: understanding language, recognising images, making decisions, solving problems, and creating content.</p>
+<p>This is an <em>umbrella</em> term. It covers chess engines from the 1990s, the spam filter in your email, the face
+unlock on your phone, and the chat assistant that writes Scala code with you. These systems work in very different ways.</p>
+
+<h3>Two ways to make a computer "smart"</h3>
+<div class="compare">
+  <div><h4>1. Rules written by humans</h4>
+  <p>"If the email contains 'lottery' AND an unknown sender, mark it spam." This is <b>symbolic AI</b> or "expert systems".
+  It is predictable and explainable, but brittle: real life has too many cases to write rules for all of them.</p></div>
+  <div><h4>2. Patterns learned from data</h4>
+  <p>Show the system 1 million emails labelled spam / not spam and let it <em>learn</em> the patterns. This is
+  <b>machine learning</b>. It handles messy reality well, but it is harder to explain and can learn the wrong lessons.</p></div>
+</div>
+<p>Almost all modern AI, including every AI coding assistant, is the second kind: <b>learned from data</b>.</p>
+
+<h2>The nesting dolls: AI, ML, DL, GenAI, LLM</h2>
+<figure class="diagram">
+<svg viewBox="0 0 640 340" width="640" role="img" aria-label="Nested boxes of AI concepts">
+  <rect class="d-box"  x="10"  y="10"  width="620" height="320" rx="18"/>
+  <rect class="d-box2" x="50"  y="64"  width="560" height="250" rx="16"/>
+  <rect class="d-box3" x="90"  y="118" width="500" height="180" rx="14"/>
+  <rect class="d-box4" x="130" y="172" width="440" height="110" rx="12"/>
+  <rect class="d-box2" x="330" y="200" width="220" height="64"  rx="10"/>
+  <text class="d-title" x="30"  y="38">Artificial Intelligence</text><text class="d-small" x="200" y="38">any technique that makes machines act "intelligently"</text>
+  <text class="d-title" x="70"  y="92">Machine Learning</text><text class="d-small" x="200" y="92">learns patterns from data</text>
+  <text class="d-title" x="110" y="146">Deep Learning</text><text class="d-small" x="220" y="146">many-layer neural networks</text>
+  <text class="d-title" x="150" y="200">Generative AI</text><text class="d-small" x="150" y="218">creates new content</text><text class="d-small" x="150" y="234">(images, audio, text&hellip;)</text>
+  <text class="d-title" x="440" y="228" text-anchor="middle">LLMs</text><text class="d-small" x="440" y="246" text-anchor="middle">text &amp; code models</text>
+</svg>
+<figcaption>Each box is a subset of the one around it. An LLM is a kind of generative AI, which is a kind of deep learning, which is a kind of machine learning, which is a kind of AI.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Term</th><th>Plain meaning</th><th>Everyday example</th></tr></thead>
+  <tbody>
+    <tr><td><b>AI</b></td><td>Machines doing tasks that seem to need intelligence.</td><td>A route planner, a chess engine, a chatbot.</td></tr>
+    <tr><td><b>Machine Learning (ML)</b></td><td>The machine learns rules from examples instead of being programmed with them.</td><td>Spam filters, credit scoring, recommendations.</td></tr>
+    <tr><td><b>Deep Learning (DL)</b></td><td>ML with large <em>neural networks</em> (many layers of simple maths units).</td><td>Face recognition, speech-to-text, translation.</td></tr>
+    <tr><td><b>Generative AI (GenAI)</b></td><td>Models that <em>create</em> new content: text, images, audio, code, video.</td><td>Image generators, music generators, chat assistants.</td></tr>
+    <tr><td><b>LLM</b> (Large Language Model)</td><td>A generative model trained on huge amounts of text (and code) to predict the next piece of text.</td><td>The models behind chat assistants and AI coding tools.</td></tr>
+    <tr><td><b>Foundation model</b></td><td>A big general-purpose model that can be adapted to many tasks.</td><td>One LLM used for chat, code, summarising and translation.</td></tr>
+    <tr><td><b>Multimodal model</b></td><td>Understands and/or produces more than one type of data (text + images + audio&hellip;).</td><td>Paste a screenshot of an error and ask "what's wrong?".</td></tr>
+  </tbody>
+</table>
+
+<h2>How machines learn: the four styles</h2>
+<h3>Supervised learning</h3>
+<p>Learn from <b>labelled examples</b>: input &rarr; correct answer. "Here are 10,000 house descriptions with their prices.
+Learn to predict the price." Used for classification (spam or not) and regression (predict a number).</p>
+<h3>Unsupervised learning</h3>
+<p>Find <b>structure in unlabelled data</b>. "Here are 1 million customers; group them into similar segments." Used for clustering,
+anomaly detection and compression.</p>
+<h3>Self-supervised learning</h3>
+<p>The data creates its own labels. Hide a word in a sentence and predict it, or predict the <em>next</em> word. No
+human labelling is needed, so you can train on enormous datasets. <b>This is how LLMs are pre-trained</b>, and it is the
+main reason they could become so large.</p>
+<h3>Reinforcement learning (RL)</h3>
+<p>Learn by <b>trial, error and reward</b>. An agent takes actions, gets a reward signal and improves. It is used for game-playing
+AIs and robotics, and in LLM post-training (for example RLHF, reinforcement learning from human feedback) to make models
+more helpful and safer.</p>
+
+<div class="callout analogy"><span class="c-title">Analogy: learning to cook</span>
+<b>Supervised</b>: a teacher shows you dishes and names them. <b>Unsupervised</b>: you sort a pantry into groups that seem
+to belong together. <b>Self-supervised</b>: you read 10,000 recipes and practise guessing the next step until you are very good at it.
+<b>Reinforcement</b>: you cook, people rate the dish, and you adjust.</div>
+
+<h2>A short history (why now?)</h2>
+<figure class="diagram">
+<svg viewBox="0 0 780 200" width="780" role="img" aria-label="AI history timeline">
+  <line class="d-line" x1="20" y1="100" x2="760" y2="100"/>
+  <g class="d-text">
+    <circle class="d-box2" cx="40" cy="100" r="7"/><text x="40" y="80" text-anchor="middle" class="d-accent">1950</text><text x="40" y="128" text-anchor="middle" class="d-small">Turing test</text>
+    <circle class="d-box2" cx="110" cy="100" r="7"/><text x="110" y="80" text-anchor="middle" class="d-accent">1956</text><text x="110" y="128" text-anchor="middle" class="d-small">"AI" coined</text>
+    <circle class="d-box4" cx="180" cy="100" r="7"/><text x="180" y="80" text-anchor="middle" class="d-accent">70s&ndash;90s</text><text x="180" y="128" text-anchor="middle" class="d-small">Expert systems,</text><text x="180" y="142" text-anchor="middle" class="d-small">"AI winters"</text>
+    <circle class="d-box2" cx="250" cy="100" r="7"/><text x="250" y="80" text-anchor="middle" class="d-accent">1997</text><text x="250" y="128" text-anchor="middle" class="d-small">Deep Blue</text><text x="250" y="142" text-anchor="middle" class="d-small">beats Kasparov</text>
+    <circle class="d-box3" cx="320" cy="100" r="7"/><text x="320" y="80" text-anchor="middle" class="d-accent">2012</text><text x="320" y="128" text-anchor="middle" class="d-small">Deep learning</text><text x="320" y="142" text-anchor="middle" class="d-small">wins ImageNet</text>
+    <circle class="d-box3" cx="390" cy="100" r="7"/><text x="390" y="80" text-anchor="middle" class="d-accent">2016</text><text x="390" y="128" text-anchor="middle" class="d-small">AlphaGo</text>
+    <circle class="d-box3" cx="460" cy="100" r="9"/><text x="460" y="80" text-anchor="middle" class="d-accent">2017</text><text x="460" y="128" text-anchor="middle" class="d-small">Transformer</text><text x="460" y="142" text-anchor="middle" class="d-small">architecture</text>
+    <circle class="d-box3" cx="530" cy="100" r="7"/><text x="530" y="80" text-anchor="middle" class="d-accent">2020</text><text x="530" y="128" text-anchor="middle" class="d-small">Very large LLMs,</text><text x="530" y="142" text-anchor="middle" class="d-small">code models</text>
+    <circle class="d-box2" cx="600" cy="100" r="9"/><text x="600" y="80" text-anchor="middle" class="d-accent">2022</text><text x="600" y="128" text-anchor="middle" class="d-small">Chat assistants</text><text x="600" y="142" text-anchor="middle" class="d-small">go mainstream</text>
+    <circle class="d-box2" cx="670" cy="100" r="7"/><text x="670" y="80" text-anchor="middle" class="d-accent">2024</text><text x="670" y="128" text-anchor="middle" class="d-small">Multimodal,</text><text x="670" y="142" text-anchor="middle" class="d-small">reasoning models</text>
+    <circle class="d-box4" cx="740" cy="100" r="9"/><text x="740" y="80" text-anchor="middle" class="d-accent">2025&ndash;26</text><text x="740" y="128" text-anchor="middle" class="d-small">Agents, MCP,</text><text x="740" y="142" text-anchor="middle" class="d-small">agentic IDEs</text>
+  </g>
+</svg>
+<figcaption>The ideas are old. What changed recently is the combination of the Transformer architecture, huge datasets and massive compute (GPUs).</figcaption>
+</figure>
+<p>Three ingredients came together in the 2010s:</p>
+<ol>
+  <li><b>Data:</b> the internet, open-source code and digitised books gave billions of examples.</li>
+  <li><b>Compute:</b> GPUs (first built for video games) turned out to be ideal for the maths neural networks need.</li>
+  <li><b>Algorithms:</b> the <b>Transformer</b> (2017, the paper "Attention Is All You Need") could be trained in parallel and
+  scaled smoothly. Researchers found that bigger models trained on more data kept getting better ("scaling laws").</li>
+</ol>
+
+<h2>Model vs product vs agent</h2>
+<p>People mix these up all the time. Keeping them separate will make every later page clearer.</p>
+<figure class="diagram">
+<svg viewBox="0 0 700 190" width="700" role="img" aria-label="Model, product, agent layers">
+  <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="20" y="40" width="190" height="110" rx="10"/>
+  <text class="d-title" x="115" y="72" text-anchor="middle">Model</text>
+  <text class="d-small" x="115" y="94" text-anchor="middle">The trained "brain".</text>
+  <text class="d-small" x="115" y="110" text-anchor="middle">Text in &rarr; text out.</text>
+  <text class="d-small" x="115" y="126" text-anchor="middle">No memory, no tools.</text>
+  <rect class="d-box3" x="255" y="40" width="190" height="110" rx="10"/>
+  <text class="d-title" x="350" y="72" text-anchor="middle">Product / App</text>
+  <text class="d-small" x="350" y="94" text-anchor="middle">UI + system prompt +</text>
+  <text class="d-small" x="350" y="110" text-anchor="middle">history + files + safety.</text>
+  <text class="d-small" x="350" y="126" text-anchor="middle">e.g. a chat app, IDE plugin</text>
+  <rect class="d-box4" x="490" y="40" width="190" height="110" rx="10"/>
+  <text class="d-title" x="585" y="72" text-anchor="middle">Agent</text>
+  <text class="d-small" x="585" y="94" text-anchor="middle">Model + tools + loop.</text>
+  <text class="d-small" x="585" y="110" text-anchor="middle">Plans, acts, observes,</text>
+  <text class="d-small" x="585" y="126" text-anchor="middle">repeats until done.</text>
+  <path class="d-line" d="M210 95 H250" marker-end="url(#a1)"/>
+  <path class="d-line" d="M445 95 H485" marker-end="url(#a1)"/>
+</svg>
+<figcaption>The same model can power a simple chat product and a powerful coding agent. Much of the "intelligence" you experience comes from the product layer around the model.</figcaption>
+</figure>
+<ul>
+  <li><b>Model</b>: a file of billions of numbers ("weights") and the code to run them. On its own it only turns input text into output text.</li>
+  <li><b>Product / application</b>: wraps the model with a user interface, hidden instructions (the <em>system prompt</em>), conversation history, file uploads, safety filters and more.</li>
+  <li><b>Agent</b>: a model that can <em>use tools</em> (read files, run tests, search the web, call APIs) in a loop to reach a goal. Covered in <a href="08-agents-101.html">page 08</a>.</li>
+</ul>
+
+<h2>What AI is great at, and where it fails</h2>
+<div class="compare">
+  <div class="good"><h4>Usually strong</h4>
+  <ul>
+    <li>Drafting text, code, tests, docs, emails</li>
+    <li>Explaining code and concepts at any level</li>
+    <li>Translating between languages, including Python &harr; Scala</li>
+    <li>Summarising long material</li>
+    <li>Boilerplate, scaffolding, refactoring patterns</li>
+    <li>Brainstorming options and trade-offs</li>
+    <li>Working through common errors and stack traces</li>
+  </ul></div>
+  <div class="bad"><h4>Often weak (verify!)</h4>
+  <ul>
+    <li>Exact facts, dates, version numbers, API names (it may <b>hallucinate</b>)</li>
+    <li>Things newer than its training data, unless given docs or search</li>
+    <li>Your private context: business rules, codebase conventions, unless you provide them</li>
+    <li>Precise arithmetic and counting without tools</li>
+    <li>Long chains of reasoning without checks</li>
+    <li>Knowing when it does not know</li>
+  </ul></div>
+</div>
+<div class="callout warn"><span class="c-title">The golden rule</span>
+AI output is a <b>confident draft</b>, not truth. You remain responsible for every line you commit. Expert users are not
+people who trust AI more. They are people who <b>verify faster</b>.</div>
+
+<h2>Narrow AI, general AI and the hype</h2>
+<ul>
+  <li><b>Narrow AI</b>: excellent at specific tasks (playing chess, recognising faces). Everything deployed today is narrow in some sense, even if LLMs are surprisingly broad.</li>
+  <li><b>AGI (Artificial General Intelligence)</b>: a hypothetical system that matches humans across essentially all cognitive tasks. Experts disagree strongly on whether and when it will arrive, and even on how to define it.</li>
+  <li><b>Practical stance</b>: ignore the hype and the doom. Learn what today's tools do reliably, measure them on your own tasks, and keep up to date.</li>
+</ul>
+
+<h2>Common myths</h2>
+<table>
+  <thead><tr><th>Myth</th><th>Reality</th></tr></thead>
+  <tbody>
+    <tr><td>"The AI looks things up in a database of facts."</td><td>An LLM generates text from patterns in its weights. It only "looks things up" if the product gives it a search or retrieval tool.</td></tr>
+    <tr><td>"It remembers our past chats and learns from me."</td><td>The model's weights do not change while you chat. Some products store "memories" and add them to the prompt. That is a product feature, not learning.</td></tr>
+    <tr><td>"If it sounds confident, it's right."</td><td>Confidence of tone is unrelated to correctness.</td></tr>
+    <tr><td>"AI will replace developers."</td><td>AI changes <em>what</em> developers spend time on: less typing, more specifying, reviewing, designing and verifying. People who use AI well are replacing workflows that don't.</td></tr>
+    <tr><td>"You need maths to use AI well."</td><td>Not to use it well (Levels 1&ndash;3). Maths becomes important when you go into internals (Level 4).</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><span class="c-title">Try it (5 min)</span>
+Open any AI chat assistant and ask: <em>"Explain the difference between machine learning and deep learning to a
+Scala developer, using an analogy from functional programming."</em> Then ask: <em>"What are three things you might
+have got wrong in that answer?"</em> Notice how it critiques itself. You will use this "self-review" pattern a lot.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>AI &sup; ML &sup; Deep Learning &sup; Generative AI &sup; LLMs.</li>
+  <li>Modern AI <b>learns patterns from data</b>. LLMs are pre-trained by predicting the next token on huge datasets (self-supervised).</li>
+  <li>The recent boom comes from Transformers + data + GPUs + scaling.</li>
+  <li>Model &ne; product &ne; agent. Tools and context make a model useful.</li>
+  <li>AI drafts and you verify.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

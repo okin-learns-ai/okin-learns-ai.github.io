@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Python Development with AI | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>11 &middot; Python Development with AI</h1>
+<p class="lead">Python is the native language of the AI ecosystem. Nearly every model SDK, framework and research codebase
+ships Python first. Models are also very fluent in it. This page shows how to get high-quality Python from AI and avoid its
+typical traps.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">45 min</span><span class="pill">Tracks 5, 10</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Set up a modern Python toolchain that gives AI agents fast feedback.</li>
+  <li>Prompt for typed, tested, idiomatic Python.</li>
+  <li>Spot the most common AI mistakes in Python.</li>
+  <li>Make your first LLM API call with only the standard library.</li>
+</ul></div>
+
+<h2>Why Python matters for AI work, even for Scala developers</h2>
+<ul>
+  <li>Most <b>AI tooling</b> (MCP servers, evals, notebooks, data science, fine-tuning) is easiest in Python.</li>
+  <li>Prototype AI features in Python and productionise them in Scala/JVM if your platform requires it.</li>
+  <li>Models generate excellent Python, which makes it a fast way to <b>automate</b> chores: scripts, data checks, log analysis.</li>
+</ul>
+
+<h2>A modern toolchain (fast feedback for agents)</h2>
+<table>
+  <thead><tr><th>Tool</th><th>Purpose</th><th>Why it helps with AI</th></tr></thead>
+  <tbody>
+    <tr><td><b>uv</b></td><td>Very fast package/project manager, virtual envs, Python versions</td><td>Reproducible envs. Agents can <code>uv run</code> anything without activation issues.</td></tr>
+    <tr><td><b>ruff</b></td><td>Linter + formatter (very fast)</td><td>Catches AI bugs (unused vars, bare except) in milliseconds. A great post-edit hook.</td></tr>
+    <tr><td><b>mypy</b> / <b>pyright</b></td><td>Static type checking</td><td>Gives Python some of the "compiler as reviewer" benefit Scala has.</td></tr>
+    <tr><td><b>pytest</b> + <b>hypothesis</b></td><td>Tests + property-based tests</td><td>Verification that agents can run themselves.</td></tr>
+    <tr><td><b>Jupyter</b> / VS Code notebooks</td><td>Interactive exploration</td><td>AI assistants work inside notebooks for data exploration.</td></tr>
+    <tr><td>VS Code Python + Pylance, or PyCharm</td><td>IDE support</td><td>Type info and diagnostics feed the AI's context.</td></tr>
+  </tbody>
+</table>
+<pre data-lang="bash" data-title="Start a project with uv">
+uv init pricing-lib && cd pricing-lib
+uv add --dev pytest hypothesis ruff mypy
+uv run pytest -q
+uv run ruff check . --fix && uv run ruff format .
+uv run mypy src
+</pre>
+<p>Put these exact commands in <code>AGENTS.md</code> (see the Python example on <a href="07-instructions-skills-agents.html">page 07</a>).</p>
+
+<h2>Prompting for good Python</h2>
+<ul>
+  <li><b>State the version:</b> "Python 3.12" lets the model use modern syntax (<code>match</code>, <code>X | None</code>, built-in generics like <code>list[int]</code>).</li>
+  <li><b>Ask for types and docstrings:</b> "Fully type-annotated, mypy --strict clean, Google-style docstrings."</li>
+  <li><b>Name the libraries and versions:</b> "pydantic v2", "pandas 2.x", "httpx not requests", "SQLAlchemy 2.0 style".</li>
+  <li><b>Request structure:</b> "Pure functions in core, I/O at the edges, dataclasses for data."</li>
+  <li><b>Ask for tests in the same answer:</b> "Then pytest tests with parametrize for edge cases."</li>
+</ul>
+<pre data-lang="text" data-title="Example prompt">
+Python 3.12, typed (mypy --strict), no external deps.
+Write `parse_duration(s: str) -> datetime.timedelta` accepting "90s", "15m", "2h", "1h30m", "1d2h".
+Raise ValueError with a helpful message on bad input. Then pytest tests using parametrize,
+including invalid inputs, and one hypothesis property (round-trip with a formatter you also write).
+</pre>
+
+<h2>Common AI mistakes in Python (watch list)</h2>
+<table>
+  <thead><tr><th>Mistake</th><th>Why it's bad</th><th>Ask for instead</th></tr></thead>
+  <tbody>
+    <tr><td>Mutable default args <code>def f(x=[])</code></td><td>Shared state between calls</td><td><code>x: list | None = None</code></td></tr>
+    <tr><td>Bare <code>except:</code> or <code>except Exception: pass</code></td><td>Swallows real errors</td><td>Catch specific exceptions; log or re-raise</td></tr>
+    <tr><td><code>float</code> for money</td><td>Rounding errors</td><td><code>decimal.Decimal</code></td></tr>
+    <tr><td>Outdated library APIs</td><td>pydantic v1 vs v2, old SDK call styles, pandas deprecations</td><td>State versions; paste docs; run tests</td></tr>
+    <tr><td>SQL via f-strings</td><td>SQL injection</td><td>Parameterised queries</td></tr>
+    <tr><td><code>eval</code>, <code>pickle</code> on untrusted data, <code>shell=True</code></td><td>Code execution vulnerabilities</td><td>Safe parsers; <code>subprocess.run([...])</code></td></tr>
+    <tr><td>HTTP calls without timeouts</td><td>Hangs forever</td><td><code>httpx.get(url, timeout=10)</code></td></tr>
+    <tr><td>Blocking calls inside <code>async def</code></td><td>Freezes the event loop</td><td>Async clients or <code>asyncio.to_thread</code></td></tr>
+    <tr><td>pandas row loops / chained assignment</td><td>Slow; <code>SettingWithCopy</code> bugs</td><td>Vectorised ops; <code>.loc</code></td></tr>
+    <tr><td>Hallucinated packages</td><td>A package name that doesn't exist, or worse, a malicious look-alike ("slopsquatting")</td><td>Verify on PyPI before installing</td></tr>
+  </tbody>
+</table>
+<div class="callout danger"><span class="c-title">Package hallucination is a real security risk</span>
+Attackers register package names that AI models commonly invent. Before <code>pip install</code> / <code>uv add</code> of an
+unfamiliar package, check that it exists, is maintained, and is the one you meant. The same applies to Maven/sbt coordinates.</div>
+
+<h2>Tests as the safety net</h2>
+<pre data-lang="python" data-title="test_slugify.py">
+import re
+import pytest
+from hypothesis import given, strategies as st
+
+def slugify(title: str) -> str:
+    """Lowercase, keep a-z0-9, collapse everything else into single hyphens."""
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+
+@pytest.mark.parametrize("raw, expected", [
+    ("Hello World", "hello-world"),
+    ("  Scala 3 & Python!  ", "scala-3-python"),
+    ("---", ""),
+    ("", ""),
+])
+def test_examples(raw: str, expected: str) -> None:
+    assert slugify(raw) == expected
+
+@given(st.text())
+def test_properties(raw: str) -> None:
+    s = slugify(raw)
+    assert s == slugify(s)                      # idempotent
+    assert not s.startswith("-") and not s.endswith("-")
+    assert "--" not in s
+    assert re.fullmatch(r"[a-z0-9-]*", s)
+</pre>
+<pre data-lang="bash">uv run pytest -q test_slugify.py</pre>
+<p>Hypothesis generates hundreds of random inputs, including Unicode, and checks the properties. This kind of test catches
+the edge cases AI-written code most often misses.</p>
+
+<h2>Your first LLM call from Python</h2>
+<p>Standard library only, against a local OpenAI-compatible server (Ollama). For hosted providers, use their official SDK
+and an API key from an environment variable.</p>
+<pre data-lang="python" data-title="ask_llm.py  (run: uv run ask_llm.py &quot;your question&quot;)">
+import json
+import os
+import sys
+import urllib.request
+
+ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://localhost:11434/v1/chat/completions")
+MODEL = os.environ.get("LLM_MODEL", "llama3.2")
+
+
+def ask(question: str) -> str:
+    payload = {
+        "model": MODEL,
+        "temperature": 0.2,
+        "messages": [
+            {"role": "system", "content": "You are a concise Python expert."},
+            {"role": "user", "content": question},
+        ],
+    }
+    headers = {"Content-Type": "application/json"}
+    if key := os.environ.get("LLM_API_KEY"):          # hosted providers
+        headers["Authorization"] = f"Bearer {key}"
+    req = urllib.request.Request(ENDPOINT, data=json.dumps(payload).encode(), headers=headers)
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = json.load(resp)
+    return data["choices"][0]["message"]["content"]
+
+
+if __name__ == "__main__":
+    print(ask(" ".join(sys.argv[1:]) or "Explain Python decorators in 3 sentences."))
+</pre>
+<p>Compare it with the Scala version on <a href="10-scala-with-ai.html">page 10</a>. The request shape is identical. That
+is the value of a common API shape.</p>
+
+<h2>Everyday Python + AI wins</h2>
+<ul>
+  <li><b>Throwaway automation:</b> "Write a script that reads all <code>*.log</code> files, extracts ERROR lines with timestamps, and outputs a CSV summary per hour." Review it, run it, delete it.</li>
+  <li><b>Data exploration:</b> in a notebook, ask the assistant to load a CSV, profile it, and suggest data-quality checks.</li>
+  <li><b>Glue code:</b> converting formats (JSON &harr; YAML &harr; CSV), calling REST APIs, generating test fixtures.</li>
+  <li><b>Learning:</b> "I know Scala. Explain Python's iterators/generators by comparing them to Scala's <code>Iterator</code> and <code>LazyList</code>."</li>
+</ul>
+<table>
+  <thead><tr><th>Scala concept</th><th>Closest Python equivalent</th></tr></thead>
+  <tbody>
+    <tr><td><code>case class</code></td><td><code>@dataclass(frozen=True)</code>, or pydantic models</td></tr>
+    <tr><td><code>enum</code> / sealed trait ADT</td><td><code>enum.Enum</code>, or a union of dataclasses + <code>match</code></td></tr>
+    <tr><td><code>Option[A]</code></td><td><code>A | None</code> (checked by mypy)</td></tr>
+    <tr><td><code>Either[E, A]</code></td><td>Exceptions (idiomatic), or a Result type library</td></tr>
+    <tr><td>for-comprehension</td><td>list/generator comprehensions</td></tr>
+    <tr><td><code>LazyList</code> / <code>Iterator</code></td><td>generators (<code>yield</code>)</td></tr>
+    <tr><td>Type classes / <code>given</code></td><td>Protocols (<code>typing.Protocol</code>), <code>functools.singledispatch</code></td></tr>
+    <tr><td>Cats Effect <code>IO</code></td><td><code>asyncio</code> coroutines (different model)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><span class="c-title">Try it (25 min)</span>
+<ol>
+  <li>Create a project with <code>uv init</code>, add pytest/hypothesis/ruff/mypy.</li>
+  <li>Use the <code>parse_duration</code> prompt above with your IDE agent and tell it to run tests until they pass.</li>
+  <li>Run <code>ruff</code> and <code>mypy --strict</code>. How many issues did the AI leave? Ask it to fix them.</li>
+  <li>Run <code>ask_llm.py</code> against a local model (install Ollama) or a hosted one.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Python is the lingua franca of AI tooling, so it is worth knowing even if your main language is Scala.</li>
+  <li>uv + ruff + mypy + pytest/hypothesis give agents fast, automatic feedback.</li>
+  <li>State version, typing level and library versions. Watch for the classic Python and security mistakes.</li>
+  <li>Verify unfamiliar packages before installing. Hallucinated packages are an attack vector.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

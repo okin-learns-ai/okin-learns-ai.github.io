@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Scala Development with AI | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>10 &middot; Scala Development with AI</h1>
+<p class="lead">Scala and AI are a strong pair. The type system and compiler catch a large share of AI mistakes before
+they run. Scala also has quirks that trip models up. This page shows how to set up, prompt and verify for productive
+Scala work with AI.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">55 min</span><span class="pill">Tracks 5, 10, 16</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Set up IntelliJ IDEA or VS Code + Metals for AI-assisted Scala, including the Metals MCP server.</li>
+  <li>Write prompts that produce idiomatic Scala 3 for your stack.</li>
+  <li>Recognise the most common AI mistakes in Scala and Spark code.</li>
+  <li>Use type-driven development, MUnit and ScalaCheck as an AI safety net.</li>
+  <li>Call an LLM API from plain Scala with no extra libraries.</li>
+</ul></div>
+
+<h2>Why Scala + AI works well</h2>
+<div class="compare">
+  <div class="good"><h4>Strengths</h4>
+  <ul>
+    <li><b>The compiler is a free reviewer.</b> Wrong types, missing cases and bad implicits fail fast.</li>
+    <li><b>Types are dense context.</b> A signature like <code>IO[Either[Error, Order]]</code> tells the model a lot.</li>
+    <li><b>ADTs + exhaustive matching</b> force AI-written code to handle every case.</li>
+    <li><b>Immutability and pure functions</b> make AI changes easier to reason about and test.</li>
+  </ul></div>
+  <div class="bad"><h4>Challenges</h4>
+  <ul>
+    <li><b>Scala 2 vs Scala 3:</b> models often mix syntaxes (<code>implicit</code> vs <code>given</code>, braces vs indentation).</li>
+    <li><b>Ecosystem versions:</b> Cats Effect 2 vs 3, Akka vs Apache Pekko, sbt plugin APIs, Spark versions.</li>
+    <li><b>Less training data</b> than Python or Java, so niche libraries cause more hallucinations.</li>
+    <li><b>Slow compile cycles</b> make agent loops slower. Use incremental compilation and scoped test commands.</li>
+  </ul></div>
+</div>
+
+<h2>Setup</h2>
+<h3>Toolchain</h3>
+<pre data-lang="bash" data-title="Install the Scala toolchain with Coursier (official installer)">
+# macOS (Homebrew):  brew install coursier && coursier setup
+# Linux / Windows: see the "Install Scala" page on scala-lang.org for the one-line installer
+cs setup                 # installs JDK (if needed), scala, scala-cli, sbt, scalafmt
+scala --version
+scala-cli --version
+</pre>
+<table>
+  <thead><tr><th>Tool</th><th>Role with AI</th></tr></thead>
+  <tbody>
+    <tr><td><b>scala-cli</b> (the <code>scala</code> runner)</td><td>Perfect for AI experiments: single-file scripts with <code>//&gt; using</code> directives for Scala version and dependencies. Run AI-generated snippets in seconds.</td></tr>
+    <tr><td><b>sbt</b> / <b>Mill</b></td><td>Project builds. Put the exact commands in <code>AGENTS.md</code>. Prefer scoped commands (<code>module/testOnly</code>) so agent loops are fast.</td></tr>
+    <tr><td><b>scalafmt</b></td><td>Formats AI output consistently. Good candidate for a post-edit hook.</td></tr>
+    <tr><td><b>scalafix</b></td><td>Lint and automated refactor rules. Catches AI anti-patterns and runs Scala 2&rarr;3 migration rules.</td></tr>
+  </tbody>
+</table>
+
+<h3>IDE options</h3>
+<ul>
+  <li><b>IntelliJ IDEA + Scala plugin</b>: deep Scala support, refactorings, inspections. AI through JetBrains AI Assistant/Junie or plugins like Copilot. See <a href="06-ai-in-the-ide.html">page 06</a>.</li>
+  <li><b>VS Code + Metals</b>: lightweight, with the biggest selection of AI extensions and agent harnesses.</li>
+</ul>
+
+<h3>Metals MCP: let agents ask the compiler</h3>
+<p>Metals can run an <b>MCP server</b> that exposes Scala-aware tools to any MCP-capable agent. Typical tools cover
+compiling a file/module/project, inspecting a symbol (members, signatures), getting docs, finding usages, running tests,
+importing builds, formatting and searching symbols. Instead of guessing what <code>OrderRepo</code> offers, the agent asks Metals.</p>
+<ol class="steps">
+  <li>Use a recent Metals version (VS Code extension, or another Metals client).</li>
+  <li>Enable the MCP server in settings, e.g. <code>"metals.startMcpServer": true</code>.</li>
+  <li>Metals writes an MCP config for supported editors, or shows the local URL. Register it with your agent if needed.</li>
+  <li>For CLI agents without an editor, use the standalone <code>metals-mcp</code> launcher (installable via Coursier) pointed at your workspace.</li>
+  <li>Add a line to <code>AGENTS.md</code>: "Use the Metals MCP tools to compile and inspect symbols before guessing APIs."</li>
+</ol>
+<div class="callout note"><span class="c-title">Check current docs</span>
+Metals MCP is evolving quickly: tool names, settings and the standalone launcher change between releases. Check the
+Metals documentation and release notes for your version.</div>
+
+<h2>Prompting for idiomatic Scala</h2>
+<h3>Always state these four things</h3>
+<ol>
+  <li><b>Scala version and syntax:</b> "Scala 3.x, significant indentation, <code>given</code>/<code>using</code>". Or "Scala 2.13".</li>
+  <li><b>Effect/concurrency model:</b> plain/<code>Future</code>, Cats Effect 3, ZIO 2, or Kyo/Ox/direct style.</li>
+  <li><b>Libraries and versions:</b> http4s, Tapir, Circe, Doobie, Skunk, Pekko, Spark 3.x, etc.</li>
+  <li><b>Build tool:</b> sbt, Mill, scala-cli, Gradle.</li>
+</ol>
+<p>Put these in <code>AGENTS.md</code> once, and they apply to every prompt.</p>
+
+<h3>Type-driven development with AI</h3>
+<p>Types first, then implementation. This plays to Scala's strengths and gives the AI a precise spec.</p>
+<pre data-lang="text" data-title="Prompt">
+Scala 3. Design only the types (no implementations yet) for a payment domain:
+- A Payment can be Pending, Authorized(authCode), Captured(amount), or Failed(reason).
+- Money must not be negative and has a currency.
+- IDs must not be confused with each other.
+Use enums, opaque types and smart constructors returning Either. Show the code and explain each choice.
+</pre>
+<pre data-lang="scala" data-title="A typical good result">
+//> using scala 3
+import java.util.Currency
+
+opaque type PaymentId = String
+object PaymentId:
+  def apply(s: String): Either[String, PaymentId] =
+    Either.cond(s.nonEmpty, s, "PaymentId must not be empty")
+
+final case class Money private (amount: BigDecimal, currency: Currency)
+object Money:
+  def of(amount: BigDecimal, currency: Currency): Either[String, Money] =
+    Either.cond(amount >= 0, Money(amount, currency), s"Negative amount: $amount")
+
+enum FailureReason:
+  case Declined, InsufficientFunds, Timeout
+
+enum Payment:
+  case Pending(id: PaymentId)
+  case Authorized(id: PaymentId, authCode: String)
+  case Captured(id: PaymentId, amount: Money)
+  case Failed(id: PaymentId, reason: FailureReason)
+
+def describe(p: Payment): String = p match
+  case Payment.Pending(id)        => s"$id pending"
+  case Payment.Authorized(id, c)  => s"$id authorized ($c)"
+  case Payment.Captured(id, m)    => s"$id captured ${m.amount} ${m.currency}"
+  case Payment.Failed(id, r)      => s"$id failed: $r"
+  // the compiler warns if a case is missing - a great check on AI edits
+</pre>
+<p>Follow up with: "Now implement <code>capture(p: Payment, amount: Money): Either[PaymentError, Payment]</code> with all
+invalid transitions returning errors, and write MUnit tests for every transition."</p>
+
+<h3>Translating Python to Scala (and back)</h3>
+<pre data-lang="text" data-title="Prompt">
+Translate this Python to idiomatic Scala 3 (not a line-by-line port). Use immutable collections,
+Option instead of None checks, and pattern matching where clearer. Then list the semantic
+differences I should watch for (integer division, mutability, exceptions vs Either).
+```python
+&lt;paste python>
+```
+</pre>
+
+<h2>Common AI mistakes in Scala (watch list)</h2>
+<table>
+  <thead><tr><th>Mistake</th><th>Example</th><th>Ask for instead</th></tr></thead>
+  <tbody>
+    <tr><td>Mixed Scala 2/3 syntax</td><td><code>implicit val</code> next to <code>given</code>; <code>import x._</code> vs <code>import x.*</code></td><td>"Scala 3 only, no Scala 2 implicits"</td></tr>
+    <tr><td>Unsafe Option/collection access</td><td><code>opt.get</code>, <code>list.head</code>, <code>map(key)</code></td><td><code>fold</code>, <code>getOrElse</code>, <code>headOption</code>, <code>get(key)</code></td></tr>
+    <tr><td>Exceptions for control flow</td><td><code>throw new IllegalArgumentException</code> in domain code</td><td><code>Either</code> / typed errors</td></tr>
+    <tr><td>Blocking inside effects</td><td><code>Thread.sleep</code> or JDBC calls inside <code>IO</code> without <code>blocking</code></td><td><code>IO.sleep</code>, <code>IO.blocking</code>, <code>ZIO.attemptBlocking</code></td></tr>
+    <tr><td>Old library APIs</td><td>Cats Effect 2 <code>ContextShift</code>; Akka imports where you use Pekko</td><td>State versions, paste docs, compile</td></tr>
+    <tr><td>Inefficient collections</td><td><code>list :+ x</code> in a loop; repeated <code>.length</code> on List</td><td><code>Vector</code>, builders, <code>foldLeft</code></td></tr>
+    <tr><td>Non-exhaustive matches</td><td>Missing enum case, <code>case _ =&gt;</code> swallowing new cases</td><td>Avoid wildcard on sealed types</td></tr>
+    <tr><td><code>var</code>, <code>null</code>, <code>return</code></td><td>Java-style imperative code</td><td>"Immutable, expression-oriented, no null"</td></tr>
+    <tr><td>Invented implicits/instances</td><td>Calls a <code>given Codec</code> that doesn't exist</td><td>Compile; use <code>derives</code> clauses explicitly</td></tr>
+  </tbody>
+</table>
+
+<h3>Spark-specific watch list</h3>
+<ul>
+  <li><code>.collect()</code> on large DataFrames: it pulls everything to the driver. Ask for aggregations or <code>.limit</code>.</li>
+  <li>UDFs where built-in functions exist: they are slower and opaque to the optimiser. Ask "use <code>org.apache.spark.sql.functions</code> only".</li>
+  <li>Wrong Spark/Scala version combination: Spark 3.x builds target Scala 2.12/2.13, while Spark 4 targets Scala 2.13. State your cluster's versions.</li>
+  <li>Join explosions and skew: ask the AI to explain the physical plan (<code>df.explain("formatted")</code>). It is very good at reading plans.</li>
+  <li>Non-deterministic logic in transformations, and actions inside loops.</li>
+</ul>
+
+<h2>Tests as the AI safety net</h2>
+<h3>MUnit</h3>
+<pre data-lang="scala" data-title="Payment.test.scala  (run: scala-cli test .)">
+//> using scala 3
+//> using test.dep org.scalameta::munit::1.0.0
+import java.util.Currency
+
+class PaymentSuite extends munit.FunSuite:
+  val eur = Currency.getInstance("EUR")
+
+  test("Money rejects negative amounts"):
+    assert(Money.of(-1, eur).isLeft)
+
+  test("Money accepts zero"):
+    assertEquals(Money.of(0, eur).map(_.amount), Right(BigDecimal(0)))
+
+  test("describe covers every Payment state"):
+    val id = PaymentId("p1").toOption.get // fine in tests
+    val all = List(
+      Payment.Pending(id),
+      Payment.Authorized(id, "A1"),
+      Payment.Captured(id, Money.of(10, eur).toOption.get),
+      Payment.Failed(id, FailureReason.Timeout)
+    )
+    all.foreach(p => assert(describe(p).startsWith("p1")))
+</pre>
+<h3>Property-based tests (ScalaCheck)</h3>
+<p>Ask the AI for <em>properties</em> instead of examples. Properties catch the edge cases neither of you thought of.</p>
+<pre data-lang="text" data-title="Prompt">
+Write ScalaCheck properties (via munit-scalacheck) for my `normalizeEmail(s: String): Option[String]`:
+idempotence, output is lowercase, never contains spaces, and Some(x) implies x contains exactly one '@'.
+</pre>
+<div class="callout warn"><span class="c-title">Review AI-written tests extra carefully</span>
+A test that asserts whatever the code currently does is worthless. Check that each test would <b>fail</b> if the behaviour
+were wrong. A good trick: ask the AI to introduce a deliberate bug and confirm the tests catch it (a mini mutation test).</div>
+
+<h2>Your first LLM call from Scala</h2>
+<p>No SDK needed. Most providers and local runners accept an <b>OpenAI-compatible</b> chat endpoint. This example uses only the
+JDK's HTTP client and works against a local Ollama server, so there is no API key and no cost. Level 2 covers proper JSON
+libraries, streaming and tool calling.</p>
+<pre data-lang="scala" data-title="AskLlm.scala  (run: scala-cli AskLlm.scala)">
+//> using scala 3
+//> using jvm 21
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+
+// Local Ollama (https://ollama.com): `ollama pull llama3.2` then `ollama serve`
+val endpoint = "http://localhost:11434/v1/chat/completions"
+val model    = "llama3.2"
+
+def jsonString(s: String): String =
+  "\"" + s.flatMap {
+    case '"'  => "\\\""
+    case '\\' => "\\\\"
+    case '\n' => "\\n"
+    case c    => c.toString
+  } + "\""
+
+@main def askLlm(question: String): Unit =
+  val body =
+    s"""{"model": ${jsonString(model)}, "temperature": 0.2,
+       | "messages": [
+       |   {"role": "system", "content": "You are a concise Scala 3 expert."},
+       |   {"role": "user",   "content": ${jsonString(question)}}
+       | ]}""".stripMargin
+
+  val request = HttpRequest.newBuilder(URI.create(endpoint))
+    .header("Content-Type", "application/json")
+    // .header("Authorization", s"Bearer ${sys.env("API_KEY")}")  // for hosted providers
+    .POST(HttpRequest.BodyPublishers.ofString(body))
+    .build()
+
+  val response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
+  println(s"HTTP ${response.statusCode()}")
+  println(response.body())  // JSON: look for choices[0].message.content
+</pre>
+<pre data-lang="bash">scala-cli AskLlm.scala -- "Explain opaque types in 3 sentences"</pre>
+<div class="callout danger"><span class="c-title">API keys</span>
+Read keys from environment variables or a secret manager. Never hard-code them, and never commit them. See page 14.</div>
+
+<h2>Learning Scala faster with AI</h2>
+<ul>
+  <li><b>Explain the compiler error:</b> paste the full error. Scala 3 errors are good, but AI can explain type-inference failures in plain words.</li>
+  <li><b>"Show me three ways":</b> recursion vs <code>foldLeft</code> vs collection combinators. Then ask which is most idiomatic and why.</li>
+  <li><b>Desugar it:</b> "Show what this for-comprehension desugars to" (<code>flatMap</code>/<code>map</code>/<code>withFilter</code>).</li>
+  <li><b>Type-class tutor:</b> "Explain <code>Functor</code>, <code>Applicative</code>, <code>Monad</code> using Option, List and IO, with tiny examples I can run in scala-cli."</li>
+  <li><b>Code kata partner:</b> "Give me an exercise on pattern matching, wait for my solution, then review it."</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (30 min)</span>
+<ol>
+  <li>Install scala-cli and run <code>ToyBigram.scala</code> from page 02.</li>
+  <li>Use the type-driven prompt above for a domain you know (e.g. library loans). Compile the types.</li>
+  <li>Ask for the implementation and MUnit tests. Run them. Then ask the AI to plant a bug and check the tests catch it.</li>
+  <li>If you use VS Code, enable Metals MCP and ask the agent to "inspect" one of your types through the tool.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Scala's types and compiler make AI output safer. Keep the compiler in the loop.</li>
+  <li>Always specify <b>Scala version, effect system, libraries and build tool</b>, ideally in <code>AGENTS.md</code>.</li>
+  <li>Watch for Scala 2/3 mix-ups, unsafe <code>.get</code>, exceptions, blocking in IO, old APIs and Spark anti-patterns.</li>
+  <li>Use types first, then implementation, then tests (MUnit + ScalaCheck).</li>
+  <li>Metals MCP lets agents query the real compiler instead of guessing.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

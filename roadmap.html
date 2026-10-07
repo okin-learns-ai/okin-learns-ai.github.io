@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Curriculum Roadmap (L1→L5) | AI Mastery</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="">
+<article class="content" id="content">
+
+<h1>Curriculum Roadmap: Beginner to Expert</h1>
+<p class="lead">The full map: 5 levels &times; 20 tracks, plus specialist electives. Use it to see where you are, what comes
+next, and what "expert" actually means in each area.</p>
+<div class="meta-row"><span class="pill level">All levels</span><span class="pill time">15 min</span><span class="pill">Last updated 2026-10-08</span></div>
+
+<h2>How the curriculum is designed</h2>
+<p>Expertise in AI is not one skill. It is a stack of skills, from using tools well, to building with models, to
+understanding what happens inside them. The curriculum is organised in two dimensions:</p>
+<ul>
+  <li><b>Levels (vertical):</b> how deep you go. Every level has the same structure: concepts, practice, labs, checkpoint.</li>
+  <li><b>Tracks (horizontal):</b> the subject area. Each track runs through all five levels, so you can see how a topic
+  grows from "what is it" to "I can design and teach this".</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 250" width="760" role="img" aria-label="Five levels as rising steps">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="10"  y="190" width="140" height="50" rx="8"/><text class="d-title" x="80" y="212" text-anchor="middle">L1 Foundations</text><text class="d-small" x="80" y="229" text-anchor="middle">Understand &amp; use</text>
+  <rect class="d-box3" x="160" y="150" width="140" height="90" rx="8"/><text class="d-title" x="230" y="172" text-anchor="middle">L2 Practitioner</text><text class="d-small" x="230" y="189" text-anchor="middle">Use daily, call APIs</text>
+  <rect class="d-box4" x="310" y="110" width="140" height="130" rx="8"/><text class="d-title" x="380" y="132" text-anchor="middle">L3 Advanced</text><text class="d-small" x="380" y="149" text-anchor="middle">Build systems</text>
+  <rect class="d-box2" x="460" y="70"  width="140" height="170" rx="8"/><text class="d-title" x="530" y="92" text-anchor="middle">L4 Expert</text><text class="d-small" x="530" y="109" text-anchor="middle">Internals &amp; architecture</text>
+  <rect class="d-box3" x="610" y="30"  width="140" height="210" rx="8"/><text class="d-title" x="680" y="52" text-anchor="middle">L5 Master</text><text class="d-small" x="680" y="69" text-anchor="middle">Research &amp; leadership</text>
+  <path class="d-dash" d="M40 175 C 200 150, 450 60, 700 15" marker-end="url(#ar)"/>
+</svg>
+<figcaption>Each level is broader and deeper than the one before. Nothing in a higher level assumes knowledge you have not met yet.</figcaption>
+</figure>
+
+<h3>What each level means</h3>
+<table>
+  <thead><tr><th>Level</th><th>You can&hellip;</th><th>Typical time</th><th>Proof of skill</th></tr></thead>
+  <tbody>
+    <tr><td><b>L1 Foundations</b></td><td>Explain core AI concepts in plain words. Prompt well. Use chat, inline and agent modes in your IDE. Write an <code>AGENTS.md</code>. Connect an MCP server. Spot hallucinations.</td><td>15&ndash;25 h</td><td>Labs + checkpoint quiz &ge; 80%</td></tr>
+    <tr><td><b>L2 Practitioner</b></td><td>Use AI as a daily multiplier. Call LLM APIs from Scala/Python with structured output. Build a simple RAG. Write skills and custom agents. Use AI for tests, reviews and refactors safely.</td><td>40&ndash;60 h</td><td>Ship a small AI-powered tool used by someone else</td></tr>
+    <tr><td><b>L3 Advanced</b></td><td>Build agents and MCP servers from scratch. Design evals. Fine-tune small models. Deploy, monitor and cost-optimise LLM features. Defend against prompt injection.</td><td>80&ndash;120 h</td><td>A production-grade agent or MCP server with evals and guardrails</td></tr>
+    <tr><td><b>L4 Expert</b></td><td>Explain and implement transformer internals. Understand pre-training, post-training and inference optimisation. Choose architectures and make trade-offs at system level.</td><td>120&ndash;200 h</td><td>Implement a mini-GPT, serve and benchmark it, write a design doc</td></tr>
+    <tr><td><b>L5 Master</b></td><td>Read and reproduce papers. Work on interpretability/alignment, multimodal and on-device AI. Lead AI strategy and adoption, mentor others.</td><td>Ongoing</td><td>Publish, teach, or lead an AI initiative</td></tr>
+  </tbody>
+</table>
+
+<h2>The 20 tracks across 5 levels</h2>
+<p>Read a row left to right to see how a topic grows. Read a column top to bottom to see everything in one level.</p>
+<table>
+  <thead><tr><th>Track</th><th>L1 Foundations</th><th>L2 Practitioner</th><th>L3 Advanced</th><th>L4 Expert</th><th>L5 Master</th></tr></thead>
+  <tbody>
+    <tr><td><b>1. AI &amp; ML foundations</b></td><td>AI vs ML vs DL vs GenAI; learning types; history</td><td>Classical ML (regression, trees, clustering); metrics; overfitting</td><td>Neural nets, backprop, optimisers; PyTorch basics</td><td>Linear algebra, probability, information theory for ML</td><td>Learning theory, scaling laws, open problems</td></tr>
+    <tr><td><b>2. LLMs &amp; internals</b></td><td>Tokens, embeddings, attention (intuition), training vs inference</td><td>Model families, sizes, open vs closed, benchmarks, pricing</td><td>Architectures: decoder-only, MoE, long-context, SSMs</td><td>Implement a transformer; KV cache; positional encodings</td><td>Interpretability, emergent behaviour, frontier research</td></tr>
+    <tr><td><b>3. Prompt engineering</b></td><td>Prompt anatomy; zero/few-shot; roles; iteration</td><td>Structured output (JSON/schemas); chaining; templates</td><td>Prompt optimisation; DSPy-style programmatic prompting</td><td>Prompting reasoning models; meta-prompting at scale</td><td>Prompt research; automatic prompt discovery</td></tr>
+    <tr><td><b>4. Context engineering &amp; memory</b></td><td>Context window; what to include; @-mentions; rules files</td><td>Context budgeting; summarisation; long docs</td><td>Memory architectures; compaction; context isolation in multi-agent</td><td>Long-context internals; retrieval vs context trade-offs</td><td>Novel memory systems</td></tr>
+    <tr><td><b>5. AI-assisted coding (IDE)</b></td><td>Completion, chat, inline edit, agent mode in VS Code / IntelliJ / Xcode</td><td>Agentic workflows: plan-act-verify; TDD with AI; refactors; reviews</td><td>Background/cloud agents; parallel agents; CI integration</td><td>Designing AI-native dev platforms; measuring impact</td><td>Building coding agents and dev tools</td></tr>
+    <tr><td><b>6. Customisation</b></td><td>AGENTS.md, instructions, rules, prompt files, skills (concepts)</td><td>Authoring skills &amp; custom agents; hooks; team conventions</td><td>Plugin packaging; skill libraries; governance of shared configs</td><td>Org-wide AI platform configuration</td><td>Contributing to open standards</td></tr>
+    <tr><td><b>7. Agents &amp; agentic systems</b></td><td>Agent loop; tools; autonomy levels; supervision</td><td>Using agents for multi-step tasks; subagents; planning modes</td><td>Build agents from scratch; multi-agent patterns; frameworks</td><td>Reliability engineering for agents; long-horizon tasks</td><td>Agent research; self-improving systems</td></tr>
+    <tr><td><b>8. MCP &amp; tool integration</b></td><td>What MCP is; hosts/clients/servers; tools/resources/prompts</td><td>Configuring MCP servers; function calling; choosing servers safely</td><td>Build MCP servers (Python, JVM/Scala); auth; transports; ACP/A2A</td><td>Designing tool ecosystems; gateways; enterprise MCP</td><td>Protocol design &amp; contribution</td></tr>
+    <tr><td><b>9. RAG &amp; knowledge</b></td><td>What RAG is and why</td><td>Embeddings; chunking; vector DBs; a first RAG</td><td>Hybrid search; re-ranking; GraphRAG; agentic RAG; RAG evals</td><td>Retrieval at scale; latency/quality trade-offs</td><td>New retrieval paradigms</td></tr>
+    <tr><td><b>10. Building with LLM APIs</b></td><td>First API call (Python &amp; Scala)</td><td>Streaming, tool calling, structured output, retries, cost</td><td>Production patterns: caching, routing, fallbacks, batching</td><td>Gateway/platform design; multi-provider abstraction</td><td>&mdash;</td></tr>
+    <tr><td><b>11. Model customisation</b></td><td>Pre-training vs fine-tuning (concept)</td><td>When to fine-tune vs prompt vs RAG</td><td>LoRA/QLoRA; datasets; distillation; quantisation</td><td>SFT, RLHF, DPO, RL from verifiable rewards</td><td>Training frontier-style models</td></tr>
+    <tr><td><b>12. Evaluation &amp; quality</b></td><td>Verifying outputs; why "it looked right" is not enough</td><td>Golden sets; manual evals; regression prompts</td><td>LLM-as-judge; eval pipelines; A/B; agent evals</td><td>Benchmark design; contamination; statistics</td><td>Eval science research</td></tr>
+    <tr><td><b>13. LLMOps &amp; deployment</b></td><td>Cloud vs local models; cost basics</td><td>Local models (Ollama, LM Studio, MLX); tokens &amp; cost tracking</td><td>Observability, tracing, guardrails, rate limits, SLAs</td><td>Inference serving (batching, speculative decoding, vLLM-style)</td><td>Hardware, accelerators, efficiency research</td></tr>
+    <tr><td><b>14. AI security</b></td><td>Secrets, data leakage, prompt injection (intro)</td><td>Safe tool permissions; sandboxing; supply chain of AI tools</td><td>Threat modelling LLM apps; OWASP LLM Top 10; red-teaming</td><td>Secure agent architectures; model supply chain</td><td>Adversarial ML research</td></tr>
+    <tr><td><b>15. Responsible AI &amp; governance</b></td><td>Bias, privacy, IP, honesty, over-reliance</td><td>Company policies; licences; attribution</td><td>Risk assessments; documentation (model cards)</td><td>Regulation (e.g. EU AI Act) and compliance design</td><td>Policy, standards, alignment</td></tr>
+    <tr><td><b>16. Data &amp; analytics with AI</b></td><td>AI for SQL, spreadsheets, quick analysis</td><td>AI for Spark (Scala/PySpark), pipelines, data quality</td><td>LLMs in data pipelines; text-to-SQL; semantic layers</td><td>Data for training: curation, synthetic data</td><td>&mdash;</td></tr>
+    <tr><td><b>17. AI across IT</b></td><td>DevOps, QA, SRE, security, docs, PM: overview</td><td>AI in CI/CD; AI-written tests; incident analysis</td><td>AIOps; automated remediation agents with guardrails</td><td>Org-wide AI operating model</td><td>&mdash;</td></tr>
+    <tr><td><b>18. Multimodal &amp; on-device</b></td><td>Images, audio, video models (overview)</td><td>Vision in dev work (screenshots, diagrams, UI)</td><td>Speech pipelines; on-device with Core ML / MLX</td><td>Multimodal architectures; diffusion models</td><td>On-device research; world models</td></tr>
+    <tr><td><b>19. Learning &amp; career with AI</b></td><td>AI as tutor; learning techniques; daily habits</td><td>Personal knowledge systems; deliberate practice with AI</td><td>Teaching others; building a portfolio</td><td>Becoming the go-to expert</td><td>Mentoring, writing, speaking</td></tr>
+    <tr><td><b>20. Product, research &amp; leadership</b></td><td>What AI is good and bad at</td><td>Spotting good AI use-cases; UX of AI features</td><td>AI product design; human-in-the-loop design</td><td>Strategy, build vs buy, ROI measurement</td><td>Research reading/reproduction; leading AI teams</td></tr>
+  </tbody>
+</table>
+
+<h2 id="l1">Level 1: Foundations (Phase 1, available)</h2>
+<p><b>Goal:</b> understand the vocabulary and mental models, and use AI tools productively and safely in daily development work.</p>
+<ol>
+  <li><a href="l1/01-what-is-ai.html">What Is AI? The Big Picture</a></li>
+  <li><a href="l1/02-how-llms-work.html">How LLMs Actually Work</a></li>
+  <li><a href="l1/03-prompting-fundamentals.html">Prompting Fundamentals</a></li>
+  <li><a href="l1/04-context-engineering.html">Context Engineering Basics</a></li>
+  <li><a href="l1/05-ai-tools-landscape.html">The AI Tools Landscape</a></li>
+  <li><a href="l1/06-ai-in-the-ide.html">AI in the IDE: VS Code, IntelliJ, Xcode</a></li>
+  <li><a href="l1/07-instructions-skills-agents.html">Instructions, Rules, Skills &amp; Custom Agents</a></li>
+  <li><a href="l1/08-agents-101.html">AI Agents 101</a></li>
+  <li><a href="l1/09-mcp-101.html">MCP 101</a></li>
+  <li><a href="l1/10-scala-with-ai.html">Scala Development with AI</a></li>
+  <li><a href="l1/11-python-with-ai.html">Python Development with AI</a></li>
+  <li><a href="l1/12-ai-across-it.html">AI Across IT</a></li>
+  <li><a href="l1/13-learn-faster-with-ai.html">Learn Anything Faster with AI</a></li>
+  <li><a href="l1/14-safety-privacy-ethics.html">Safety, Privacy, Ethics &amp; Verification</a></li>
+  <li><a href="l1/15-labs.html">Hands-on Labs</a></li>
+  <li><a href="l1/16-checkpoint.html">Checkpoint Quiz</a></li>
+</ol>
+
+<h2 id="l2">Level 2: Practitioner (Phase 2, planned)</h2>
+<p><b>Goal:</b> AI becomes a reliable daily multiplier, and you can build small AI-powered tools yourself.</p>
+<ul>
+  <li><b>Advanced prompt patterns:</b> structured output with JSON Schema, decomposition, self-critique, prompt chaining, prompt libraries.</li>
+  <li><b>Calling LLM APIs from Scala and Python:</b> HTTP basics, SDKs, streaming, tool/function calling, retries, timeouts, token accounting.</li>
+  <li><b>Embeddings and semantic search:</b> vector similarity, cosine distance, building a code-search tool for your repo.</li>
+  <li><b>RAG v1:</b> chunking strategies, vector stores, citations, "answer only from sources".</li>
+  <li><b>Agentic coding in depth:</b> plan mode, spec-driven development, TDD with agents, large refactors, migration projects.</li>
+  <li><b>Writing great skills and custom agents:</b> descriptions that trigger, progressive disclosure, scripts, team sharing.</li>
+  <li><b>Using and configuring MCP servers:</b> stdio vs HTTP, auth, choosing trustworthy servers, Metals MCP for Scala, Xcode MCP.</li>
+  <li><b>AI-assisted testing and code review:</b> property-based tests (ScalaCheck/Hypothesis), mutation testing, review checklists.</li>
+  <li><b>Local models:</b> Ollama, LM Studio, MLX on Apple silicon; quantisation formats; when local beats cloud.</li>
+  <li><b>AI for data engineering:</b> Spark with Scala, SQL generation and validation, data-quality checks.</li>
+  <li><b>Labs + capstone:</b> "Repo assistant": a CLI that answers questions about a codebase using RAG.</li>
+</ul>
+
+<h2 id="l3">Level 3: Advanced (Phase 3, planned)</h2>
+<p><b>Goal:</b> design and build robust AI systems: agents, tool servers, evaluation, deployment and security.</p>
+<ul>
+  <li><b>Building MCP servers</b> in Python (official SDK) and on the JVM (Java SDK used from Scala): tools, resources, prompts, auth, testing with an inspector.</li>
+  <li><b>Building agents from scratch:</b> the loop, tool schemas, state, memory, error recovery, stopping conditions. Then frameworks and when to avoid them.</li>
+  <li><b>Multi-agent systems:</b> orchestrator-worker, planner-executor, critics, handoffs, agent-to-agent protocols (A2A, ACP).</li>
+  <li><b>Evals:</b> golden datasets, rubric grading, LLM-as-judge pitfalls, agent trajectory evaluation, regression suites in CI.</li>
+  <li><b>Advanced RAG:</b> hybrid BM25 + vector, re-rankers, query rewriting, GraphRAG, agentic retrieval.</li>
+  <li><b>Fine-tuning:</b> LoRA/QLoRA, dataset building, overfitting, distillation, quantisation, evaluation before/after.</li>
+  <li><b>LLMOps:</b> tracing, observability, caching, model routing, cost dashboards, guardrails, rate limiting.</li>
+  <li><b>AI security:</b> prompt injection (direct/indirect), data exfiltration, tool poisoning, sandboxing, OWASP Top 10 for LLM apps, red-teaming.</li>
+  <li><b>Capstone:</b> an agent with a custom MCP server, an eval suite and a security review.</li>
+</ul>
+
+<h2 id="l4">Level 4: Expert (Phase 4, planned)</h2>
+<p><b>Goal:</b> understand the machinery: how models are built, trained and served, and make architecture-level decisions.</p>
+<ul>
+  <li><b>The maths you actually need:</b> vectors, matrices, gradients, softmax, cross-entropy, probability. Every concept comes with code.</li>
+  <li><b>Transformer internals:</b> implement attention, multi-head attention, layer norm, residuals and positional encodings in PyTorch; train a tiny GPT.</li>
+  <li><b>Training and post-training:</b> pre-training data, tokenizer training, SFT, RLHF, DPO, RL with verifiable rewards, constitutional approaches.</li>
+  <li><b>Inference optimisation:</b> KV cache, batching, paged attention, speculative decoding, quantisation, distillation, serving engines.</li>
+  <li><b>Reasoning models and test-time compute:</b> chain-of-thought, search, verifiers, when "thinking" helps.</li>
+  <li><b>Architecture:</b> AI-native product design, build vs buy, platform teams, reliability, cost models.</li>
+  <li><b>Governance:</b> regulation, audits, model risk management, documentation.</li>
+  <li><b>Capstone:</b> mini-GPT trained, quantised, served and benchmarked, plus a written design document.</li>
+</ul>
+
+<h2 id="l5">Level 5: Master &amp; Specialist (Phase 5, planned)</h2>
+<p><b>Goal:</b> push the frontier in a chosen speciality and multiply others.</p>
+<ul>
+  <li><b>Research skills:</b> how to read a paper in three passes, reproduce results, run ablations, write up findings.</li>
+  <li><b>Interpretability and alignment:</b> probing, sparse autoencoders, circuits, reward hacking, scalable oversight.</li>
+  <li><b>On-device AI:</b> Apple silicon, Core ML, MLX, on-device foundation models, privacy-preserving design.</li>
+  <li><b>Multimodal:</b> vision-language models, speech (ASR/TTS), diffusion, video, robotics foundation models.</li>
+  <li><b>Leadership:</b> AI adoption playbooks, measuring productivity honestly, training teams, policy writing.</li>
+  <li><b>Capstones:</b> choose a speciality project and publish it (blog, talk, open-source, paper).</li>
+</ul>
+
+<h2>Specialist electives (niche but valuable)</h2>
+<p>These go deep on narrow topics. Pick them up whenever you meet them at work.</p>
+<div class="cards">
+  <div class="card"><h4>Functional programming &amp; AI</h4><p>Typed effect systems (Cats Effect, ZIO) for agent orchestration; why strong types make AI code safer.</p></div>
+  <div class="card"><h4>Text-to-SQL &amp; semantic layers</h4><p>Getting correct SQL from natural language. Schema grounding and validation.</p></div>
+  <div class="card"><h4>Code search &amp; code intelligence</h4><p>LSP, symbol graphs, tree-sitter, embeddings for code. How IDE agents "see" your repo.</p></div>
+  <div class="card"><h4>Synthetic data</h4><p>Generating test data, eval sets and training data, and how to avoid model collapse.</p></div>
+  <div class="card"><h4>Structured generation</h4><p>Constrained decoding, grammars, JSON-mode internals.</p></div>
+  <div class="card"><h4>AI for legacy modernisation</h4><p>Migrating Java to Scala 3, Scala 2 to 3, monolith to services, with agents and tests as a safety net.</p></div>
+  <div class="card"><h4>Accessibility &amp; AI</h4><p>Using AI to build accessible UIs, and AI as an assistive technology.</p></div>
+  <div class="card"><h4>Edge &amp; embedded AI</h4><p>TinyML, quantised models on devices, latency budgets.</p></div>
+  <div class="card"><h4>AI for documentation</h4><p>Docs-as-code, keeping docs in sync with code, generating diagrams.</p></div>
+  <div class="card"><h4>Recommender systems</h4><p>Classic and LLM-era recommendation, ranking, embeddings at scale.</p></div>
+  <div class="card"><h4>Time-series &amp; forecasting</h4><p>Classical methods, foundation models for time series.</p></div>
+  <div class="card"><h4>AI economics</h4><p>Token pricing, cost per task, latency vs quality vs cost trade-offs.</p></div>
+</div>
+
+<h2>Suggested study plans</h2>
+<table>
+  <thead><tr><th>Plan</th><th>Time per week</th><th>Route</th></tr></thead>
+  <tbody>
+    <tr><td><b>Steady</b></td><td>3&ndash;4 h</td><td>One L1 page every 2&ndash;3 days, labs at the weekend. L1 done in about 6 weeks.</td></tr>
+    <tr><td><b>Focused</b></td><td>8&ndash;10 h</td><td>L1 in 2&ndash;3 weeks, L2 in about 6 weeks. Start using agents at work from week 1.</td></tr>
+    <tr><td><b>Daily developer</b></td><td>30 min/day + real work</td><td>Read a page in the morning and apply it to that day's ticket. Keep a learning log (see page 13).</td></tr>
+  </tbody>
+</table>
+
+</article>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/search-index.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

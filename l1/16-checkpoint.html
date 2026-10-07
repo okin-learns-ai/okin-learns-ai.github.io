@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 1 Checkpoint Quiz | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>16 &middot; Level 1 Checkpoint Quiz</h1>
+<p class="lead">25 questions covering all of Level 1. Answer each one, read the explanation, and aim for 80% (20/25) or
+more before starting Level 2. Reload the page to retry.</p>
+<div class="meta-row"><span class="pill level">Level 1</span><span class="pill time">25 min</span></div>
+
+<div class="quiz-score" id="quiz-score"></div>
+
+<h2>Foundations (pages 01&ndash;02)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">1. Which statement about the relationship between terms is correct?</div>
+<label><input type="radio" value="a">Machine learning is a subset of LLMs</label>
+<label><input type="radio" value="b">Deep learning and AI are the same thing</label>
+<label><input type="radio" value="c">LLMs are a kind of generative AI built with deep learning</label>
+<label><input type="radio" value="d">Generative AI does not use machine learning</label>
+<div class="explain">AI &sup; ML &sup; DL &sup; GenAI &sup; LLMs. See <a href="01-what-is-ai.html">page 01</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">2. How are LLMs primarily pre-trained?</div>
+<label><input type="radio" value="a">Humans label every sentence as correct or incorrect</label>
+<label><input type="radio" value="b">Self-supervised: predicting the next token on huge amounts of text</label>
+<label><input type="radio" value="c">By reinforcement learning from game playing</label>
+<label><input type="radio" value="d">By querying a database of facts</label>
+<div class="explain">Self-supervised next-token prediction allows training on trillions of tokens without manual labels. Post-training (SFT, preference/RL) comes after.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">3. Roughly how many English words fit in 1,000 tokens?</div>
+<label><input type="radio" value="a">100</label>
+<label><input type="radio" value="b">250</label>
+<label><input type="radio" value="c">4,000</label>
+<label><input type="radio" value="d">750</label>
+<div class="explain">Rule of thumb: 1 token &asymp; 4 characters &asymp; &frac34; of a word in English. Code often uses more tokens.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">4. You want deterministic-ish, focused output for code generation. Which setting?</div>
+<label><input type="radio" value="a">Low temperature (e.g. 0&ndash;0.3)</label>
+<label><input type="radio" value="b">High temperature (e.g. 1.5)</label>
+<label><input type="radio" value="c">Larger context window</label>
+<label><input type="radio" value="d">More stop sequences</label>
+<div class="explain">Low temperature makes the model pick high-probability tokens. Even at 0, outputs may vary slightly, so always validate.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">5. Why do LLMs hallucinate?</div>
+<label><input type="radio" value="a">They are programmed to lie</label>
+<label><input type="radio" value="b">Their database is corrupted</label>
+<label><input type="radio" value="c">They generate plausible continuations, not verified facts</label>
+<label><input type="radio" value="d">Only small models hallucinate</label>
+<div class="explain">Plausible text is not necessarily true text. Ground with docs and tools, and verify.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">6. Your chat assistant "remembers" your preference for Scala 3 in a new chat. What is most likely happening?</div>
+<label><input type="radio" value="a">The model's weights were updated from your chats</label>
+<label><input type="radio" value="b">The product saved a memory and inserted it into the new prompt</label>
+<label><input type="radio" value="c">The context window persists forever</label>
+<label><input type="radio" value="d">Tokens are cached in your browser</label>
+<div class="explain">Models are stateless between calls. "Memory" is context engineering by the product.</div></div>
+
+<h2>Prompting &amp; context (pages 03&ndash;04)</h2>
+
+<div class="quiz" data-answer="d"><div class="q">7. Which is NOT one of the six prompt building blocks?</div>
+<label><input type="radio" value="a">Constraints</label>
+<label><input type="radio" value="b">Output format</label>
+<label><input type="radio" value="c">Examples</label>
+<label><input type="radio" value="d">Threats or rewards</label>
+<div class="explain">Role, task, context, constraints, format, examples. Calm, precise instructions beat emotional pressure.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">8. Giving the model 3 input&rarr;output examples to copy a format is called&hellip;</div>
+<label><input type="radio" value="a">Few-shot prompting</label>
+<label><input type="radio" value="b">Fine-tuning</label>
+<label><input type="radio" value="c">RAG</label>
+<label><input type="radio" value="d">Zero-shot prompting</label>
+<div class="explain">Few-shot examples steer format and style without changing model weights.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">9. A long chat keeps repeating the same wrong fix. Best move?</div>
+<label><input type="radio" value="a">Type "try again" until it works</label>
+<label><input type="radio" value="b">Use ALL CAPS</label>
+<label><input type="radio" value="c">Start a fresh session with a better prompt that includes what you learned</label>
+<label><input type="radio" value="d">Paste the entire repository</label>
+<div class="explain">The polluted context keeps steering the model wrong. A clean context plus the lessons learned usually fixes it.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">10. Which are the four moves of context engineering?</div>
+<label><input type="radio" value="a">Read, write, delete, repeat</label>
+<label><input type="radio" value="b">Write, select, compress, isolate</label>
+<label><input type="radio" value="c">Prompt, sample, decode, stop</label>
+<label><input type="radio" value="d">Plan, code, test, deploy</label>
+<div class="explain">Write durable context, select relevant context, compress long context, isolate unrelated work. See <a href="04-context-engineering.html">page 04</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">11. Why is a Scala type signature valuable context?</div>
+<label><input type="radio" value="a">It reduces the price per token</label>
+<label><input type="radio" value="b">Models ignore prose</label>
+<label><input type="radio" value="c">It disables hallucinations</label>
+<label><input type="radio" value="d">It carries precise meaning in few tokens, and the compiler can check the result</label>
+<div class="explain">Types are dense, precise specs, and the compiler provides immediate feedback.</div></div>
+
+<h2>Tools, IDEs &amp; customisation (pages 05&ndash;07)</h2>
+
+<div class="quiz" data-answer="a"><div class="q">12. Which IDE mode suits "add an endpoint with service, repository and tests, and make the build pass"?</div>
+<label><input type="radio" value="a">Agent mode</label>
+<label><input type="radio" value="b">Inline completion</label>
+<label><input type="radio" value="c">Ask mode only</label>
+<label><input type="radio" value="d">Spell-check</label>
+<div class="explain">Multi-file changes plus running the build and tests is agent work. Plan first.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">13. What do VS Code, JetBrains IDEs and Xcode increasingly have in common?</div>
+<label><input type="radio" value="a">They all only support Swift</label>
+<label><input type="radio" value="b">They all ban external agents</label>
+<label><input type="radio" value="c">They connect agents to IDE capabilities through open protocols like MCP and ACP</label>
+<label><input type="radio" value="d">They require local models only</label>
+<div class="explain">For example, Xcode exposes build/test/docs tools via MCP, and Metals exposes Scala compiler tools via MCP.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">14. What belongs in AGENTS.md?</div>
+<label><input type="radio" value="a">API keys so the agent can deploy</label>
+<label><input type="radio" value="b">Exact build/test commands, versions, conventions and boundaries</label>
+<label><input type="radio" value="c">A 2,000-line tutorial on Scala</label>
+<label><input type="radio" value="d">"Write clean code" and nothing else</label>
+<div class="explain">Keep it concrete and short. No secrets. Move long procedures into skills.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">15. In Agent Skills, what decides whether a skill gets loaded automatically?</div>
+<label><input type="radio" value="a">The file size</label>
+<label><input type="radio" value="b">The folder's creation date</label>
+<label><input type="radio" value="c">The number of scripts</label>
+<label><input type="radio" value="d">The <code>description</code> in the SKILL.md front-matter</label>
+<div class="explain">With progressive disclosure, only name + description are visible up front, so the description must say what the skill does and when to use it.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">16. You need code to be formatted after every agent edit, no exceptions. Use&hellip;</div>
+<label><input type="radio" value="a">A hook</label>
+<label><input type="radio" value="b">A polite request in the chat</label>
+<label><input type="radio" value="c">A higher temperature</label>
+<label><input type="radio" value="d">A custom persona</label>
+<div class="explain">Instructions are requests. Hooks are deterministic guarantees.</div></div>
+
+<h2>Agents &amp; MCP (pages 08&ndash;09)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">17. In tool calling, who actually executes the tool?</div>
+<label><input type="radio" value="a">The model, inside its weights</label>
+<label><input type="radio" value="b">The user, by hand, always</label>
+<label><input type="radio" value="c">The host application, after any permission checks</label>
+<label><input type="radio" value="d">The tokenizer</label>
+<div class="explain">The model emits a structured call. The host executes it and returns the result into context. The host is the security boundary.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">18. An agent "fixes" a failing test by changing the expected value. This is&hellip;</div>
+<label><input type="radio" value="a">Ideal behaviour</label>
+<label><input type="radio" value="b">Test gaming, a classic agent failure mode</label>
+<label><input type="radio" value="c">Prompt injection</label>
+<label><input type="radio" value="d">Spaced repetition</label>
+<div class="explain">Instruct "don't modify tests without asking" and review test diffs carefully.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">19. Which problem does MCP mainly solve?</div>
+<label><input type="radio" value="a">Making models smaller</label>
+<label><input type="radio" value="b">Training models faster</label>
+<label><input type="radio" value="c">Replacing HTTP</label>
+<label><input type="radio" value="d">The N&times;M problem of connecting many AI apps to many tools</label>
+<div class="explain">One server works with every MCP-capable host: N+M instead of N&times;M.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">20. Which three are MCP <em>server</em> primitives?</div>
+<label><input type="radio" value="a">Tools, resources, prompts</label>
+<label><input type="radio" value="b">Sampling, elicitation, roots</label>
+<label><input type="radio" value="c">Tokens, embeddings, attention</label>
+<label><input type="radio" value="d">Hooks, skills, agents</label>
+<div class="explain">Sampling, elicitation and roots are <em>client</em> features that servers can request.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">21. A local MCP server launched by your IDE as a child process typically uses which transport?</div>
+<label><input type="radio" value="a">SMTP</label>
+<label><input type="radio" value="b">WebRTC</label>
+<label><input type="radio" value="c">stdio</label>
+<label><input type="radio" value="d">FTP</label>
+<div class="explain">stdio for local processes. Streamable HTTP for remote servers.</div></div>
+
+<h2>Scala, Python, IT, learning, safety (pages 10&ndash;14)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">22. Which is a common AI mistake in Scala code?</div>
+<label><input type="radio" value="a">Using exhaustive pattern matching on enums</label>
+<label><input type="radio" value="b">Mixing Scala 2 <code>implicit</code> syntax with Scala 3 <code>given</code>, and calling <code>.get</code> on Option</label>
+<label><input type="radio" value="c">Using opaque types for IDs</label>
+<label><input type="radio" value="d">Returning Either for recoverable errors</label>
+<div class="explain">State the Scala version and conventions in AGENTS.md, and keep the compiler in the loop.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">23. An AI suggests installing a Python package you have never heard of. What should you do first?</div>
+<label><input type="radio" value="a">Install it globally with sudo</label>
+<label><input type="radio" value="b">Trust it, since AI checked it</label>
+<label><input type="radio" value="c">Rename it to something shorter</label>
+<label><input type="radio" value="d">Verify it exists, is maintained and is the intended package (slopsquatting risk)</label>
+<div class="explain">Attackers register package names that models commonly hallucinate.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">24. Which learning approach builds real skill?</div>
+<label><input type="radio" value="a">Explain it in your own words, get critiqued, get quizzed, then review later</label>
+<label><input type="radio" value="b">Copy AI answers and re-read them</label>
+<label><input type="radio" value="c">Let AI do every exercise</label>
+<label><input type="radio" value="d">Avoid any difficulty</label>
+<div class="explain">Active recall, Feynman, deliberate practice and spacing. See <a href="13-learn-faster-with-ai.html">page 13</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">25. Which combination makes prompt-injection data theft most likely?</div>
+<label><input type="radio" value="a">Low temperature + short prompts + local model</label>
+<label><input type="radio" value="b">Read-only tools + no network + trusted files</label>
+<label><input type="radio" value="c">Access to private data + untrusted content + ability to send data externally</label>
+<label><input type="radio" value="d">Using AGENTS.md</label>
+<div class="explain">The "lethal trifecta". Remove at least one leg, and keep approvals on for outbound or destructive tools.</div></div>
+
+<h2>What next?</h2>
+<p>Scored 20+? You are ready for <a href="../roadmap.html#l2">Level 2 &middot; Practitioner</a>. Below 20? Revisit the
+linked pages, redo the related labs, and retake the quiz in a few days. Spacing helps.</p>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
