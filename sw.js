@@ -1,5 +1,5 @@
 /* AI Mastery Docs offline cache. Author: Sanat. Generated from tools/sw.template.js by tools/build.py. */
-const CACHE = "ai-mastery-65a6551b60dd";
+const CACHE = "ai-mastery-68fd0f77bdc1";
 const FILES = [
   "./",
   "assets/css/style.css",
@@ -31,6 +31,11 @@ const FILES = [
   "l2/02-structured-output.html",
   "l2/03-calling-llm-apis.html",
   "l2/04-tool-calling.html",
+  "l2/05-embeddings-semantic-search.html",
+  "l2/06-rag.html",
+  "l2/07-agentic-coding-in-depth.html",
+  "l2/08-skills-and-custom-agents.html",
+  "l2/09-configuring-mcp-servers.html",
   "manifest.webmanifest",
   "roadmap.html"
 ];

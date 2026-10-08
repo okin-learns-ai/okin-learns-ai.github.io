@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Embeddings &amp; Semantic Search | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 05 &middot; Embeddings &amp; Semantic Search</h1>
+<p class="lead">Keyword search finds words. Semantic search finds <b>meaning</b>: "something to charge my phone in the
+car" matches "USB-C car adapter" even though they share no words. This page explains embeddings properly and builds a
+product search for the Store Assistant in Scala and Python.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">50 min</span><span class="pill">Tracks 2, 9</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain what an embedding is and why cosine similarity measures meaning.</li>
+  <li>Call an embeddings API and rank documents by similarity.</li>
+  <li>Choose between brute-force search, a vector index, and a vector database.</li>
+  <li>Combine keyword and semantic search (hybrid search) with reciprocal rank fusion.</li>
+</ul></div>
+
+<h2>Embeddings, properly</h2>
+<p>An <b>embedding model</b> turns a piece of text (a word, a sentence, a product description, a code function) into a
+fixed-length vector, for example 768 or 1,536 numbers. It is trained so that texts with similar meaning get vectors that
+point in similar directions. Embedding models are usually much smaller and cheaper than chat models.</p>
+<figure class="diagram">
+<svg viewBox="0 0 720 250" width="720" role="img" aria-label="Texts mapped to vectors and compared by angle">
+  <defs><marker id="e5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <g class="d-text">
+    <rect class="d-box"  x="10" y="30"  width="230" height="36" rx="8"/><text x="125" y="53" text-anchor="middle">"charge my phone in the car"</text>
+    <rect class="d-box"  x="10" y="100" width="230" height="36" rx="8"/><text x="125" y="123" text-anchor="middle">"USB-C car adapter, 30W"</text>
+    <rect class="d-box"  x="10" y="170" width="230" height="36" rx="8"/><text x="125" y="193" text-anchor="middle">"leather watch strap"</text>
+  </g>
+  <rect class="d-box2" x="270" y="85" width="120" height="66" rx="10"/><text class="d-title" x="330" y="114" text-anchor="middle">Embedding</text><text class="d-small" x="330" y="132" text-anchor="middle">model</text>
+  <path class="d-line" d="M240 48 L266 100" marker-end="url(#e5)"/><path class="d-line" d="M240 118 H266" marker-end="url(#e5)"/><path class="d-line" d="M240 188 L266 136" marker-end="url(#e5)"/>
+  <circle cx="560" cy="160" r="4" class="d-arrow"/>
+  <path class="d-line" d="M560 160 L690 70" style="stroke:var(--accent);stroke-width:2.5" marker-end="url(#e5)"/>
+  <path class="d-line" d="M560 160 L700 95" style="stroke:var(--accent-2);stroke-width:2.5" marker-end="url(#e5)"/>
+  <path class="d-line" d="M560 160 L480 40" style="stroke:var(--warn);stroke-width:2.5" marker-end="url(#e5)"/>
+  <text class="d-small" x="640" y="58">query</text><text class="d-small" x="660" y="118">adapter (small angle)</text><text class="d-small" x="420" y="34">strap (large angle)</text>
+  <path class="d-line" d="M390 118 L470 140" marker-end="url(#e5)"/>
+  <text class="d-small" x="560" y="215" text-anchor="middle">similar meaning &#8594; small angle &#8594; cosine close to 1</text>
+</svg>
+</figure>
+
+<h3>Cosine similarity</h3>
+<p>The standard measure is <b>cosine similarity</b>, the cosine of the angle between two vectors:</p>
+<pre data-lang="text">cos(a, b) = (a &middot; b) / (|a| &times; |b|)       range -1 .. 1   (1 = same direction)</pre>
+<p>If vectors are <b>normalised</b> to length 1 (many embedding APIs already do this), cosine similarity is just the dot
+product, which is very fast to compute.</p>
+
+<h3>Semantic vs keyword search</h3>
+<table>
+  <thead><tr><th></th><th>Keyword (BM25 / full-text)</th><th>Semantic (embeddings)</th></tr></thead>
+  <tbody>
+    <tr><td>Matches</td><td>Exact words and stems</td><td>Meaning, synonyms, paraphrases, other languages</td></tr>
+    <tr><td>Great for</td><td>SKUs, order IDs, error codes, names</td><td>Natural-language questions, "something like&hellip;"</td></tr>
+    <tr><td>Weak at</td><td>"charger for the car" vs "vehicle adapter"</td><td>Exact codes ("ORD-482913"), rare jargon, negation</td></tr>
+    <tr><td>Cost</td><td>Cheap, mature</td><td>Embedding calls + vector storage</td></tr>
+  </tbody>
+</table>
+<p>Production systems usually combine both (<b>hybrid search</b>, below).</p>
+
+<h2>The embeddings API</h2>
+<pre data-lang="json" data-title="POST /v1/embeddings (OpenAI-compatible shape)">
+{ "model": "nomic-embed-text", "input": ["USB-C car adapter, 30W", "leather watch strap"] }
+</pre>
+<pre data-lang="json" data-title="Response (vectors shortened)">
+{ "data": [
+    { "index": 0, "embedding": [0.0123, -0.0456, 0.0789, "..."] },
+    { "index": 1, "embedding": [-0.0311, 0.0042, 0.0510, "..."] }
+  ],
+  "usage": { "prompt_tokens": 12 } }
+</pre>
+<ul>
+  <li><b>Batch inputs</b>: send many texts per call. It is much faster and cheaper than one call per text.</li>
+  <li><b>Use the same model</b> for documents and queries. Vectors from different models are not comparable.</li>
+  <li><b>Changing the model means re-embedding everything.</b> Store the model name and version next to each vector.</li>
+  <li><b>Local option</b>: Ollama serves embedding models (for example <code>ollama pull nomic-embed-text</code>) on the same endpoint.</li>
+</ul>
+
+<h2>Scala 3: product search</h2>
+<p>To run offline, this example includes a tiny <b>toy embedder</b> (hashed character trigrams). It only captures spelling
+similarity, not meaning, but the search code is identical to the real thing. Pass <code>--live</code> to use a real embedding
+model and see true semantic matches.</p>
+<pre data-lang="scala" data-title="ProductSearch.scala  (offline: scala-cli ProductSearch.scala | real: ... -- --live)">
+//> using scala 3
+//> using dep io.circe::circe-core:0.14.15
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.Json
+import io.circe.parser.parse
+import io.circe.syntax.*
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+
+final case class Product(sku: String, text: String)
+
+val catalogue = Vector(
+  Product("CAR-ADAPTER-30W", "USB-C car adapter, 30W fast charging for phones and tablets"),
+  Product("CABLE-USBC-2M",   "Braided USB-C to USB-C charging cable, 2 metres"),
+  Product("POWERBANK-10K",   "Portable battery pack 10,000 mAh for travel"),
+  Product("EARBUDS-SPORT",   "Wireless sport earbuds, sweat resistant, secure fit for running"),
+  Product("HEADPHONES-ANC",  "Over-ear headphones with active noise cancelling for flights"),
+  Product("STRAP-LEATHER",   "Leather watch strap, brown, 41 mm"),
+  Product("CASE-RUGGED",     "Rugged phone case with drop protection"),
+  Product("STAND-DESK",      "Aluminium desk stand for tablets and laptops")
+)
+
+type Vec = Array[Double]
+type Embedder = Vector[String] => Either[String, Vector[Vec]]
+
+def normalise(v: Vec): Vec =
+  val n = math.sqrt(v.map(x => x * x).sum)
+  if n == 0 then v else v.map(_ / n)
+
+def cosine(a: Vec, b: Vec): Double = a.indices.map(i => a(i) * b(i)).sum // vectors are normalised
+
+/** Offline stand-in: hashed character trigrams. Spelling similarity only. */
+val toyEmbedder: Embedder = texts => Right(texts.map { t =>
+  val v = new Array[Double](512)
+  s"  ${t.toLowerCase}  ".sliding(3).foreach(g => v(math.floorMod(g.hashCode, 512)) += 1)
+  normalise(v)
+})
+
+/** Real embeddings from any OpenAI-compatible endpoint (local Ollama by default). */
+def liveEmbedder(base: String, model: String, key: Option[String]): Embedder = texts =>
+  val body = Json.obj("model" -> model.asJson, "input" -> texts.asJson).noSpaces
+  val b = HttpRequest.newBuilder(URI.create(s"$base/embeddings"))
+    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body))
+  key.foreach(k => b.header("Authorization", s"Bearer $k"))
+  val resp = HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())
+  if resp.statusCode() != 200 then Left(s"HTTP ${resp.statusCode()}: ${resp.body().take(200)}")
+  else parse(resp.body()).flatMap(_.hcursor.downField("data").as[Vector[Json]]).left.map(_.getMessage).flatMap { items =>
+    val vecs = items.flatMap(_.hcursor.get[Vector[Double]]("embedding").toOption).map(v => normalise(v.toArray))
+    Either.cond(vecs.size == texts.size, vecs, "unexpected embeddings response")
+  }
+
+final class VectorIndex(products: Vector[Product], vectors: Vector[Vec], embed: Embedder):
+  def search(query: String, k: Int = 3): Either[String, Vector[(Product, Double)]] =
+    embed(Vector(query)).map { q =>
+      products.zip(vectors).map((p, v) => p -> cosine(q.head, v)).sortBy(-_._2).take(k)
+    }
+
+object VectorIndex:
+  def build(products: Vector[Product], embed: Embedder): Either[String, VectorIndex] =
+    embed(products.map(_.text)).map(vs => VectorIndex(products, vs, embed))
+
+@main def productSearch(args: String*): Unit =
+  val embed =
+    if args.contains("--live") then liveEmbedder(sys.env.getOrElse("LLM_BASE_URL", "http://localhost:11434/v1"),
+      sys.env.getOrElse("EMBED_MODEL", "nomic-embed-text"), sys.env.get("LLM_API_KEY"))
+    else toyEmbedder
+  val queries = List("charger for the car", "earphones for jogging", "protect my phone if I drop it")
+  VectorIndex.build(catalogue, embed) match
+    case Left(err) => println(s"index failed: $err")
+    case Right(index) => queries.foreach { q =>
+      println(s"\n> $q")
+      index.search(q).fold(e => println(s"  error: $e"),
+        _.foreach((p, s) => println(f"  $s%.3f  ${p.sku}%-16s ${p.text}")))
+    }
+</pre>
+<div class="callout note"><span class="c-title">What you will see</span>
+With the toy embedder, matches depend on shared letters ("car" &rarr; car adapter, but "earphones for jogging" may
+miss the sport earbuds). With <code>--live</code> and a real embedding model, "earphones for jogging" ranks
+<b>EARBUDS-SPORT</b> first despite sharing almost no words. That is the whole point of semantic search.</div>
+
+<h2>Python: the same, plus hybrid search</h2>
+<pre data-lang="python" data-title="product_search.py  (offline by default; LIVE=1 uses LLM_BASE_URL)" data-verify="run">
+import math
+import os
+import re
+from collections import Counter
+
+CATALOGUE = {
+    "CAR-ADAPTER-30W": "USB-C car adapter, 30W fast charging for phones and tablets",
+    "CABLE-USBC-2M": "Braided USB-C to USB-C charging cable, 2 metres",
+    "EARBUDS-SPORT": "Wireless sport earbuds, sweat resistant, secure fit for running",
+    "HEADPHONES-ANC": "Over-ear headphones with active noise cancelling for flights",
+    "CASE-RUGGED": "Rugged phone case with drop protection",
+    "STRAP-LEATHER": "Leather watch strap, brown, 41 mm",
+}
+
+
+def normalise(v: list[float]) -> list[float]:
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+def toy_embed(texts: list[str], dims: int = 512) -> list[list[float]]:
+    out = []
+    for t in texts:
+        v = [0.0] * dims
+        s = f"  {t.lower()}  "
+        for i in range(len(s) - 2):
+            v[hash(s[i:i + 3]) % dims] += 1
+        out.append(normalise(v))
+    return out
+
+
+def live_embed(texts: list[str]) -> list[list[float]]:
+    import httpx
+    base = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
+    r = httpx.post(f"{base}/embeddings", timeout=60,
+                   json={"model": os.environ.get("EMBED_MODEL", "nomic-embed-text"), "input": texts})
+    r.raise_for_status()
+    return [normalise(d["embedding"]) for d in sorted(r.json()["data"], key=lambda d: d["index"])]
+
+
+embed = live_embed if os.environ.get("LIVE") else toy_embed
+SKUS = list(CATALOGUE)
+VECTORS = embed([CATALOGUE[s] for s in SKUS])
+
+
+def semantic(query: str) -> list[str]:
+    q = embed([query])[0]
+    scores = {s: sum(a * b for a, b in zip(q, v)) for s, v in zip(SKUS, VECTORS)}
+    return sorted(scores, key=scores.get, reverse=True)
+
+
+def keyword(query: str) -> list[str]:
+    words = set(re.findall(r"\w+", query.lower()))
+    scores = Counter({s: len(words & set(re.findall(r"\w+", t.lower()))) for s, t in CATALOGUE.items()})
+    return [s for s, c in scores.most_common() if c > 0]
+
+
+def rrf(*rankings: list[str], k: int = 60) -> list[str]:
+    """Reciprocal Rank Fusion: combine rankings without comparing their raw scores."""
+    fused: Counter = Counter()
+    for ranking in rankings:
+        for rank, sku in enumerate(ranking, start=1):
+            fused[sku] += 1 / (k + rank)
+    return [s for s, _ in fused.most_common()]
+
+
+for q in ["usb-c cable", "earphones for jogging", "CASE-RUGGED"]:
+    print(f"\n> {q}")
+    print("  semantic:", semantic(q)[:3])
+    print("  keyword: ", keyword(q)[:3])
+    print("  hybrid:  ", rrf(semantic(q), keyword(q))[:3])
+</pre>
+
+<h2>Hybrid search and reciprocal rank fusion</h2>
+<p>Keyword and vector scores are on different scales, so you can't simply add them. <b>Reciprocal Rank Fusion (RRF)</b>
+uses only <em>positions</em>: each result gets <code>1 / (k + rank)</code> from each list (k is about 60), summed. Items ranked
+well by both methods rise to the top. It is simple, robust, and used by many search engines and vector databases.</p>
+
+<h2>Where to store vectors</h2>
+<table>
+  <thead><tr><th>Scale</th><th>Approach</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Up to ~50k items</td><td>In memory, brute force (like above)</td><td>Milliseconds; simplest. Persist to a file.</td></tr>
+    <tr><td>Up to a few million</td><td><b>pgvector</b> in Postgres, or vector search in your existing DB/search engine</td><td>One system for data + vectors, SQL filters, transactions</td></tr>
+    <tr><td>Large / high QPS</td><td>Dedicated vector DB (Qdrant, Weaviate, Milvus&hellip;) or managed services</td><td>Approximate nearest neighbour (ANN) indexes, sharding</td></tr>
+  </tbody>
+</table>
+<details><summary>Deep dive: approximate nearest neighbour (ANN)</summary>
+<p>Comparing a query with every vector is O(n). ANN indexes such as <b>HNSW</b> (a navigable graph of vectors) or
+<b>IVF</b> (clustered buckets) find <em>almost</em> the best matches in roughly logarithmic time. You trade a tiny amount of recall
+for huge speed-ups. Tune parameters like <code>ef_search</code> to balance them.</p></details>
+
+<h2>Practical guidance</h2>
+<ul class="checklist">
+  <li><b>Embed the right text.</b> For products: name + category + key attributes. For docs: chunks with their heading (page 06).</li>
+  <li><b>Use metadata filters.</b> "In stock at Riverside" is a filter, not a similarity. Filter, then rank.</li>
+  <li><b>Evaluate retrieval.</b> Make 30 queries with the expected top result and measure hit@3. Change one thing at a time.</li>
+  <li><b>Watch for language and domain gaps.</b> Pick a multilingual or domain-tuned embedding model if needed.</li>
+  <li><b>Privacy.</b> Embeddings can leak information about the source text. Protect them like the data itself.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (30 min)</span>
+<ol>
+  <li>Run <code>ProductSearch.scala</code> offline, then with <code>--live</code> after <code>ollama pull nomic-embed-text</code>. Compare rankings.</li>
+  <li>Add 10 products from a category you know and write 10 test queries with expected SKUs. Measure hit@3 for toy vs real embeddings.</li>
+  <li>Run <code>product_search.py</code> and see how hybrid fixes the exact-code query <code>CASE-RUGGED</code>.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Embeddings map text to vectors where direction encodes meaning. Cosine similarity compares them.</li>
+  <li>Same model for documents and queries. Store the model version, and re-embed on change.</li>
+  <li>In-memory search is fine for thousands of items. Use pgvector or a vector DB beyond that.</li>
+  <li>Hybrid search (keyword + vector, fused with RRF) beats either alone, especially for codes and IDs.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

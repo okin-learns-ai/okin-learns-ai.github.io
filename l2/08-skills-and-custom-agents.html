@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Writing Great Skills &amp; Custom Agents | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 08 &middot; Writing Great Skills &amp; Custom Agents</h1>
+<p class="lead">Level 1 showed what skills and custom agents are. This page is about making them <b>good</b>: skills that
+trigger at the right moment and produce consistent results, and agent roles that divide work cleanly. It ends with how to
+test and share them across a team.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">50 min</span><span class="pill">Track 6 &middot; Customisation</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Write skill descriptions that trigger reliably, and avoid false triggers.</li>
+  <li>Structure a skill with progressive disclosure: SKILL.md, references and scripts.</li>
+  <li>Test skills with a trigger set and an outcome check.</li>
+  <li>Design a small team of custom agents with clear roles, tools and hand-offs.</li>
+  <li>Version, share and maintain customisations like code.</li>
+</ul></div>
+
+<h2>What makes a skill great</h2>
+<table>
+  <thead><tr><th>Quality</th><th>Meaning</th><th>Test</th></tr></thead>
+  <tbody>
+    <tr><td><b>Triggers correctly</b></td><td>Loads when relevant, stays out otherwise</td><td>Trigger set (below)</td></tr>
+    <tr><td><b>Deterministic where possible</b></td><td>Scripts do exact work; prose handles judgement</td><td>Same input &rarr; same output</td></tr>
+    <tr><td><b>Lean</b></td><td>SKILL.md is short. Detail lives in references loaded on demand.</td><td>SKILL.md under ~150 lines</td></tr>
+    <tr><td><b>Verifiable</b></td><td>Ends with a check the agent must run</td><td>Clear "done" criteria</td></tr>
+    <tr><td><b>Owned</b></td><td>Someone maintains it; it has a version</td><td>Metadata + CODEOWNERS</td></tr>
+  </tbody>
+</table>
+
+<h2>The description is the trigger</h2>
+<p>At start-up the agent sees only each skill's <code>name</code> and <code>description</code>. It decides whether to load a skill by
+matching the user's request against the description. Write it like a search snippet aimed at the model:</p>
+<div class="compare">
+  <div class="bad"><h4>Weak</h4>
+  <pre data-lang="yaml">description: Helps with tests.</pre>
+  <p>Too vague. It triggers on any test question, including Python, and also misses "add a suite for OrderService".</p></div>
+  <div class="good"><h4>Strong</h4>
+  <pre data-lang="yaml">description: Create or extend MUnit test suites for
+  Scala 3 code in this repo (FunSuite / CatsEffectSuite),
+  following our naming, table-driven and fixture
+  conventions. Use when asked to add, write or fix
+  Scala tests, a test suite, or test coverage for a
+  class. Not for Python or integration tests.</pre></div>
+</div>
+<ul class="checklist">
+  <li><b>What it does</b> plus <b>when to use it</b>, with the verbs users actually say (add, write, fix, migrate, review).</li>
+  <li><b>Scope words</b>: language, framework, module, file types.</li>
+  <li><b>Negative scope</b> ("Not for&hellip;") to prevent false triggers between similar skills.</li>
+  <li>Keep it under the format's limit (the open spec allows up to 1,024 characters). Precise beats long.</li>
+</ul>
+
+<h2>Anatomy of a production skill</h2>
+<pre data-lang="text" data-title="Skill folder">
+.agents/skills/scala-munit-suite/
+├── SKILL.md                     # short: when, steps, done-criteria
+├── references/
+│   ├── conventions.md           # naming, fixtures, table-driven style (loaded on demand)
+│   └── cats-effect-testing.md   # TestControl, IO assertions (loaded only for IO code)
+├── assets/
+│   └── SuiteTemplate.scala      # starting template
+└── scripts/
+    └── check_suite.py           # deterministic checks the agent runs at the end
+</pre>
+<pre data-lang="markdown" data-title="SKILL.md">
+---
+name: scala-munit-suite
+description: Create or extend MUnit test suites for Scala 3 code in this repo (FunSuite /
+  CatsEffectSuite), following our naming, table-driven and fixture conventions. Use when asked
+  to add, write or fix Scala tests, a test suite, or test coverage for a class. Not for Python
+  or integration tests.
+metadata:
+  owner: store-platform-team
+  version: "1.3"
+---
+# Scala MUnit suite
+
+## Steps
+1. Find the class under test and its existing suite (`&lt;ClassName>Suite.scala` in the mirrored
+   `src/test/scala` path). Extend it if it exists.
+2. Start from `assets/SuiteTemplate.scala`. Read `references/conventions.md` before writing.
+3. If the code returns `IO`, use `munit.CatsEffectSuite` and read `references/cats-effect-testing.md`.
+4. Cover: happy path, each error branch, boundaries, empty inputs. Prefer one table-driven test
+   over many copy-pasted ones.
+5. Never use `Thread.sleep` or real clocks. Never call external services.
+
+## Done when
+- `python .agents/skills/scala-munit-suite/scripts/check_suite.py &lt;suite file>` prints OK
+- `sbt "&lt;module>/testOnly *&lt;ClassName>Suite"` passes
+- You report which behaviours are covered and which are deliberately not.
+</pre>
+<pre data-lang="python" data-title="scripts/check_suite.py: deterministic convention checks">
+"""Fail fast on convention violations the model tends to forget."""
+import re
+import sys
+from pathlib import Path
+
+RULES = [
+    (r"Thread\.sleep", "use TestControl / IO.sleep instead of Thread.sleep"),
+    (r"\bprintln\(", "no println in tests; use assertions or clues"),
+    (r"\.ignore\b|@Ignore", "do not ignore tests"),
+    (r"System\.currentTimeMillis|Instant\.now\(\)", "inject a Clock; no real time in tests"),
+]
+
+
+def check(path: Path) -> list[str]:
+    src = path.read_text(encoding="utf-8")
+    problems = [f"{path.name}: {msg}" for pattern, msg in RULES if re.search(pattern, src)]
+    if not path.stem.endswith("Suite"):
+        problems.append(f"{path.name}: file name must end with 'Suite'")
+    if not re.search(r"extends\s+munit\.(FunSuite|CatsEffectSuite|ScalaCheckSuite)", src):
+        problems.append(f"{path.name}: suite must extend an munit suite")
+    return problems
+
+
+if __name__ == "__main__":
+    issues = [p for arg in sys.argv[1:] for p in check(Path(arg))]
+    print("\n".join(issues) if issues else "OK")
+    sys.exit(1 if issues else 0)
+</pre>
+<div class="callout tip"><span class="c-title">Scripts beat paragraphs</span>
+Every rule you can check with a script is a rule the agent can't forget. Put "how to decide" in prose and "what must be
+true" in scripts. The agent runs them and fixes its own output.</div>
+
+<h2>Testing skills</h2>
+<h3>1. Trigger set</h3>
+<p>Write 10&ndash;20 prompts: some that <em>should</em> load the skill and some that should <em>not</em> (near misses). Run each in a fresh
+session and check the references/trace for whether the skill loaded.</p>
+<table>
+  <thead><tr><th>Prompt</th><th>Should trigger?</th></tr></thead>
+  <tbody>
+    <tr><td>"Add tests for <code>PickupReminderJob</code>"</td><td>Yes</td></tr>
+    <tr><td>"Our coverage for the returns module is low, fix that"</td><td>Yes</td></tr>
+    <tr><td>"Why is <code>OrderServiceSuite</code> flaky?"</td><td>Yes</td></tr>
+    <tr><td>"Write pytest tests for the pricing script"</td><td>No (Python)</td></tr>
+    <tr><td>"Add an integration test against Postgres"</td><td>No (integration)</td></tr>
+    <tr><td>"Explain what MUnit is"</td><td>Probably no (question, not a task)</td></tr>
+  </tbody>
+</table>
+<h3>2. Outcome check</h3>
+<p>For 3&ndash;5 representative tasks, check the result: does the script pass, do the tests compile and pass, are conventions followed?
+Re-run the trigger set and outcome checks whenever you edit the skill, or when the team switches models or tools.</p>
+
+<h2>Designing custom agents</h2>
+<p>Custom agents are <b>roles</b>: a focused instruction set plus a limited toolset (and sometimes a preferred model). Splitting
+roles improves quality because each agent has a narrow job and a clean context.</p>
+<figure class="diagram">
+<svg viewBox="0 0 740 220" width="740" role="img" aria-label="Planner, implementer, reviewer hand-offs">
+  <defs><marker id="h8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box2" x="10"  y="50" width="160" height="110" rx="12"/><text class="d-title" x="90" y="78" text-anchor="middle">Planner</text><text class="d-small" x="90" y="100" text-anchor="middle">read-only tools</text><text class="d-small" x="90" y="116" text-anchor="middle">strong reasoning model</text><text class="d-small" x="90" y="132" text-anchor="middle">&#8594; PLAN.md</text>
+  <rect class="d-box3" x="200" y="50" width="160" height="110" rx="12"/><text class="d-title" x="280" y="78" text-anchor="middle">Test-writer</text><text class="d-small" x="280" y="100" text-anchor="middle">edit src/test only</text><text class="d-small" x="280" y="116" text-anchor="middle">+ scala-munit-suite skill</text><text class="d-small" x="280" y="132" text-anchor="middle">&#8594; failing tests</text>
+  <rect class="d-box4" x="390" y="50" width="160" height="110" rx="12"/><text class="d-title" x="470" y="78" text-anchor="middle">Implementer</text><text class="d-small" x="470" y="100" text-anchor="middle">edit src/main, run sbt</text><text class="d-small" x="470" y="116" text-anchor="middle">Metals MCP tools</text><text class="d-small" x="470" y="132" text-anchor="middle">&#8594; green build</text>
+  <rect class="d-box"  x="580" y="50" width="150" height="110" rx="12"/><text class="d-title" x="655" y="78" text-anchor="middle">Reviewer</text><text class="d-small" x="655" y="100" text-anchor="middle">read diff only</text><text class="d-small" x="655" y="116" text-anchor="middle">fresh context</text><text class="d-small" x="655" y="132" text-anchor="middle">&#8594; findings</text>
+  <path class="d-line" d="M170 105 H196" marker-end="url(#h8)"/><path class="d-line" d="M360 105 H386" marker-end="url(#h8)"/><path class="d-line" d="M550 105 H576" marker-end="url(#h8)"/>
+  <path class="d-dash" d="M655 160 C 655 205, 470 205, 470 164" marker-end="url(#h8)"/><text class="d-small" x="562" y="214" text-anchor="middle">fix findings</text>
+</svg>
+</figure>
+<pre data-lang="markdown" data-title=".github/agents/planner.agent.md (VS Code-style; other tools use similar files)">
+---
+name: planner
+description: Produces an implementation plan from a spec. Read-only; never edits code.
+tools: ['search', 'read', 'fetch']
+handoffs:
+  - label: Write the tests
+    agent: test-writer
+    prompt: Write the failing tests for the approved plan in PLAN.md.
+---
+You are a senior Scala engineer planning work for this repository.
+1. Read the spec the user points to, AGENTS.md, and the relevant code.
+2. Write PLAN.md: numbered steps (files, change, why), tests to write first, risks, open questions.
+3. Keep steps small enough to be one commit each.
+Do not write production code. Ask questions if the spec is ambiguous.
+</pre>
+<table>
+  <thead><tr><th>Design rule</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><b>Least privilege tools</b> per role</td><td>A reviewer that can't edit can't "fix" by deleting tests. A planner can't wander into code.</td></tr>
+    <tr><td><b>Artefact hand-offs</b> (PLAN.md, tests, diff)</td><td>Each agent starts fresh with only what it needs, which means less context rot.</td></tr>
+    <tr><td><b>Right model per role</b></td><td>A strong reasoning model for planning and review. A fast model for mechanical implementation.</td></tr>
+    <tr><td><b>Few roles</b></td><td>3&ndash;5 roles cover most work. Dozens become hard to choose between and maintain.</td></tr>
+  </tbody>
+</table>
+
+<h2>Sharing and maintaining</h2>
+<ul class="checklist">
+  <li><b>Commit to the repo</b> (<code>.agents/skills</code>, <code>.github/agents</code>, <code>AGENTS.md</code>) so everyone gets the same setup with the code.</li>
+  <li><b>Personal vs team:</b> personal preferences live in your user-level folder. Team conventions live in the repo.</li>
+  <li><b>Review like code:</b> PRs for changes, a CODEOWNERS entry, and a version bump in <code>metadata</code>.</li>
+  <li><b>Plugins</b> bundle skills + agents + hooks + MCP config for distribution across many repos.</li>
+  <li><b>Security review:</b> skills can contain scripts, and agents may run them. Treat third-party skills like third-party code.</li>
+  <li><b>Prune quarterly:</b> delete skills nobody triggers, and merge overlapping ones.</li>
+</ul>
+
+<h2>Anti-patterns</h2>
+<ul>
+  <li><b>The mega-skill:</b> one skill for "everything about our backend". Split by task.</li>
+  <li><b>Duplicating AGENTS.md</b> inside skills. Reference it instead.</li>
+  <li><b>Overlapping descriptions</b> ("tests" in five skills). The agent picks randomly.</li>
+  <li><b>Untested edits:</b> a one-word description change can stop a skill triggering.</li>
+  <li><b>Secrets in skills or agent files.</b> Never. Use environment variables and your tool's secret handling.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Build the <code>scala-munit-suite</code> skill (or a Python equivalent) with the check script.</li>
+  <li>Write a 10-prompt trigger set and measure the hit rate. Improve the description until it is at least 9/10.</li>
+  <li>Create <code>planner</code> and <code>reviewer</code> custom agents with restricted tools. Run spec &rarr; plan &rarr; implement &rarr; review on a small task.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>The description is the trigger. Include what, when, scope and negative scope.</li>
+  <li>Keep SKILL.md lean. Load detail from references, and enforce rules with scripts.</li>
+  <li>Test skills with trigger sets and outcome checks, and re-test on every change.</li>
+  <li>Custom agents = narrow roles + least-privilege tools + artefact hand-offs.</li>
+  <li>Version, review, share and prune customisations like code.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

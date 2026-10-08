@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Agentic Coding Workflows in Depth | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 07 &middot; Agentic Coding Workflows in Depth</h1>
+<p class="lead">Level 1 introduced agents. This page is about using them as a senior engineer would on real codebases:
+spec-driven development, test-first loops, large refactors and migrations, parallel agents, and reviewing at speed without
+lowering the bar.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">55 min</span><span class="pill">Tracks 5, 7</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Write a spec that lets an agent deliver a feature in one pass.</li>
+  <li>Run a test-first loop where the agent cannot "cheat".</li>
+  <li>Plan and execute large refactors and a Scala 2 &rarr; 3 migration with agents.</li>
+  <li>Run several agents in parallel safely with git worktrees.</li>
+  <li>Review agent output efficiently and measure whether it actually helps.</li>
+</ul></div>
+
+<h2>The senior workflow</h2>
+<figure class="diagram">
+<svg viewBox="0 0 760 210" width="760" role="img" aria-label="Spec, plan, test, implement, verify, review loop">
+  <defs><marker id="a7c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <g class="d-text">
+    <rect class="d-box2" x="10"  y="60" width="105" height="60" rx="10"/><text class="d-title" x="62" y="86" text-anchor="middle">1. Spec</text><text class="d-small" x="62" y="104" text-anchor="middle">you + AI</text>
+    <rect class="d-box2" x="135" y="60" width="105" height="60" rx="10"/><text class="d-title" x="187" y="86" text-anchor="middle">2. Plan</text><text class="d-small" x="187" y="104" text-anchor="middle">agent proposes</text>
+    <rect class="d-box3" x="260" y="60" width="105" height="60" rx="10"/><text class="d-title" x="312" y="86" text-anchor="middle">3. Tests</text><text class="d-small" x="312" y="104" text-anchor="middle">fail first</text>
+    <rect class="d-box3" x="385" y="60" width="115" height="60" rx="10"/><text class="d-title" x="442" y="86" text-anchor="middle">4. Implement</text><text class="d-small" x="442" y="104" text-anchor="middle">small steps</text>
+    <rect class="d-box4" x="520" y="60" width="105" height="60" rx="10"/><text class="d-title" x="572" y="86" text-anchor="middle">5. Verify</text><text class="d-small" x="572" y="104" text-anchor="middle">build, lint, tests</text>
+    <rect class="d-box"  x="645" y="60" width="105" height="60" rx="10"/><text class="d-title" x="697" y="86" text-anchor="middle">6. Review</text><text class="d-small" x="697" y="104" text-anchor="middle">human + AI</text>
+  </g>
+  <path class="d-line" d="M115 90 H131" marker-end="url(#a7c)"/><path class="d-line" d="M240 90 H256" marker-end="url(#a7c)"/><path class="d-line" d="M365 90 H381" marker-end="url(#a7c)"/><path class="d-line" d="M500 90 H516" marker-end="url(#a7c)"/><path class="d-line" d="M625 90 H641" marker-end="url(#a7c)"/>
+  <path class="d-dash" d="M572 120 C 572 170, 442 170, 442 124" marker-end="url(#a7c)"/><text class="d-small" x="507" y="180" text-anchor="middle">loop until green</text>
+  <text class="d-small" x="125" y="40" text-anchor="middle">human gates: approve spec &amp; plan</text>
+  <text class="d-small" x="697" y="40" text-anchor="middle">human gate: merge</text>
+</svg>
+<figcaption>Humans own the gates (spec, plan, merge). Agents do the loop in between. Most failures trace back to a weak spec or skipped plan review.</figcaption>
+</figure>
+
+<h2>Spec-driven development</h2>
+<p>A <b>spec</b> is a short Markdown file that states what to build and how you'll know it's right. It is the single best
+lever for agent quality, and it doubles as documentation and PR description. Draft it <em>with</em> the AI (ask it to
+interview you), then edit it yourself.</p>
+<pre data-lang="markdown" data-title="specs/pickup-reminders.md">
+# Spec: Pickup reminder notifications
+
+## Goal
+Reduce uncollected pickup orders. Customers get a reminder 48h before their hold expires.
+
+## Behaviour
+1. A daily job finds orders with status READY_FOR_PICKUP whose hold expires in 44-52h.
+2. For each, publish a `PickupReminderRequested(orderId, customerId, expiresAt)` event.
+3. Never send more than one reminder per order (idempotent; store `reminderSentAt`).
+4. Skip orders whose customer opted out of notifications.
+
+## Out of scope
+Sending the actual email/push (the Notifications service consumes the event).
+
+## Constraints
+- Scala 3, Cats Effect, existing `OrderRepository` and `EventPublisher` traits.
+- No new dependencies. No schema change except nullable `reminder_sent_at` column (migration V42).
+
+## Acceptance tests (must exist and pass)
+- Expiring in 48h -> one event; running the job twice -> still one event.
+- Opted-out customer -> no event.
+- Expiring in 10h or 4 days -> no event.
+
+## Verification
+`sbt scalafmtCheckAll "core/test" "db/test"`
+</pre>
+<pre data-lang="text" data-title="Prompt: turn the spec into a plan">
+Read specs/pickup-reminders.md and AGENTS.md. Propose an implementation plan as a numbered list:
+files to create/change, the order of steps, the tests you'll write first, and risks/open questions.
+Do NOT write code yet. Wait for my approval.
+</pre>
+
+<h2>Test-first loops agents can't game</h2>
+<ol class="steps">
+  <li><b>Write or approve the tests first.</b> Either write them yourself, or let the agent write them in a separate step that you review carefully.</li>
+  <li><b>Commit the tests.</b> Now they're a contract.</li>
+  <li><b>Instruct:</b> "Make these tests pass. Do not modify files under <code>src/test/</code>. If a test seems wrong, stop and explain why."</li>
+  <li><b>Enforce it:</b> a hook or CI check that fails if test files changed in the implementation commit (L1 page 07).</li>
+  <li><b>Check test strength:</b> ask the agent to break the implementation in 3 plausible ways and confirm the tests catch each one (mutation testing by hand; tools in page 10).</li>
+</ol>
+<div class="callout warn"><span class="c-title">Watch for these "cheats"</span>
+Special-casing test inputs, catching and ignoring exceptions, weakening assertions, marking tests as ignored, mocking the
+thing under test. They are rarely malicious, just the shortest path to "green". Review test diffs first.</div>
+
+<h2>Large refactors</h2>
+<p>Agents are excellent at repetitive, wide changes, <em>if</em> you keep each step small and verifiable.</p>
+<table>
+  <thead><tr><th>Step</th><th>What</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>1. Safety net</td><td>Have the agent add <b>characterisation tests</b> that pin current behaviour</td><td>Refactors must not change behaviour</td></tr>
+    <tr><td>2. Inventory</td><td>"List every call site of <code>LegacyPriceCalc</code>, grouped by module, with a risk note"</td><td>Size the work; find surprises early</td></tr>
+    <tr><td>3. Pattern first</td><td>Do one representative change together; save it as the reference example</td><td>The agent copies a reviewed pattern</td></tr>
+    <tr><td>4. Batches</td><td>Apply module by module, one commit/PR each, tests green every time</td><td>Small diffs are reviewable and revertible</td></tr>
+    <tr><td>5. Mechanical &rarr; tools</td><td>For purely syntactic changes, ask the agent to write a <b>scalafix rule</b> or script instead of editing by hand</td><td>Deterministic, repeatable, reviewable once</td></tr>
+    <tr><td>6. Clean-up</td><td>Remove the old code path once all call sites are migrated</td><td>Avoid two ways of doing things</td></tr>
+  </tbody>
+</table>
+
+<h2>Playbook: Scala 2.13 &rarr; Scala 3 migration with agents</h2>
+<ol>
+  <li><b>Assess.</b> Ask the agent to list dependencies without Scala 3 artefacts, macro usage, and compiler plugins (the usual blockers). Check the official Scala 3 migration guide.</li>
+  <li><b>Cross-build.</b> Add Scala 3 to <code>crossScalaVersions</code> and get <code>++3.x compile</code> running module by module, leaves first.</li>
+  <li><b>Let the compiler rewrite.</b> The Scala 3 compiler can rewrite much old syntax automatically with <code>-source:3.0-migration -rewrite</code>. The Scala Center's migration tooling (e.g. the sbt-scala3-migrate plugin) helps with types and scalac options. Use these <em>before</em> asking an agent to edit by hand.</li>
+  <li><b>Agent for the rest.</b> "Fix the remaining Scala 3 compile errors in module <code>core</code> only. Keep behaviour identical. Prefer <code>given</code>/<code>using</code> for new code but don't rewrite working implicits unless required."</li>
+  <li><b>Tests on both versions</b> until you drop 2.13.</li>
+  <li><b>Idiomatic pass later</b> (enums, opaque types, new syntax) as separate, optional PRs. Don't mix it with the migration.</li>
+</ol>
+<div class="callout tip"><span class="c-title">Why this order matters</span>
+Compiler rewrites and migration tools are deterministic and cheap. Agents are best for the judgement calls left over.
+Using an agent to do what <code>-rewrite</code> can do wastes time and adds review burden.</div>
+
+<h2>Parallel agents with git worktrees</h2>
+<p>Several agents can work at once if each has its <b>own working directory and branch</b>. Git worktrees give you that without cloning
+the repo again.</p>
+<pre data-lang="bash" data-title="One worktree per agent task">
+git worktree add ../store-reminders   -b feat/pickup-reminders
+git worktree add ../store-price-fix   -b fix/rounding-vat
+git worktree list
+# open each folder in its own IDE window / terminal agent session
+# ...when merged:
+git worktree remove ../store-reminders
+</pre>
+<ul>
+  <li>Give each agent an <b>independent</b> task (different modules). Overlapping edits mean painful merges.</li>
+  <li>Your bottleneck becomes <b>review</b>. Two or three parallel tasks is usually the useful maximum for one person.</li>
+  <li><b>Background / cloud agents</b> work the same way: one branch per issue, results arrive as PRs. Write issues like specs.</li>
+</ul>
+
+<h2>Keeping long tasks on track</h2>
+<ul>
+  <li><b>Progress file:</b> ask the agent to maintain <code>PROGRESS.md</code> (done / next / decisions / open questions). It survives context resets and new sessions.</li>
+  <li><b>Checkpoints:</b> commit after each green step. Revert rather than argue with a confused agent.</li>
+  <li><b>Fresh context per phase:</b> plan in one session, implement each step in a new session seeded with the spec + progress file.</li>
+  <li><b>Sub-agents for exploration:</b> "Use a sub-agent to find all places we compute tax; report file:line only." This keeps the main context clean.</li>
+</ul>
+
+<h2>Reviewing agent output fast (without lowering the bar)</h2>
+<ol class="steps">
+  <li><b>Read the summary and plan first</b>, then the <b>tests</b>, then the code. Tests tell you what was actually built.</li>
+  <li><b>Ask for a guided tour:</b> "Walk me through this diff file by file. Flag anything risky, any behaviour change, and anything you weren't sure about."</li>
+  <li><b>Second-opinion review:</b> run a reviewer agent (L1 page 07) with a fresh context. It isn't anchored on the implementation.</li>
+  <li><b>Check the usual suspects:</b> error handling, concurrency, time zones, money, null/empty inputs, logging of personal data, new dependencies.</li>
+  <li><b>Own it:</b> if you can't explain a line, don't merge it.</li>
+</ol>
+
+<h2>Measuring whether it helps</h2>
+<p>Feeling faster isn't the same as being faster. Track a few honest signals for your team:</p>
+<ul>
+  <li>Lead time from ticket start to merge, and PR size.</li>
+  <li>Review rounds and rework per PR.</li>
+  <li>Defects found after merge, and reverts.</li>
+  <li>Time spent reviewing vs writing.</li>
+</ul>
+<p>Compare similar tasks with and without agents over a few weeks. Expect big wins on boilerplate, tests, migrations and
+unfamiliar code, and smaller ones on novel design work.</p>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Pick a small real feature. Have the AI interview you, then write a spec in the format above.</li>
+  <li>Get a plan, edit it, then write or approve tests first and commit them.</li>
+  <li>Let the agent implement with "don't touch tests". Do the 3-ways-to-break check.</li>
+  <li>Run a fresh reviewer agent on the diff. Note what it found that you missed, and vice versa.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Humans own the gates (spec, plan, merge). Agents run the loop between them.</li>
+  <li>A good spec with acceptance tests is the biggest quality lever.</li>
+  <li>Commit tests first and forbid editing them. Check test strength by breaking the code.</li>
+  <li>Refactor in small verified batches. Use compiler rewrites and scalafix before agents.</li>
+  <li>Parallelise with worktrees, but review capacity is the real limit.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Using &amp; Configuring MCP Servers | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 09 &middot; Using &amp; Configuring MCP Servers</h1>
+<p class="lead">Level 1 explained what MCP is and built a toy server. This page is the practitioner's guide: when an MCP
+server is worth adding, how to find trustworthy ones, how to configure them in your IDE and CLI agents (with secrets done
+right), Metals MCP for Scala in depth, and how to troubleshoot.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">50 min</span><span class="pill">Track 8 &middot; MCP &amp; integration</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Decide between an MCP server, a CLI command the agent runs, or nothing.</li>
+  <li>Evaluate an MCP server's trustworthiness before installing it.</li>
+  <li>Configure stdio and remote servers in VS Code and CLI agents, with secrets kept out of git.</li>
+  <li>Set up and use Metals MCP effectively on a Scala project.</li>
+  <li>Keep toolsets small, approvals sensible, and fix common failures.</li>
+</ul></div>
+
+<h2>Do you even need an MCP server?</h2>
+<table>
+  <thead><tr><th>Option</th><th>Best when</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><b>Nothing extra</b></td><td>Built-in tools (read/edit files, run shell) already cover it</td><td><code>sbt test</code>, <code>git diff</code>, <code>rg</code></td></tr>
+    <tr><td><b>CLI via shell</b></td><td>A good CLI exists and the agent can run it. Simple, transparent, scriptable.</td><td><code>gh pr view</code>, <code>psql -c</code>, <code>kubectl get</code></td></tr>
+    <tr><td><b>MCP server</b></td><td>You need structured tools, auth flows (OAuth), use outside a terminal (chat apps, IDE chat), fine-grained approvals, or rich language intelligence</td><td>Metals (compiler-backed Scala tools), issue trackers, docs search, browser automation, Xcode</td></tr>
+  </tbody>
+</table>
+<div class="callout tip"><span class="c-title">Rule of thumb</span>
+Start with built-ins and CLIs. Add an MCP server when you notice the agent <em>guessing</em> things that a tool could
+<em>know</em> (types, symbols, ticket details, current docs, UI state), or when non-terminal hosts need the capability.</div>
+
+<h2>Finding servers and judging trust</h2>
+<p>Places to look: the <b>official MCP Registry</b> (<code>registry.modelcontextprotocol.io</code>, a public catalogue of server
+metadata), the vendor of the system you want to connect (official servers are best), your IDE's marketplace or MCP gallery,
+and well-known open-source projects.</p>
+<ul class="checklist">
+  <li><b>Publisher:</b> is it from the system's vendor or a reputable org? Name-squatting exists.</li>
+  <li><b>Source available and maintained:</b> recent commits, issues answered, a clear licence.</li>
+  <li><b>Permissions:</b> what can its tools do? Read-only modes? Scoped tokens?</li>
+  <li><b>Tool descriptions:</b> read them, since manipulative instructions hidden there are an attack ("tool poisoning").</li>
+  <li><b>Pinned versions:</b> install a specific version rather than "latest" so it can't change under you.</li>
+  <li><b>Data flow:</b> for remote servers, where does your data go, and is it allowed by your company's policy?</li>
+</ul>
+
+<h2>Configuration recipes</h2>
+<h3>VS Code (workspace: <code>.vscode/mcp.json</code>)</h3>
+<pre data-lang="json" data-title=".vscode/mcp.json: safe to commit (no secrets inside)">
+{
+  "inputs": [
+    { "id": "dbUrl", "type": "promptString", "description": "Read-only dev database URL", "password": true }
+  ],
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@&lt;pinned-version>"]
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "orders-db": {
+      "type": "stdio",
+      "command": "&lt;trusted-postgres-mcp-server>",
+      "args": ["--read-only"],
+      "env": { "DATABASE_URL": "${input:dbUrl}" }
+    }
+  }
+}
+</pre>
+<ul>
+  <li><b><code>inputs</code></b> prompt you once for secrets and store them securely, so the file never contains them.</li>
+  <li>Remote servers that support OAuth open a browser sign-in. The host stores the token.</li>
+  <li><b>User-level</b> config (your profile) is for personal servers. <b>Workspace</b> config is for the team. Commands in the Command Palette start with "MCP:" (add, list, start/stop, show output).</li>
+</ul>
+
+<h3>CLI agents</h3>
+<pre data-lang="bash" data-title="Typical commands (check your agent's docs for exact flags)">
+# stdio server (local process)
+claude mcp add --transport stdio playwright -- npx -y @playwright/mcp@&lt;pinned-version>
+codex  mcp add playwright -- npx -y @playwright/mcp@&lt;pinned-version>
+
+# remote server (HTTP)
+claude mcp add --transport http github https://api.githubcopilot.com/mcp/
+
+# inspect
+claude mcp list
+codex  mcp list
+</pre>
+<p>CLI agents also store servers in config files (user-level and/or project-level). Project-level files can be committed when they contain no secrets. Pass secrets through environment variables.</p>
+
+<h3>Other hosts</h3>
+<ul>
+  <li><b>JetBrains IDEs:</b> the AI settings include an MCP section to add servers (same fields: name, command/URL, env), and JetBrains IDEs can expose IDE tools to external agents.</li>
+  <li><b>Xcode:</b> acts mainly as a <em>server</em>: enable "Allow external agents to use Xcode tools" and connect agents via <code>xcrun mcpbridge</code> (Level 1 page 06).</li>
+  <li><b>Chat desktop apps:</b> usually an <code>mcpServers</code> JSON block or a connectors UI.</li>
+</ul>
+
+<h2>Metals MCP for Scala, in depth</h2>
+<p>Metals already gives agents compiler diagnostics (the red squiggles) in editors that surface them. The MCP server goes
+further and lets agents <b>actively ask</b> the Scala tooling.</p>
+<table>
+  <thead><tr><th>Tool category (names vary by version)</th><th>What the agent gains</th></tr></thead>
+  <tbody>
+    <tr><td>Compile file / module / whole project</td><td>Fast, incremental feedback without running a full <code>sbt compile</code></td></tr>
+    <tr><td>Run tests (suite or single test)</td><td>Targeted verification</td></tr>
+    <tr><td>Inspect a symbol (members, signatures)</td><td>Real APIs instead of hallucinated methods</td></tr>
+    <tr><td>Get docs for a symbol</td><td>Scaladoc for libraries in your classpath, at your exact versions</td></tr>
+    <tr><td>Find usages / search symbols by name or type</td><td>Accurate impact analysis for refactors</td></tr>
+    <tr><td>Import build, format, and other helpers</td><td>Keeps the workspace in a good state</td></tr>
+  </tbody>
+</table>
+<ol class="steps">
+  <li><b>VS Code:</b> set <code>"metals.startMcpServer": true</code> (and enable MCP/agent mode). Metals logs a line like "Metals MCP server started on port &hellip;" and can write the MCP config for supported editors.</li>
+  <li><b>Other editors / CLI agents:</b> point the agent at the URL Metals prints, or use the standalone <code>metals-mcp</code> launcher (install with Coursier: <code>cs install metals-mcp</code>) with your workspace path.</li>
+  <li><b>Teach the agent to use it</b>. Add this to <code>AGENTS.md</code>:</li>
+</ol>
+<pre data-lang="markdown" data-title="AGENTS.md snippet">
+## Scala tooling
+- Use the Metals MCP tools to inspect symbols and read docs before using an unfamiliar API.
+- After editing, compile the changed module with the Metals compile tool; fix all errors before running tests.
+- Prefer the Metals test tool for single suites; run `sbt test` only for the final check.
+</pre>
+<div class="callout note"><span class="c-title">Why it matters for Scala specifically</span>
+Implicits/givens, type inference and macros make Scala APIs hard to guess from text alone. Compiler-backed inspection
+removes a whole class of AI errors, and incremental compile through Metals is much faster than cold <code>sbt</code> runs
+in agent loops.</div>
+
+<h2>Useful server categories</h2>
+<table>
+  <thead><tr><th>Category</th><th>Typical uses</th><th>Safety note</th></tr></thead>
+  <tbody>
+    <tr><td>Code hosting (GitHub, GitLab&hellip;)</td><td>Read issues/PRs, review comments, CI status</td><td>Scope tokens to specific repos; review write tools</td></tr>
+    <tr><td>Language tooling (Metals, Xcode)</td><td>Compile, inspect, test</td><td>Local, low risk</td></tr>
+    <tr><td>Databases</td><td>Inspect schemas, run read queries for debugging</td><td><b>Read-only user, dev data only</b>, never production</td></tr>
+    <tr><td>Docs / web fetch</td><td>Current library docs and changelogs</td><td>Fetched pages can contain prompt injections</td></tr>
+    <tr><td>Browser automation (e.g. Playwright MCP)</td><td>Reproduce UI bugs, test flows, take screenshots</td><td>Use test accounts; isolate from real logins</td></tr>
+    <tr><td>Issue trackers, chat, docs wikis</td><td>Pull ticket context, update status</td><td>Approve outbound/write actions</td></tr>
+    <tr><td>Observability (logs, metrics)</td><td>Investigate incidents</td><td>Logs contain personal data; redact; read-only</td></tr>
+  </tbody>
+</table>
+
+<h2>Keep toolsets small</h2>
+<p>Every enabled tool's name, description and schema is sent to the model on <em>every</em> request. Twenty servers with 300 tools
+cost tokens, slow responses and confuse tool choice.</p>
+<ul class="checklist">
+  <li>Enable servers per workspace or per task, not globally "just in case".</li>
+  <li>Disable individual tools you don't need (most hosts have a tool picker).</li>
+  <li>Give custom agents their own toolsets (page 08). The reviewer doesn't need the browser.</li>
+  <li>Keep approval on for writes, deletes and anything that sends data out.</li>
+</ul>
+
+<h2>Troubleshooting</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Server fails to start</td><td>Command not on the PATH the IDE sees (GUI apps often have a different PATH than your shell)</td><td>Use an absolute path to the executable; restart the IDE after installing</td></tr>
+    <tr><td>Starts, but no tools listed</td><td>Handshake/protocol error, or wrong transport (stdio vs HTTP)</td><td>Check the server output/logs; test with the MCP Inspector</td></tr>
+    <tr><td>Metals MCP missing</td><td>Setting off, build not imported, port changed</td><td>Enable setting, import build, re-check the port in Metals logs</td></tr>
+    <tr><td>401/403 from remote server</td><td>Expired token, missing scopes</td><td>Re-authenticate; check token scopes</td></tr>
+    <tr><td>Agent ignores the tool</td><td>Vague description, too many tools, or the instruction isn't there</td><td>Fewer tools; add guidance to AGENTS.md; name the tool in the prompt once</td></tr>
+    <tr><td>Calls time out</td><td>Slow backend or large results</td><td>Narrow the query; use pagination; raise timeout if the host allows</td></tr>
+  </tbody>
+</table>
+<pre data-lang="bash" data-title="Test any stdio server by hand">
+npx @modelcontextprotocol/inspector &lt;command> &lt;args...>
+# e.g. npx @modelcontextprotocol/inspector uv run word_tools.py
+</pre>
+
+<div class="callout tip"><span class="c-title">Try it (40 min)</span>
+<ol>
+  <li>On a Scala project in VS Code, enable Metals MCP. Ask the agent: "Inspect <code>OrderService</code> with the Metals tools and list its public methods with signatures." Confirm a Metals tool was called.</li>
+  <li>Add Playwright MCP (pinned version) and ask the agent to open a local web page and describe what's broken.</li>
+  <li>Write <code>.vscode/mcp.json</code> with one secret via <code>inputs</code>. Verify no secret ends up in git (<code>git diff</code>).</li>
+  <li>Look up one server in the MCP Registry and go through the trust checklist for it.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Use built-ins and CLIs first. Add MCP servers when the agent would otherwise guess, or when non-terminal hosts need tools.</li>
+  <li>Vet servers: publisher, source, permissions, descriptions, pinned version, data flow.</li>
+  <li>Keep secrets out of config files (inputs, env vars, OAuth). Commit only secret-free workspace config.</li>
+  <li>Metals MCP gives agents compiler-backed Scala intelligence. Tell the agent to use it in AGENTS.md.</li>
+  <li>Small toolsets, approvals for writes, and the Inspector for debugging.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

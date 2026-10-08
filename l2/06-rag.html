@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>RAG: Retrieval-Augmented Generation | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 06 &middot; RAG: Retrieval-Augmented Generation</h1>
+<p class="lead">Models don't know your company's return policy, store procedures or internal docs, and they will happily
+invent them. <b>RAG</b> fixes this: retrieve the relevant passages, put them in the prompt, and make the model answer
+<em>only</em> from them, with citations. This page builds a policy assistant for store staff.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">60 min</span><span class="pill">Track 9 &middot; RAG &amp; knowledge</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Draw the two RAG pipelines: ingestion and query.</li>
+  <li>Choose a chunking strategy and attach useful metadata.</li>
+  <li>Write a grounded prompt that produces cited answers and says "I don't know".</li>
+  <li>Implement a minimal RAG in Scala and Python and check its citations.</li>
+  <li>Evaluate retrieval and answers, and recognise common failure modes.</li>
+</ul></div>
+
+<h2>Why RAG (and not fine-tuning) for knowledge</h2>
+<table>
+  <thead><tr><th>Need</th><th>RAG</th><th>Fine-tuning</th></tr></thead>
+  <tbody>
+    <tr><td>Answer from company docs</td><td>&#10003; Designed for it</td><td>Poor: facts blur, hard to update</td></tr>
+    <tr><td>Docs change weekly</td><td>&#10003; Re-index changed docs</td><td>Retrain each time</td></tr>
+    <tr><td>Citations / audit trail</td><td>&#10003; Show the source passage</td><td>Not possible</td></tr>
+    <tr><td>Access control per user</td><td>&#10003; Filter what's retrieved</td><td>Everything is baked in</td></tr>
+    <tr><td>Change style, format, behaviour</td><td>Limited</td><td>&#10003; Good fit (Level 3)</td></tr>
+  </tbody>
+</table>
+
+<h2>The two pipelines</h2>
+<figure class="diagram">
+<svg viewBox="0 0 760 300" width="760" role="img" aria-label="RAG ingestion and query pipelines">
+  <defs><marker id="r6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <text class="d-title" x="10" y="22">Ingestion (offline, when docs change)</text>
+  <g class="d-text">
+    <rect class="d-box"  x="10"  y="35" width="120" height="50" rx="8"/><text x="70"  y="65" text-anchor="middle">Load docs</text>
+    <rect class="d-box"  x="160" y="35" width="120" height="50" rx="8"/><text x="220" y="65" text-anchor="middle">Chunk</text>
+    <rect class="d-box"  x="310" y="35" width="140" height="50" rx="8"/><text x="380" y="58" text-anchor="middle">+ metadata</text><text class="d-small" x="380" y="74" text-anchor="middle">source, section, date</text>
+    <rect class="d-box"  x="480" y="35" width="120" height="50" rx="8"/><text x="540" y="65" text-anchor="middle">Embed</text>
+    <rect class="d-box4" x="630" y="35" width="120" height="50" rx="8"/><text x="690" y="65" text-anchor="middle">Vector store</text>
+  </g>
+  <path class="d-line" d="M130 60 H156" marker-end="url(#r6)"/><path class="d-line" d="M280 60 H306" marker-end="url(#r6)"/><path class="d-line" d="M450 60 H476" marker-end="url(#r6)"/><path class="d-line" d="M600 60 H626" marker-end="url(#r6)"/>
+  <text class="d-title" x="10" y="140">Query (online, per question)</text>
+  <g class="d-text">
+    <rect class="d-box2" x="10"  y="155" width="120" height="50" rx="8"/><text x="70"  y="185" text-anchor="middle">Question</text>
+    <rect class="d-box2" x="160" y="155" width="120" height="50" rx="8"/><text x="220" y="185" text-anchor="middle">Embed query</text>
+    <rect class="d-box2" x="310" y="155" width="140" height="50" rx="8"/><text x="380" y="178" text-anchor="middle">Retrieve top-k</text><text class="d-small" x="380" y="194" text-anchor="middle">+ filters (store, role)</text>
+    <rect class="d-box3" x="480" y="155" width="120" height="50" rx="8"/><text x="540" y="178" text-anchor="middle">Augment</text><text class="d-small" x="540" y="194" text-anchor="middle">prompt + sources</text>
+    <rect class="d-box3" x="630" y="155" width="120" height="50" rx="8"/><text x="690" y="178" text-anchor="middle">Generate</text><text class="d-small" x="690" y="194" text-anchor="middle">answer + [1][2]</text>
+  </g>
+  <path class="d-line" d="M130 180 H156" marker-end="url(#r6)"/><path class="d-line" d="M280 180 H306" marker-end="url(#r6)"/><path class="d-line" d="M450 180 H476" marker-end="url(#r6)"/><path class="d-line" d="M600 180 H626" marker-end="url(#r6)"/>
+  <path class="d-dash" d="M690 85 C 690 120, 400 120, 385 152" marker-end="url(#r6)"/>
+  <rect class="d-box4" x="480" y="235" width="270" height="44" rx="8"/><text class="d-text" x="615" y="262" text-anchor="middle">Check citations &#8594; show sources to user</text>
+  <path class="d-line" d="M690 205 V231" marker-end="url(#r6)"/>
+</svg>
+</figure>
+
+<h2>Chunking</h2>
+<p>You retrieve <b>chunks</b>, not whole documents. Chunk quality matters more than almost any other RAG decision.</p>
+<table>
+  <thead><tr><th>Strategy</th><th>How</th><th>Good for</th></tr></thead>
+  <tbody>
+    <tr><td>Fixed size + overlap</td><td>e.g. 300&ndash;800 tokens, 10&ndash;20% overlap</td><td>Unstructured text, quick start</td></tr>
+    <tr><td><b>Structure-aware</b></td><td>Split on headings/sections/paragraphs; keep each section together</td><td>Policies, manuals, wikis (recommended)</td></tr>
+    <tr><td>Semantic</td><td>Split where topic changes (embedding similarity drops)</td><td>Long narrative docs</td></tr>
+    <tr><td>Code-aware</td><td>Split by class/function (syntax tree)</td><td>Codebases</td></tr>
+  </tbody>
+</table>
+<ul class="checklist">
+  <li><b>Prefix each chunk with its context</b>, such as "Returns Policy &rsaquo; Opened items:". A chunk saying "within 14 days" is useless without knowing what it refers to.</li>
+  <li><b>Store metadata</b>: source document, section, URL, last-updated date, audience/permissions.</li>
+  <li><b>Too small</b> loses context. <b>Too big</b> dilutes relevance and wastes tokens. Test a few sizes.</li>
+</ul>
+
+<h2>The grounded prompt</h2>
+<pre data-lang="text" data-title="RAG prompt template">
+You answer questions from retail store staff using ONLY the sources below.
+Rules:
+- Cite sources inline like [1] or [2][3] after each claim.
+- If the sources do not contain the answer, reply exactly: "I can't find this in the policies."
+- Do not use outside knowledge. Do not guess numbers, dates or amounts.
+- Be concise: at most 4 sentences.
+
+&lt;sources>
+[1] (Returns Policy > Standard returns) Most items can be returned within 14 days of purchase or pickup with a receipt or order ID.
+[2] (Returns Policy > Opened items) Opened headphones and earbuds can be returned within 14 days only if defective.
+[3] (Pickup > Holding period) Pickup orders are held for 7 days, then cancelled and refunded.
+&lt;/sources>
+
+Question: A customer opened earbuds 10 days ago and doesn't like the sound. Can they return them?
+</pre>
+<p>Expected answer: <em>"Not for that reason. Opened earbuds can only be returned within 14 days if they are defective [2]. Disliking the
+sound isn't a defect."</em> The citation lets staff check the source, and lets your code verify that the model cited a real source.</p>
+
+<h2>Scala 3: a minimal policy RAG</h2>
+<p>Runs offline with the toy embedder from page 05 and a scripted generator that prints the exact prompt that would be sent.
+Swap in the live embedder and the LLM client from page 03 for real use.</p>
+<pre data-lang="scala" data-title="PolicyRag.scala  (run: scala-cli PolicyRag.scala)">
+//> using scala 3
+
+final case class Chunk(id: Int, source: String, section: String, text: String):
+  def forEmbedding: String = s"$source > $section: $text"
+
+// ---------- Ingestion ----------
+val docs = Map(
+  "Returns Policy" ->
+    """## Standard returns
+      |Most items can be returned within 14 days of purchase or pickup with a receipt or order ID.
+      |Refunds go to the original payment method within 5 business days.
+      |## Opened items
+      |Opened headphones and earbuds can be returned within 14 days only if defective.
+      |Opened software and gift cards cannot be returned.""".stripMargin,
+  "Pickup" ->
+    """## Holding period
+      |Pickup orders are held for 7 days, then cancelled and refunded.
+      |## Identification
+      |Customers must show the order confirmation and a photo ID matching the order name.""".stripMargin
+)
+
+/** Structure-aware chunking: one chunk per "## section". */
+def chunk(docs: Map[String, String]): Vector[Chunk] =
+  docs.toVector.sortBy(_._1).flatMap { (source, body) =>
+    body.split("(?m)^## ").toVector.filter(_.trim.nonEmpty).map { sec =>
+      val lines = sec.linesIterator.toVector
+      (source, lines.head.trim, lines.tail.mkString(" ").trim)
+    }
+  }.zipWithIndex.map { case ((src, sec, txt), i) => Chunk(i + 1, src, sec, txt) }
+
+// ---------- Embedding (toy, offline; see page 05 for the live version) ----------
+type Vec = Array[Double]
+def embed(t: String): Vec =
+  val v = new Array[Double](512)
+  val words = t.toLowerCase.split("\\W+").filter(_.length > 2)
+  words.foreach(w => v(math.floorMod(w.hashCode, 512)) += 1)
+  val n = math.sqrt(v.map(x => x * x).sum)
+  if n == 0 then v else v.map(_ / n)
+def cosine(a: Vec, b: Vec): Double = a.indices.map(i => a(i) * b(i)).sum
+
+final class Retriever(chunks: Vector[Chunk]):
+  private val vectors = chunks.map(c => embed(c.forEmbedding))
+  def topK(question: String, k: Int = 3, minScore: Double = 0.05): Vector[(Chunk, Double)] =
+    val q = embed(question)
+    chunks.zip(vectors).map((c, v) => c -> cosine(q, v)).filter(_._2 >= minScore).sortBy(-_._2).take(k)
+
+// ---------- Augment ----------
+def buildPrompt(question: String, hits: Vector[Chunk]): String =
+  val sources = hits.zipWithIndex.map((c, i) => s"[${i + 1}] (${c.source} > ${c.section}) ${c.text}").mkString("\n")
+  s"""You answer questions from retail store staff using ONLY the sources below.
+     |Cite sources inline like [1]. If the sources do not contain the answer, reply exactly:
+     |"I can't find this in the policies." Do not guess. At most 4 sentences.
+     |
+     |&lt;sources>
+     |$sources
+     |&lt;/sources>
+     |
+     |Question: $question""".stripMargin
+
+// ---------- Check citations ----------
+def citationProblems(answer: String, numSources: Int): List[String] =
+  val cited = """\[(\d+)\]""".r.findAllMatchIn(answer).map(_.group(1).toInt).toSet
+  val invalid = cited.filter(n => n &lt; 1 || n > numSources).toList.sorted.map(n => s"cites non-existent source [$n]")
+  val missing = Option.when(cited.isEmpty && !answer.contains("can't find"))("answer has no citations").toList
+  invalid ++ missing
+
+@main def policyRag(): Unit =
+  val retriever = Retriever(chunk(docs))
+  val question  = "A customer opened earbuds 10 days ago and does not like the sound. Can they return them?"
+  val hits      = retriever.topK(question)
+  hits.foreach((c, s) => println(f"retrieved $s%.2f  #${c.id} ${c.source} > ${c.section}"))
+  println("\n----- prompt sent to the model -----\n" + buildPrompt(question, hits.map(_._1)))
+
+  // Scripted answers to demonstrate the citation check (use a real model in practice)
+  for answer &lt;- List(
+      "Not for that reason. Opened earbuds can only be returned within 14 days if defective [1].",
+      "Yes, all items can be returned within 30 days [4]."
+    ) do
+    val problems = citationProblems(answer, hits.size)
+    println(s"\nanswer: $answer\ncheck : ${if problems.isEmpty then "OK" else problems.mkString("; ")}")
+</pre>
+
+<h2>Python: the same pipeline</h2>
+<pre data-lang="python" data-title="policy_rag.py" data-verify="run">
+import math
+import re
+
+DOCS = {
+    "Returns Policy": "## Standard returns\nMost items can be returned within 14 days of purchase or pickup with a receipt or order ID.\n"
+                      "## Opened items\nOpened headphones and earbuds can be returned within 14 days only if defective.",
+    "Pickup": "## Holding period\nPickup orders are held for 7 days, then cancelled and refunded.\n"
+              "## Identification\nCustomers must show the order confirmation and a photo ID matching the order name.",
+}
+
+
+def chunk(docs: dict[str, str]) -> list[dict]:
+    chunks = []
+    for source, body in sorted(docs.items()):
+        for sec in filter(str.strip, re.split(r"(?m)^## ", body)):
+            title, _, text = sec.partition("\n")
+            chunks.append({"source": source, "section": title.strip(), "text": " ".join(text.split())})
+    return chunks
+
+
+def embed(text: str, dims: int = 512) -> list[float]:   # toy; use a real embedding model in practice
+    v = [0.0] * dims
+    for w in re.findall(r"\w{3,}", text.lower()):
+        v[hash(w) % dims] += 1
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+CHUNKS = chunk(DOCS)
+VECTORS = [embed(f"{c['source']} > {c['section']}: {c['text']}") for c in CHUNKS]
+
+
+def retrieve(question: str, k: int = 3) -> list[dict]:
+    q = embed(question)
+    scored = sorted(zip(CHUNKS, VECTORS), key=lambda cv: -sum(a * b for a, b in zip(q, cv[1])))
+    return [c for c, _ in scored[:k]]
+
+
+def build_prompt(question: str, hits: list[dict]) -> str:
+    sources = "\n".join(f"[{i}] ({c['source']} > {c['section']}) {c['text']}" for i, c in enumerate(hits, 1))
+    return ("Answer using ONLY the sources. Cite like [1]. If not covered, reply exactly: "
+            f"\"I can't find this in the policies.\"\n\n&lt;sources>\n{sources}\n&lt;/sources>\n\nQuestion: {question}")
+
+
+def citation_problems(answer: str, n_sources: int) -> list[str]:
+    cited = {int(n) for n in re.findall(r"\[(\d+)\]", answer)}
+    problems = [f"cites non-existent source [{n}]" for n in sorted(cited) if not 1 &lt;= n &lt;= n_sources]
+    if not cited and "can't find" not in answer:
+        problems.append("answer has no citations")
+    return problems
+
+
+if __name__ == "__main__":
+    q = "How long do we keep a pickup order before cancelling it?"
+    hits = retrieve(q)
+    print(build_prompt(q, hits))
+    print(citation_problems("Pickup orders are held for 7 days [1].", len(hits)))   # []
+    print(citation_problems("They are held for 30 days.", len(hits)))              # ['answer has no citations']
+</pre>
+
+<h2>Evaluating a RAG system</h2>
+<p>Evaluate the two halves separately, because they fail for different reasons.</p>
+<table>
+  <thead><tr><th>Stage</th><th>Question</th><th>Metric (simple version)</th></tr></thead>
+  <tbody>
+    <tr><td><b>Retrieval</b></td><td>Did the right chunk come back?</td><td>hit@k: % of test questions whose correct chunk is in the top k</td></tr>
+    <tr><td><b>Faithfulness</b></td><td>Is every claim supported by the cited source?</td><td>Manual review or LLM-as-judge on a sample (Level 3)</td></tr>
+    <tr><td><b>Answer quality</b></td><td>Is it correct, complete and concise?</td><td>Compare with reference answers on a golden set</td></tr>
+    <tr><td><b>Abstention</b></td><td>Does it say "I can't find this" when it should?</td><td>Include unanswerable questions in the test set</td></tr>
+  </tbody>
+</table>
+<p>Start with 30&ndash;50 real staff questions, each with the expected source chunk and a reference answer. Re-run after every change to chunking, embeddings, k or the prompt.</p>
+
+<h2>Common failure modes</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Right answer exists but isn't retrieved</td><td>Chunks lack context; vocabulary mismatch</td><td>Prefix headings; hybrid search; query rewriting</td></tr>
+    <tr><td>Answer mixes two policies</td><td>Chunks too big or k too high</td><td>Smaller, structure-aware chunks; lower k; re-ranking (Level 3)</td></tr>
+    <tr><td>Confident answer with no support</td><td>Weak grounding instructions</td><td>Strict prompt, citation check, abstention examples</td></tr>
+    <tr><td>Outdated answer</td><td>Stale index or duplicate old docs</td><td>Re-index on change; store dates; delete old versions</td></tr>
+    <tr><td>Staff see docs they shouldn't</td><td>No access filtering</td><td>Filter by permissions <em>at retrieval</em>, never in the prompt</td></tr>
+    <tr><td>Injected instructions in a doc</td><td>Untrusted content in sources</td><td>Delimit sources, treat as data, restrict tools (L1 page 14)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><span class="c-title">Try it (40 min)</span>
+<ol>
+  <li>Run <code>PolicyRag.scala</code>. Read the retrieved chunks and the prompt.</li>
+  <li>Add a third document (e.g. "Price Matching") with 3 sections. Ask a question it answers and one it doesn't.</li>
+  <li>Plug in the live embedder (page 05) and the LLM client (page 03). Check citations on 10 questions.</li>
+  <li>Write 10 golden questions with expected chunk IDs and compute hit@3.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>RAG = retrieve relevant chunks &rarr; put them in the prompt &rarr; answer only from them, with citations.</li>
+  <li>Use structure-aware chunks with context prefixes and metadata.</li>
+  <li>Prompt for citations and explicit abstention, then verify citations in code.</li>
+  <li>Evaluate retrieval and generation separately with a golden set. Enforce permissions at retrieval time.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
