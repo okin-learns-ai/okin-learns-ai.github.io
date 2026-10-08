@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Tool Calling from Your Code | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 04 &middot; Tool Calling from Your Code</h1>
+<p class="lead">In Level 1 you <em>used</em> agents. Now you build the core of one: give a model tools, let it decide when
+to call them, execute the calls safely in your code, and loop until it has an answer. The result is a working
+<b>Store Assistant</b> that checks inventory and order status, in Scala 3 and Python.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">60 min</span><span class="pill">Tracks 7, 8, 10</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Define tools (name, description, JSON Schema parameters) in the OpenAI-compatible format.</li>
+  <li>Read <code>tool_calls</code> from a response, execute them and send results back.</li>
+  <li>Implement a bounded agent loop with error handling.</li>
+  <li>Design tools that are safe, small and easy for models to use correctly.</li>
+</ul></div>
+
+<h2>The protocol in four messages</h2>
+<figure class="diagram">
+<svg viewBox="0 0 740 280" width="740" role="img" aria-label="Tool calling message flow">
+  <defs><marker id="t4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box3" x="40"  y="10" width="200" height="36" rx="8"/><text class="d-title" x="140" y="33" text-anchor="middle">Your code</text>
+  <rect class="d-box2" x="500" y="10" width="200" height="36" rx="8"/><text class="d-title" x="600" y="33" text-anchor="middle">Model API</text>
+  <line class="d-dash" x1="140" y1="46" x2="140" y2="270"/><line class="d-dash" x1="600" y1="46" x2="600" y2="270"/>
+  <path class="d-line" d="M140 80 H596" marker-end="url(#t4)"/><text class="d-small" x="370" y="72" text-anchor="middle">1. messages + tools: [check_inventory, get_order_status, &#8230;]</text>
+  <path class="d-line" d="M600 120 H144" marker-end="url(#t4)"/><text class="d-small" x="370" y="112" text-anchor="middle">2. assistant: tool_calls = [check_inventory({"sku":"TABLET","storeId":"CENTRAL"})]</text>
+  <rect class="d-box4" x="40" y="135" width="200" height="40" rx="8"/><text class="d-small" x="140" y="159" text-anchor="middle">validate args &#8594; run tool &#8594; JSON</text>
+  <path class="d-line" d="M140 200 H596" marker-end="url(#t4)"/><text class="d-small" x="370" y="192" text-anchor="middle">3. history + {role:"tool", tool_call_id, content:{"available":5}}</text>
+  <path class="d-line" d="M600 240 H144" marker-end="url(#t4)"/><text class="d-small" x="370" y="232" text-anchor="middle">4. assistant: "Central has 5 tablets in stock."  (no tool_calls &#8594; done)</text>
+</svg>
+<figcaption>Steps 2&ndash;3 can repeat many times, and one reply can contain several tool calls. When a reply has no tool calls, it is the final answer.</figcaption>
+</figure>
+
+<h3>The wire format</h3>
+<pre data-lang="json" data-title="1. Request: declare tools">
+{
+  "model": "&lt;model>",
+  "messages": [
+    { "role": "system", "content": "You help store staff. Use tools for stock and orders; never guess numbers." },
+    { "role": "user",   "content": "Do we have tablets at Central?" }
+  ],
+  "tools": [
+    { "type": "function",
+      "function": {
+        "name": "check_inventory",
+        "description": "Get units available for one SKU at one store. Use for any stock/availability question.",
+        "parameters": {
+          "type": "object", "additionalProperties": false,
+          "required": ["sku", "storeId"],
+          "properties": {
+            "sku":     { "type": "string", "enum": ["HEADPHONES", "PHONE_CASE", "CHARGER", "TABLET"] },
+            "storeId": { "type": "string", "enum": ["RIVERSIDE", "CENTRAL", "AIRPORT"] }
+          } } } }
+  ],
+  "temperature": 0
+}
+</pre>
+<pre data-lang="json" data-title="2. Response: the model asks for a call (arguments is a JSON *string*)">
+{ "choices": [ { "finish_reason": "tool_calls", "message": {
+    "role": "assistant", "content": null,
+    "tool_calls": [ { "id": "call_7f3", "type": "function",
+      "function": { "name": "check_inventory", "arguments": "{\"sku\":\"TABLET\",\"storeId\":\"CENTRAL\"}" } } ]
+} } ] }
+</pre>
+<pre data-lang="json" data-title="3. Your next request appends the assistant message and one tool message per call">
+{ "role": "tool", "tool_call_id": "call_7f3", "content": "{\"sku\":\"TABLET\",\"storeId\":\"CENTRAL\",\"available\":5}" }
+</pre>
+
+<h2>Designing good tools</h2>
+<table>
+  <thead><tr><th>Principle</th><th>Good</th><th>Bad</th></tr></thead>
+  <tbody>
+    <tr><td><b>Specific, task-shaped</b></td><td><code>check_inventory(sku, storeId)</code></td><td><code>run_sql(query)</code></td></tr>
+    <tr><td><b>Descriptions say when to use</b></td><td>"Use for any stock or availability question"</td><td>"Inventory function"</td></tr>
+    <tr><td><b>Constrained parameters</b></td><td>Enums, formats, required fields</td><td>Free-form strings for everything</td></tr>
+    <tr><td><b>Compact results</b></td><td><code>{"available":5}</code></td><td>The whole 2 MB product record</td></tr>
+    <tr><td><b>Errors as results</b></td><td><code>{"error":"order not found"}</code> lets the model recover</td><td>Throwing and crashing the loop</td></tr>
+    <tr><td><b>Read vs write separated</b></td><td>Reads run freely; writes need confirmation</td><td>One tool that both reads and changes data</td></tr>
+    <tr><td><b>Few tools per agent</b></td><td>3&ndash;15 focused tools</td><td>80 tools; the model picks wrong ones</td></tr>
+  </tbody>
+</table>
+<div class="callout danger"><span class="c-title">Security: the model is not trusted</span>
+Treat tool arguments as <b>untrusted input</b>, exactly like HTTP request parameters. Validate them, check that the current
+user is authorised (staff at store X may only see store X), apply limits, and never pass model output straight into SQL, shell
+commands or file paths. Tool <em>results</em> that contain external text (customer messages, web pages) can carry prompt
+injections, so keep write actions behind human confirmation.</div>
+
+<h2>Scala 3: the Store Assistant</h2>
+<p>This single file contains tools with fake store data, a bounded agent loop, a <b>scripted model</b> so you can run it
+offline, and a <b>live model</b> that calls any OpenAI-compatible endpoint.</p>
+<pre data-lang="scala" data-title="StoreAssistant.scala  (offline: scala-cli StoreAssistant.scala | live: ... -- --live &quot;question&quot;)">
+//> using scala 3
+//> using dep io.circe::circe-core:0.14.15
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.*
+import io.circe.parser.parse
+import io.circe.syntax.*
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+
+// ---------- Wire types ----------
+final case class FunctionCall(name: String, arguments: String) derives Codec.AsObject
+final case class ToolCall(id: String, `type`: String, function: FunctionCall) derives Codec.AsObject
+final case class Msg(
+    role: String,
+    content: Option[String] = None,
+    tool_calls: Option[List[ToolCall]] = None,
+    tool_call_id: Option[String] = None
+) derives Codec.AsObject
+
+// ---------- Tools ----------
+final case class Tool(name: String, description: String, parameters: Json, run: JsonObject => Either[String, Json])
+
+def toolsJson(tools: List[Tool]): Json = tools.map { t =>
+  Json.obj("type" -> "function".asJson,
+    "function" -> Json.obj("name" -> t.name.asJson, "description" -> t.description.asJson, "parameters" -> t.parameters))
+}.asJson
+
+def str(args: JsonObject, key: String): Either[String, String] =
+  args(key).flatMap(_.asString).toRight(s"missing string argument '$key'")
+
+def enumSchema(values: Iterable[String]): Json = Json.obj("type" -> "string".asJson, "enum" -> values.asJson)
+def objectSchema(props: (String, Json)*): Json = Json.obj(
+  "type" -> "object".asJson, "additionalProperties" -> false.asJson,
+  "required" -> props.map(_._1).asJson, "properties" -> Json.obj(props*))
+
+// ---------- Fake store data (replace with real services) ----------
+val Skus   = List("HEADPHONES", "PHONE_CASE", "CHARGER", "TABLET")
+val Stores = List("RIVERSIDE", "CENTRAL", "AIRPORT")
+val stock: Map[(String, String), Int] = Map(
+  ("HEADPHONES", "RIVERSIDE") -> 3, ("HEADPHONES", "CENTRAL") -> 0, ("HEADPHONES", "AIRPORT") -> 7,
+  ("TABLET", "CENTRAL") -> 5, ("CHARGER", "RIVERSIDE") -> 40
+).withDefaultValue(0)
+val orders: Map[String, Json] = Map(
+  "ORD-482913" -> Json.obj("status" -> "READY_FOR_PICKUP".asJson, "storeId" -> "RIVERSIDE".asJson, "shelf" -> "B4".asJson),
+  "ORD-500122" -> Json.obj("status" -> "IN_TRANSIT".asJson, "estimatedReady" -> "2026-10-10".asJson)
+)
+
+val tools = List(
+  Tool("check_inventory",
+    "Units available for one SKU at one store. Use for any stock or availability question about a specific store.",
+    objectSchema("sku" -> enumSchema(Skus), "storeId" -> enumSchema(Stores)),
+    args => for sku &lt;- str(args, "sku"); store &lt;- str(args, "storeId")
+            yield Json.obj("sku" -> sku.asJson, "storeId" -> store.asJson, "available" -> stock((sku, store)).asJson)),
+  Tool("find_stores_with_stock",
+    "List stores that have at least one unit of a SKU. Use when the customer's store is out of stock.",
+    objectSchema("sku" -> enumSchema(Skus)),
+    args => str(args, "sku").map(sku =>
+      Stores.flatMap(s => Option.when(stock((sku, s)) > 0)(Json.obj("storeId" -> s.asJson, "available" -> stock((sku, s)).asJson))).asJson)),
+  Tool("get_order_status",
+    "Status of a customer order by order ID (format ORD-123456). Use for pickup or delivery questions.",
+    objectSchema("orderId" -> Json.obj("type" -> "string".asJson, "description" -> "e.g. ORD-482913".asJson)),
+    args => str(args, "orderId").flatMap(id => orders.get(id).toRight(s"order '$id' not found")))
+)
+
+// ---------- Agent loop ----------
+type Model = (List[Msg], Json) => Either[String, Msg]
+
+val SystemPrompt =
+  """You help retail store staff. Use the tools for stock and order facts; never guess numbers or statuses.
+    |If a tool returns an error, explain it briefly. Answer in at most 3 sentences.""".stripMargin
+
+def runAgent(model: Model, tools: List[Tool], question: String, maxSteps: Int = 6): String =
+  val byName = tools.map(t => t.name -> t).toMap
+
+  def execute(call: ToolCall): Msg =
+    val output = for
+      tool &lt;- byName.get(call.function.name).toRight(s"unknown tool '${call.function.name}'")
+      args &lt;- parse(call.function.arguments).flatMap(_.as[JsonObject]).left.map(e => s"invalid arguments: ${e.getMessage}")
+      out  &lt;- tool.run(args)
+    yield out
+    val json = output.fold(err => Json.obj("error" -> err.asJson), identity)
+    println(s"  [tool] ${call.function.name}(${call.function.arguments}) -> ${json.noSpaces}")
+    Msg("tool", content = Some(json.noSpaces), tool_call_id = Some(call.id))
+
+  @annotation.tailrec
+  def loop(history: List[Msg], step: Int): String =
+    if step > maxSteps then "I couldn't finish this safely. Please check the store system or ask a colleague."
+    else model(history, toolsJson(tools)) match
+      case Left(err) => s"AI unavailable: $err"
+      case Right(reply) => reply.tool_calls.filter(_.nonEmpty) match
+        case None        => reply.content.getOrElse("")
+        case Some(calls) => loop(history ++ (reply :: calls.map(execute)), step + 1)
+
+  loop(List(Msg("system", Some(SystemPrompt)), Msg("user", Some(question))), 1)
+
+// ---------- Models ----------
+/** Offline stand-in that behaves like a real model would for one question. */
+val scriptedModel: Model = (history, _) =>
+  val toolResults = history.filter(_.role == "tool")
+  if toolResults.isEmpty then Right(Msg("assistant", tool_calls = Some(List(
+    ToolCall("call_1", "function", FunctionCall("check_inventory", """{"sku":"HEADPHONES","storeId":"CENTRAL"}""")),
+    ToolCall("call_2", "function", FunctionCall("find_stores_with_stock", """{"sku":"HEADPHONES"}"""))
+  ))))
+  else Right(Msg("assistant", content = Some(
+    "Central is out of headphones right now. Riverside has 3 and Airport has 7, so we can transfer one or send the customer to Riverside.")))
+
+/** Any OpenAI-compatible endpoint (local Ollama by default). */
+def liveModel(base: String, model: String, key: Option[String]): Model = (history, toolsSpec) =>
+  val body = Json.obj("model" -> model.asJson, "temperature" -> 0.asJson,
+    "messages" -> history.asJson.deepDropNullValues, "tools" -> toolsSpec).noSpaces
+  val b = HttpRequest.newBuilder(URI.create(s"$base/chat/completions"))
+    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body))
+  key.foreach(k => b.header("Authorization", s"Bearer $k"))
+  val resp = HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())
+  if resp.statusCode() != 200 then Left(s"HTTP ${resp.statusCode()}: ${resp.body().take(300)}")
+  else parse(resp.body()).flatMap(_.hcursor.downField("choices").downN(0).downField("message").as[Msg]).left.map(_.getMessage)
+
+@main def storeAssistant(args: String*): Unit =
+  val live     = args.headOption.contains("--live")
+  val question = args.dropWhile(_ == "--live").headOption.getOrElse("A customer at Central wants headphones. Can we help?")
+  val model =
+    if live then liveModel(sys.env.getOrElse("LLM_BASE_URL", "http://localhost:11434/v1"),
+                           sys.env.getOrElse("LLM_MODEL", "llama3.2"), sys.env.get("LLM_API_KEY"))
+    else scriptedModel
+  println(s"Q: $question")
+  println(s"A: ${runAgent(model, tools, question)}")
+</pre>
+<pre data-lang="text" data-title="Offline output">
+Q: A customer at Central wants headphones. Can we help?
+  [tool] check_inventory({"sku":"HEADPHONES","storeId":"CENTRAL"}) -> {"sku":"HEADPHONES","storeId":"CENTRAL","available":0}
+  [tool] find_stores_with_stock({"sku":"HEADPHONES"}) -> [{"storeId":"RIVERSIDE","available":3},{"storeId":"AIRPORT","available":7}]
+A: Central is out of headphones right now. Riverside has 3 and Airport has 7, so we can transfer one or send the customer to Riverside.
+</pre>
+<p>What makes this robust:</p>
+<ul>
+  <li><b>Bounded loop</b> (<code>maxSteps</code>) so a confused model can't loop forever or run up costs.</li>
+  <li><b>Unknown tools, bad JSON and tool errors become tool results</b>, not crashes, so the model can recover or explain.</li>
+  <li><b>Enums in parameters</b> stop the model inventing store IDs. Tool code still validates.</li>
+  <li><b>The <code>Model</code> type is a function</b>, so you can swap scripted, local and hosted models and unit-test the loop without a network.</li>
+  <li><b><code>deepDropNullValues</code></b> removes <code>null</code> fields that some servers reject.</li>
+</ul>
+
+<h2>Python version</h2>
+<pre data-lang="python" data-title="store_assistant.py  (uv add httpx; set LLM_* env vars)">
+import json
+import os
+from typing import Any, Callable
+
+import httpx
+
+STOCK = {("HEADPHONES", "RIVERSIDE"): 3, ("HEADPHONES", "AIRPORT"): 7, ("TABLET", "CENTRAL"): 5}
+ORDERS = {"ORD-482913": {"status": "READY_FOR_PICKUP", "storeId": "RIVERSIDE", "shelf": "B4"}}
+SKUS, STORES = ["HEADPHONES", "PHONE_CASE", "CHARGER", "TABLET"], ["RIVERSIDE", "CENTRAL", "AIRPORT"]
+
+
+def check_inventory(sku: str, storeId: str) -> dict:
+    return {"sku": sku, "storeId": storeId, "available": STOCK.get((sku, storeId), 0)}
+
+
+def get_order_status(orderId: str) -> dict:
+    return ORDERS.get(orderId) or {"error": f"order '{orderId}' not found"}
+
+
+TOOLS: dict[str, tuple[Callable[..., dict], dict]] = {
+    "check_inventory": (check_inventory, {
+        "description": "Units available for one SKU at one store. Use for stock questions.",
+        "parameters": {"type": "object", "additionalProperties": False, "required": ["sku", "storeId"],
+                       "properties": {"sku": {"type": "string", "enum": SKUS},
+                                      "storeId": {"type": "string", "enum": STORES}}}}),
+    "get_order_status": (get_order_status, {
+        "description": "Status of an order by ID (ORD-123456). Use for pickup questions.",
+        "parameters": {"type": "object", "additionalProperties": False, "required": ["orderId"],
+                       "properties": {"orderId": {"type": "string"}}}}),
+}
+TOOL_SPECS = [{"type": "function", "function": {"name": n, **spec}} for n, (_, spec) in TOOLS.items()]
+
+
+def call_model(messages: list[dict]) -> dict:
+    base = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
+    key = os.environ.get("LLM_API_KEY")
+    r = httpx.post(f"{base}/chat/completions", timeout=90,
+                   headers={"Authorization": f"Bearer {key}"} if key else {},
+                   json={"model": os.environ.get("LLM_MODEL", "llama3.2"), "temperature": 0,
+                         "messages": messages, "tools": TOOL_SPECS})
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]
+
+
+def execute(call: dict) -> dict:
+    name = call["function"]["name"]
+    try:
+        fn, _ = TOOLS[name]
+        result: Any = fn(**json.loads(call["function"]["arguments"] or "{}"))
+    except KeyError:
+        result = {"error": f"unknown tool '{name}'"}
+    except (json.JSONDecodeError, TypeError) as e:
+        result = {"error": f"invalid arguments: {e}"}
+    print(f"  [tool] {name}({call['function']['arguments']}) -> {result}")
+    return {"role": "tool", "tool_call_id": call["id"], "content": json.dumps(result)}
+
+
+def run_agent(question: str, max_steps: int = 6) -> str:
+    messages = [{"role": "system", "content": "You help retail store staff. Use tools; never guess stock or status."},
+                {"role": "user", "content": question}]
+    for _ in range(max_steps):
+        reply = call_model(messages)
+        calls = reply.get("tool_calls") or []
+        if not calls:
+            return reply.get("content") or ""
+        messages.append(reply)
+        messages.extend(execute(c) for c in calls)
+    return "I couldn't finish this safely. Please check the store system."
+
+
+if __name__ == "__main__":
+    print(run_agent("Is order ORD-482913 ready, and where is it?"))
+</pre>
+
+<h2>Write actions and human confirmation</h2>
+<p>Reading stock is harmless. <em>Reserving</em> stock, issuing a refund or messaging a customer changes the world. Common patterns:</p>
+<ul>
+  <li><b>Propose, don't perform:</b> the tool <code>propose_transfer(sku, from, to, qty)</code> returns a draft. A human clicks "Confirm" in your UI, and only then does your code execute it.</li>
+  <li><b>Dry-run first:</b> write tools take <code>dryRun: true</code> by default and return what <em>would</em> happen.</li>
+  <li><b>Idempotency keys:</b> retries of a write must not double-refund. Pass a key derived from the request.</li>
+  <li><b>Audit log:</b> record who asked, what the model proposed, and who approved.</li>
+</ul>
+
+<h2>Practical notes</h2>
+<ul>
+  <li><b>Parallel tool calls:</b> a reply may contain several calls (as in the scripted example). Execute independent ones concurrently in production.</li>
+  <li><b><code>tool_choice</code>:</b> most APIs let you force a specific tool, forbid tools, or let the model decide (default). Forcing a tool is a neat way to get structured output (page 02, level 4).</li>
+  <li><b>Local models vary:</b> smaller local models are less reliable at tool calling. Test with your real tools, and prefer models advertised for tool use.</li>
+  <li><b>From functions to MCP:</b> these same tools could be exposed by an MCP server (Level 1 page 09, built properly in Level 3). Then any MCP-capable app, such as your IDE agent, can use them too.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (40 min)</span>
+<ol>
+  <li>Run <code>StoreAssistant.scala</code> offline and read the trace.</li>
+  <li>Add a tool <code>get_product_info(sku)</code> returning price and a short description. Update the scripted model or run <code>--live</code> against a local model.</li>
+  <li>Add a write tool <code>propose_transfer(sku, fromStore, toStore, quantity)</code> that only <em>returns</em> a proposal. Make the final answer ask the staff member to confirm.</li>
+  <li>Ask the live model something your tools can't answer ("What's the weather?"). Does it say so, or invent an answer? Adjust the system prompt.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Tool calling = declare tools &rarr; model returns <code>tool_calls</code> &rarr; you execute &rarr; send <code>tool</code> messages &rarr; repeat.</li>
+  <li>Good tools are specific, well described, constrained by schemas, compact, and return errors as data.</li>
+  <li>Bound the loop, validate arguments and authorisation, and keep writes behind confirmation.</li>
+  <li>Abstract the model as a function to test agent logic offline.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

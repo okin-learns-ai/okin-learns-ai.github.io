@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Calling LLM APIs Properly | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 03 &middot; Calling LLM APIs Properly</h1>
+<p class="lead">The Level 1 examples made a single happy-path HTTP call. Real code needs configuration, typed requests,
+timeouts, retries with back-off, streaming, token and cost tracking, and good error handling. This page builds a small,
+production-shaped LLM client in <b>Scala 3 (sttp + circe)</b> and <b>Python (httpx)</b>.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">60 min</span><span class="pill">Track 10 &middot; Building with LLM APIs</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Configure a provider-agnostic client (base URL, model, key) from the environment.</li>
+  <li>Send typed chat requests and decode responses in Scala and Python.</li>
+  <li>Handle errors correctly: which to retry, back-off with jitter, honour <code>Retry-After</code>.</li>
+  <li>Stream tokens as they are generated (Server-Sent Events).</li>
+  <li>Track token usage and estimate cost per request.</li>
+</ul></div>
+
+<h2>Anatomy of an LLM API call</h2>
+<figure class="diagram">
+<svg viewBox="0 0 740 230" width="740" role="img" aria-label="LLM client architecture">
+  <defs><marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="80" width="120" height="60" rx="10"/><text class="d-text" x="70" y="106" text-anchor="middle">Your service</text><text class="d-small" x="70" y="124" text-anchor="middle">Store Assistant</text>
+  <rect class="d-box2" x="170" y="20" width="260" height="190" rx="12"/><text class="d-title" x="300" y="44" text-anchor="middle">LLM client (your code)</text>
+  <g class="d-small"><text x="190" y="72">&#8226; config from env (URL, model, key)</text><text x="190" y="94">&#8226; typed request / response</text><text x="190" y="116">&#8226; timeouts (connect + read)</text><text x="190" y="138">&#8226; retry 429/5xx with back-off</text><text x="190" y="160">&#8226; streaming</text><text x="190" y="182">&#8226; usage &amp; cost logging (no secrets)</text></g>
+  <rect class="d-box3" x="490" y="30" width="240" height="50" rx="10"/><text class="d-text" x="610" y="60" text-anchor="middle">Hosted provider (HTTPS + key)</text>
+  <rect class="d-box3" x="490" y="95" width="240" height="50" rx="10"/><text class="d-text" x="610" y="125" text-anchor="middle">Company AI gateway</text>
+  <rect class="d-box4" x="490" y="160" width="240" height="50" rx="10"/><text class="d-text" x="610" y="190" text-anchor="middle">Local model (Ollama / LM Studio)</text>
+  <path class="d-line" d="M130 110 H166" marker-end="url(#c3)"/>
+  <path class="d-line" d="M430 80 L486 58" marker-end="url(#c3)"/><path class="d-line" d="M430 118 H486" marker-end="url(#c3)"/><path class="d-line" d="M430 160 L486 182" marker-end="url(#c3)"/>
+</svg>
+<figcaption>Many providers, gateways and local runners accept the same OpenAI-compatible request shape, so one client can target any of them just by changing configuration.</figcaption>
+</figure>
+
+<h3>Configuration, never hard-coded</h3>
+<table>
+  <thead><tr><th>Variable</th><th>Example</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>LLM_BASE_URL</code></td><td><code>http://localhost:11434/v1</code></td><td>Local Ollama; or your provider/gateway URL</td></tr>
+    <tr><td><code>LLM_MODEL</code></td><td><code>llama3.2</code></td><td>Pin an exact model/version in production</td></tr>
+    <tr><td><code>LLM_API_KEY</code></td><td><em>(from a secret manager)</em></td><td>Never in code, git, logs or prompts</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">At work, use the approved route</span>
+Many companies require AI traffic to go through an internal gateway (for logging, data protection and cost control) and
+only allow approved models. Your client should make the base URL configurable so it can point wherever policy says.</div>
+
+<h2>Which errors to retry</h2>
+<table>
+  <thead><tr><th>Status</th><th>Meaning</th><th>Retry?</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td>400</td><td>Bad request (invalid params, context too long, schema invalid)</td><td>No</td><td>Fix the request; for context length, trim input</td></tr>
+    <tr><td>401 / 403</td><td>Bad or missing key / not permitted</td><td>No</td><td>Fix credentials or permissions</td></tr>
+    <tr><td>404</td><td>Unknown model or endpoint</td><td>No</td><td>Check model name and base URL</td></tr>
+    <tr><td>408 / timeouts / connection reset</td><td>Transient network issue</td><td>Yes</td><td>Back off and retry</td></tr>
+    <tr><td>429</td><td>Rate limit or quota</td><td>Yes</td><td>Honour <code>Retry-After</code>; slow down; queue</td></tr>
+    <tr><td>500 / 502 / 503 / 504 (and overload codes)</td><td>Server-side problem or overload</td><td>Yes</td><td>Back off; consider a fallback model</td></tr>
+  </tbody>
+</table>
+<h3>Exponential back-off with jitter</h3>
+<p>Wait <code>base &times; 2<sup>attempt</sup></code>, capped, multiplied by a random factor. The randomness ("jitter") stops
+many clients from retrying in lock-step and overloading the server again. Limit total attempts (3&ndash;5) and total time.</p>
+
+<h2>Scala 3 client (sttp + circe)</h2>
+<pre data-lang="scala" data-title="LlmClient.scala  (run: scala-cli LlmClient.scala -- &quot;question&quot;)" data-verify="llmclient">
+//> using scala 3
+//> using dep com.softwaremill.sttp.client4::core:4.0.25
+//> using dep io.circe::circe-core:0.14.15
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.parser.decode
+import io.circe.syntax.*
+import sttp.client4.*
+import sttp.model.Uri
+import scala.concurrent.duration.*
+import scala.util.{Random, Try}
+
+// ---------- Wire types (OpenAI-compatible chat completions) ----------
+final case class Message(role: String, content: String) derives Codec.AsObject
+final case class ChatRequest(model: String, messages: List[Message], temperature: Double, max_tokens: Int)
+    derives Encoder.AsObject
+final case class Usage(prompt_tokens: Int, completion_tokens: Int) derives Decoder
+final case class Choice(message: Message, finish_reason: Option[String]) derives Decoder
+final case class ChatResponse(choices: List[Choice], usage: Option[Usage]) derives Decoder:
+  def text: String = choices.headOption.map(_.message.content).getOrElse("")
+
+// ---------- Config & errors ----------
+final case class LlmConfig(baseUrl: String, model: String, apiKey: Option[String])
+object LlmConfig:
+  def fromEnv: LlmConfig = LlmConfig(
+    baseUrl = sys.env.getOrElse("LLM_BASE_URL", "http://localhost:11434/v1"),
+    model   = sys.env.getOrElse("LLM_MODEL", "llama3.2"),
+    apiKey  = sys.env.get("LLM_API_KEY")
+  )
+
+enum LlmError:
+  case Http(status: Int, body: String, retryAfterSec: Option[Int])
+  case Network(message: String)
+  case Decode(message: String)
+
+  def retryable: Boolean = this match
+    case Http(s, _, _) => Set(408, 409, 429, 500, 502, 503, 504)(s)
+    case Network(_)    => true
+    case Decode(_)     => false
+
+// ---------- Client ----------
+final class LlmClient(cfg: LlmConfig, backend: SyncBackend = DefaultSyncBackend()):
+  private val endpoint = Uri.unsafeParse(s"${cfg.baseUrl.stripSuffix("/")}/chat/completions")
+
+  def chat(
+      messages: List[Message],
+      temperature: Double = 0.2,
+      maxTokens: Int = 800,
+      maxAttempts: Int = 4
+  ): Either[LlmError, ChatResponse] =
+    val body = ChatRequest(cfg.model, messages, temperature, maxTokens).asJson.noSpaces
+
+    def once(): Either[LlmError, ChatResponse] =
+      val base   = basicRequest.post(endpoint).contentType("application/json").body(body).readTimeout(90.seconds)
+      val req    = cfg.apiKey.fold(base)(key => base.auth.bearer(key))
+      Try(req.send(backend)).toEither.left.map(e => LlmError.Network(e.toString)).flatMap { resp =>
+        resp.body match
+          case Right(json) => decode[ChatResponse](json).left.map(e => LlmError.Decode(e.getMessage))
+          case Left(err)   => Left(LlmError.Http(resp.code.code, err.take(500), resp.header("Retry-After").flatMap(_.toIntOption)))
+      }
+
+    def backoff(attempt: Int, retryAfter: Option[Int]): FiniteDuration =
+      retryAfter.map(_.seconds).getOrElse:
+        val capMs = math.min(30000.0, 500.0 * math.pow(2, attempt))
+        (capMs * (0.5 + Random.nextDouble() / 2)).toLong.millis
+
+    def loop(attempt: Int): Either[LlmError, ChatResponse] =
+      once() match
+        case Left(e) if e.retryable && attempt &lt; maxAttempts =>
+          val wait = backoff(attempt, e match { case LlmError.Http(_, _, ra) => ra; case _ => None })
+          System.err.println(s"[llm] attempt $attempt failed ($e), retrying in ${wait.toMillis} ms")
+          Thread.sleep(wait.toMillis)
+          loop(attempt + 1)
+        case result =>
+          result.foreach(r => r.usage.foreach(u => System.err.println(s"[llm] tokens in=${u.prompt_tokens} out=${u.completion_tokens}")))
+          result
+
+    loop(1)
+
+/** Prices are per million tokens and vary by model: read them from config, don't hard-code. */
+def estimateCostUsd(u: Usage, inPerMillion: BigDecimal, outPerMillion: BigDecimal): BigDecimal =
+  (BigDecimal(u.prompt_tokens) * inPerMillion + BigDecimal(u.completion_tokens) * outPerMillion) / 1000000
+
+@main def ask(question: String): Unit =
+  val client = LlmClient(LlmConfig.fromEnv)
+  val result = client.chat(List(
+    Message("system", "You are a concise assistant for retail store staff."),
+    Message("user", question)
+  ))
+  result match
+    case Right(r) =>
+      println(r.text)
+      if r.choices.headOption.flatMap(_.finish_reason).contains("length") then
+        System.err.println("[llm] warning: answer was cut off (max_tokens reached)")
+    case Left(err) => System.err.println(s"LLM call failed: $err")
+</pre>
+<pre data-lang="bash">
+# Local model, no key needed:
+ollama pull llama3.2
+scala-cli LlmClient.scala -- "How should staff handle a pickup order that is not on the shelf?"
+
+# Hosted provider or company gateway:
+export LLM_BASE_URL="https://&lt;your-provider-or-gateway>/v1"
+export LLM_MODEL="&lt;approved-model>"
+export LLM_API_KEY="$(&lt;read from your secret manager>)"
+</pre>
+<p>Design points:</p>
+<ul>
+  <li><b>Errors are values</b> (<code>Either[LlmError, ...]</code>), with retryability decided in one place.</li>
+  <li><b>Both timeouts</b>: read timeout on the request, and a connection timeout on the backend if you need it. LLM calls can legitimately take 30&ndash;90 s, so set the read timeout accordingly.</li>
+  <li><b>Usage is logged, content is not.</b> Prompts can contain customer data, so log token counts, latency and model, and avoid logging full prompts in production.</li>
+  <li><b><code>finish_reason == "length"</code></b> means the answer was truncated. Treat it as an error for structured output.</li>
+  <li>For effectful code (Cats Effect / ZIO), the same design applies: use sttp's effect backends and the effect library's retry and timeout combinators instead of <code>Thread.sleep</code>.</li>
+</ul>
+
+<h2>Python client (httpx)</h2>
+<pre data-lang="python" data-title="llm_client.py  (uv add httpx)">
+import json
+import os
+import random
+import sys
+import time
+from collections.abc import Iterator
+
+import httpx
+
+RETRYABLE = {408, 409, 429, 500, 502, 503, 504}
+
+
+class LlmClient:
+    def __init__(self) -> None:
+        self.base_url = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1").rstrip("/")
+        self.model = os.environ.get("LLM_MODEL", "llama3.2")
+        key = os.environ.get("LLM_API_KEY")
+        self.headers = {"Authorization": f"Bearer {key}"} if key else {}
+        self.http = httpx.Client(timeout=httpx.Timeout(90.0, connect=10.0))
+
+    def _wait(self, attempt: int, retry_after: str | None) -> float:
+        if retry_after and retry_after.isdigit():
+            return float(retry_after)
+        return min(30.0, 0.5 * 2**attempt) * random.uniform(0.5, 1.0)
+
+    def chat(self, messages: list[dict], temperature: float = 0.2, max_tokens: int = 800, max_attempts: int = 4) -> dict:
+        payload = {"model": self.model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
+        for attempt in range(1, max_attempts + 1):
+            try:
+                r = self.http.post(f"{self.base_url}/chat/completions", json=payload, headers=self.headers)
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
+                if attempt == max_attempts:
+                    raise
+                wait = self._wait(attempt, None)
+                print(f"[llm] network error {e!r}, retrying in {wait:.1f}s", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            if r.status_code in RETRYABLE and attempt &lt; max_attempts:
+                wait = self._wait(attempt, r.headers.get("retry-after"))
+                print(f"[llm] HTTP {r.status_code}, retrying in {wait:.1f}s", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            r.raise_for_status()
+            data = r.json()
+            if usage := data.get("usage"):
+                print(f"[llm] tokens in={usage['prompt_tokens']} out={usage['completion_tokens']}", file=sys.stderr)
+            return data
+        raise RuntimeError("unreachable")
+
+    def stream(self, messages: list[dict], temperature: float = 0.2) -> Iterator[str]:
+        """Yield text fragments as they arrive (Server-Sent Events)."""
+        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": True}
+        with self.http.stream("POST", f"{self.base_url}/chat/completions", json=payload, headers=self.headers) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                chunk = line.removeprefix("data: ")
+                if chunk == "[DONE]":
+                    break
+                delta = json.loads(chunk)["choices"][0].get("delta", {}).get("content")
+                if delta:
+                    yield delta
+
+
+if __name__ == "__main__":
+    client = LlmClient()
+    question = " ".join(sys.argv[1:]) or "Give 3 tips for handling a busy in-store pickup counter."
+    for piece in client.stream([{"role": "user", "content": question}]):
+        print(piece, end="", flush=True)
+    print()
+</pre>
+
+<h2>Streaming</h2>
+<p>With <code>"stream": true</code>, the server sends the answer as a sequence of <b>Server-Sent Events</b> while it is
+being generated. Users see text appear immediately instead of waiting 20 seconds for the full answer.</p>
+<pre data-lang="text" data-title="What a streamed response looks like on the wire">
+data: {"choices":[{"delta":{"role":"assistant","content":""}}]}
+data: {"choices":[{"delta":{"content":"Check"}}]}
+data: {"choices":[{"delta":{"content":" the back"}}]}
+data: {"choices":[{"delta":{"content":" room first."}}]}
+data: {"choices":[{"delta":{},"finish_reason":"stop"}]}
+data: [DONE]
+</pre>
+<pre data-lang="scala" data-title="StreamDemo.scala: streaming with only the JDK + circe" data-verify="stream">
+//> using scala 3
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.parser.parse
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+import scala.jdk.CollectionConverters.*
+
+@main def streamDemo(question: String): Unit =
+  val base  = sys.env.getOrElse("LLM_BASE_URL", "http://localhost:11434/v1")
+  val model = sys.env.getOrElse("LLM_MODEL", "llama3.2")
+  val body  = io.circe.Json.obj(
+    "model"    -> io.circe.Json.fromString(model),
+    "stream"   -> io.circe.Json.True,
+    "messages" -> io.circe.Json.arr(io.circe.Json.obj(
+      "role" -> io.circe.Json.fromString("user"), "content" -> io.circe.Json.fromString(question)))
+  ).noSpaces
+
+  val builder = HttpRequest.newBuilder(URI.create(s"$base/chat/completions"))
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(body))
+  sys.env.get("LLM_API_KEY").foreach(k => builder.header("Authorization", s"Bearer $k"))
+
+  val lines = HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofLines()).body()
+  lines.iterator().asScala
+    .collect { case l if l.startsWith("data: ") => l.stripPrefix("data: ") }
+    .takeWhile(_ != "[DONE]")
+    .flatMap(chunk => parse(chunk).toOption.flatMap(_.hcursor.downField("choices").downN(0).downField("delta").get[String]("content").toOption))
+    .foreach(piece => print(piece))
+  println()
+</pre>
+
+<h2>Tokens, cost and latency</h2>
+<ul>
+  <li><b>Every response reports usage</b> (input and output tokens). Log it per feature so you know what each feature costs.</li>
+  <li><b>Output tokens usually cost more than input</b> and take longer. Ask for concise answers and set <code>max_tokens</code>.</li>
+  <li><b>Prompt caching:</b> many providers discount or speed up repeated <em>prefixes</em>. Put stable content (system prompt, policies, tool definitions) first and variable content last.</li>
+  <li><b>Latency</b> has two parts: time-to-first-token (affected by prompt length and model) and tokens per second. Streaming hides the second.</li>
+  <li><b>Batch APIs</b>: for offline jobs (classify 50,000 tickets overnight), many providers offer discounted asynchronous batch processing.</li>
+  <li><b>Right-size the model</b>: small models for classification and extraction, big ones for reasoning. Measure with golden tests (page 01).</li>
+</ul>
+
+<h2>SDKs vs raw HTTP</h2>
+<div class="compare">
+  <div><h4>Official SDKs</h4><p>Typed models, built-in retries, streaming helpers, and provider-specific features. Best when you commit to one provider. Several providers publish Java SDKs usable from Scala.</p></div>
+  <div><h4>Raw HTTP (this page)</h4><p>You understand every byte, it's portable across providers and gateways, and it has few dependencies. Best for learning, for gateways, and for multi-provider setups.</p></div>
+</div>
+
+<h2>Production checklist</h2>
+<ul class="checklist">
+  <li>Config from environment / secret manager, with an exact model pinned.</li>
+  <li>Connect and read timeouts. Overall deadline per user request.</li>
+  <li>Retries only for retryable errors, with jittered back-off and <code>Retry-After</code>.</li>
+  <li>Concurrency limit (a semaphore or pool) to stay under rate limits.</li>
+  <li>Structured logging of model, latency, tokens and status, with no secrets and minimal customer data.</li>
+  <li>Truncation (<code>finish_reason</code>) and refusal handling.</li>
+  <li>Fallback behaviour: a smaller or backup model, a cached answer, or a graceful "AI unavailable" message.</li>
+  <li>Golden tests run on model or prompt changes.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (30 min)</span>
+<ol>
+  <li>Install Ollama, run <code>ollama pull llama3.2</code>, and run <code>LlmClient.scala</code> and <code>llm_client.py</code>.</li>
+  <li>Stop Ollama and run again. Watch the retries and back-off in the log.</li>
+  <li>Set <code>LLM_MODEL</code> to a model that doesn't exist. Confirm you get a non-retried error.</li>
+  <li>Combine with page 02: send the return-request schema in <code>response_format</code> and decode the answer into <code>ReturnRequest</code>.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>One provider-agnostic client, configured by environment, can target hosted, gateway or local models.</li>
+  <li>Retry only 408/409/429/5xx and network errors, with jittered exponential back-off.</li>
+  <li>Stream for user-facing answers. Check <code>finish_reason</code> for truncation.</li>
+  <li>Log usage, not content. Put stable prompt parts first for caching. Right-size models.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

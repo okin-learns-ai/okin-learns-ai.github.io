@@ -7,7 +7,7 @@ window.SITE = {
   subtitle: "Beginner \u2192 Expert",
   dedication: "For My Wife Okin",
   author: "Sanat",
-  version: "Phase 1 \u00b7 Level 1 Foundations",
+  version: "Phase 2 \u00b7 Level 2 in progress",
   updated: "2026-10-08"
 };
 
@@ -36,8 +36,10 @@ window.NAV = [
     { n: "16", title: "Level 1 Checkpoint Quiz", href: "l1/16-checkpoint.html" }
   ]},
   { group: "Level 2 \u00b7 Practitioner", level: 2, items: [
-    { title: "Advanced Prompt Patterns & Structured Output", href: "roadmap.html#l2", soon: true },
-    { title: "Calling LLM APIs from Scala & Python", href: "roadmap.html#l2", soon: true },
+    { n: "01", title: "Advanced Prompt Patterns", href: "l2/01-advanced-prompt-patterns.html" },
+    { n: "02", title: "Structured Output & JSON Schema", href: "l2/02-structured-output.html" },
+    { n: "03", title: "Calling LLM APIs Properly", href: "l2/03-calling-llm-apis.html" },
+    { n: "04", title: "Tool Calling from Your Code", href: "l2/04-tool-calling.html" },
     { title: "Embeddings & Semantic Search", href: "roadmap.html#l2", soon: true },
     { title: "RAG: Retrieval-Augmented Generation", href: "roadmap.html#l2", soon: true },
     { title: "Agentic Coding Workflows in Depth", href: "roadmap.html#l2", soon: true },
@@ -45,7 +47,10 @@ window.NAV = [
     { title: "Using & Configuring MCP Servers", href: "roadmap.html#l2", soon: true },
     { title: "AI-Assisted Testing & Code Review", href: "roadmap.html#l2", soon: true },
     { title: "Local Models: Ollama, LM Studio, MLX", href: "roadmap.html#l2", soon: true },
-    { title: "AI for Data Engineering (Spark/Scala)", href: "roadmap.html#l2", soon: true }
+    { title: "AI for Data Engineering (Spark/Scala)", href: "roadmap.html#l2", soon: true },
+    { title: "Level 2 Labs", href: "roadmap.html#l2", soon: true },
+    { title: "Capstone: Store Assistant", href: "roadmap.html#l2", soon: true },
+    { title: "Level 2 Checkpoint Quiz", href: "roadmap.html#l2", soon: true }
   ]},
   { group: "Level 3 \u00b7 Advanced", level: 3, items: [
     { title: "Building MCP Servers (Python & Scala/JVM)", href: "roadmap.html#l3", soon: true },

@@ -48,7 +48,7 @@ tools/build_search_index.py  Regenerates the search index
 | Phase | Level | Status |
 |------|-------|--------|
 | 1 | L1 Foundations (Beginner) | Done |
-| 2 | L2 Practitioner | Planned |
+| 2 | L2 Practitioner | In progress (pages 01-04 done) |
 | 3 | L3 Advanced | Planned |
 | 4 | L4 Expert | Planned |
 | 5 | L5 Master / Specialist tracks | Planned |

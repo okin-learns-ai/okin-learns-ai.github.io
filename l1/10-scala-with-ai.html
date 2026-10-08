@@ -111,7 +111,7 @@ Scala 3. Design only the types (no implementations yet) for a payment domain:
 - IDs must not be confused with each other.
 Use enums, opaque types and smart constructors returning Either. Show the code and explain each choice.
 </pre>
-<pre data-lang="scala" data-title="A typical good result">
+<pre data-lang="scala" data-title="A typical good result" data-verify="payment">
 //> using scala 3
 import java.util.Currency
 
@@ -181,7 +181,7 @@ differences I should watch for (integer division, mutability, exceptions vs Eith
 
 <h2>Tests as the AI safety net</h2>
 <h3>MUnit</h3>
-<pre data-lang="scala" data-title="Payment.test.scala  (run: scala-cli test .)">
+<pre data-lang="scala" data-title="Payment.test.scala  (run: scala-cli test .)" data-verify="payment">
 //> using scala 3
 //> using test.dep org.scalameta::munit::1.0.0
 import java.util.Currency

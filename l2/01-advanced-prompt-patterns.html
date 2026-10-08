@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Advanced Prompt Patterns | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 01 &middot; Advanced Prompt Patterns</h1>
+<p class="lead">Level 1 taught the anatomy of a good prompt. Level 2 is about <b>systems of prompts</b>: breaking work
+into steps, chaining outputs, making the model check itself, and building a prompt library you can version and test like code.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">50 min</span><span class="pill">Track 3 &middot; Prompt engineering</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Decompose a large task into a prompt chain with clear inputs and outputs per step.</li>
+  <li>Use generator&ndash;critic, self-consistency, and plan-then-execute patterns.</li>
+  <li>Write system prompts that hold up across hundreds of requests.</li>
+  <li>Treat prompts as versioned, tested artefacts.</li>
+</ul></div>
+
+<div class="callout note"><span class="c-title">The running example for Level 2</span>
+Every page uses one realistic domain: a <b>retail store platform</b>. It has products (SKUs), store inventory,
+customer orders, in-store pickup and customer-support tickets. You will build a small <b>"Store Assistant"</b>
+step by step. It is a generic domain, and everything transfers to any business.</div>
+
+<h2>From one prompt to a pipeline</h2>
+<p>A single prompt that tries to "read 200 support tickets, find the top issues, propose fixes and write a report" will
+be shallow and hard to debug. Split it into steps, where each step has one job and a checkable output.</p>
+<figure class="diagram">
+<svg viewBox="0 0 760 170" width="760" role="img" aria-label="Prompt chain">
+  <defs><marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="50" width="130" height="70" rx="10"/><text class="d-title" x="75" y="78" text-anchor="middle">Tickets</text><text class="d-small" x="75" y="98" text-anchor="middle">200 raw texts</text>
+  <rect class="d-box2" x="170" y="50" width="130" height="70" rx="10"/><text class="d-title" x="235" y="78" text-anchor="middle">1. Classify</text><text class="d-small" x="235" y="98" text-anchor="middle">JSON per ticket</text>
+  <rect class="d-box3" x="330" y="50" width="130" height="70" rx="10"/><text class="d-title" x="395" y="78" text-anchor="middle">2. Aggregate</text><text class="d-small" x="395" y="98" text-anchor="middle">plain code, no LLM</text>
+  <rect class="d-box2" x="490" y="50" width="130" height="70" rx="10"/><text class="d-title" x="555" y="78" text-anchor="middle">3. Analyse</text><text class="d-small" x="555" y="98" text-anchor="middle">top 5 + causes</text>
+  <rect class="d-box4" x="650" y="50" width="100" height="70" rx="10"/><text class="d-title" x="700" y="78" text-anchor="middle">4. Report</text><text class="d-small" x="700" y="98" text-anchor="middle">for managers</text>
+  <path class="d-line" d="M140 85 H166" marker-end="url(#p1)"/><path class="d-line" d="M300 85 H326" marker-end="url(#p1)"/><path class="d-line" d="M460 85 H486" marker-end="url(#p1)"/><path class="d-line" d="M620 85 H646" marker-end="url(#p1)"/>
+  <text class="d-small" x="380" y="150" text-anchor="middle">each arrow is a typed, inspectable intermediate result</text>
+</svg>
+<figcaption>Use the LLM only where you need language understanding. Counting, sorting and joining are done in normal code, which is cheaper, exact and testable.</figcaption>
+</figure>
+<h3>Rules for good chains</h3>
+<ul>
+  <li><b>One responsibility per step.</b> Classification, extraction, analysis and writing are different jobs.</li>
+  <li><b>Structured hand-offs.</b> Steps exchange JSON or typed objects, not free prose (page 02).</li>
+  <li><b>Deterministic glue.</b> Anything that code can do exactly (filter, count, join, sort), do in code.</li>
+  <li><b>Inspect every intermediate.</b> When the report is wrong, you can see which step failed.</li>
+  <li><b>Right-size models per step.</b> A small, fast model can classify. Use a stronger one for analysis.</li>
+</ul>
+
+<h2>Pattern catalogue</h2>
+
+<h3>1. Plan &rarr; execute</h3>
+<p>Ask for a plan as structured output, review or validate it, then execute each step with a focused prompt.</p>
+<pre data-lang="text" data-title="Step A: plan">
+You are planning a data migration for the store inventory service.
+Goal: move stock levels from the legacy table `inv_old` to `inventory` (new schema below).
+Return ONLY a JSON array of steps: [{"id":1,"action":"...","risk":"low|medium|high","verify":"..."}]
+Max 8 steps. Every step must include how to verify it.
+</pre>
+<pre data-lang="text" data-title="Step B: execute one step (repeat per step)">
+Here is the approved plan: &lt;plan JSON>. Execute step 3 only: "&lt;action>".
+Produce the SQL and a verification query. Do not perform other steps.
+</pre>
+
+<h3>2. Generator &rarr; critic &rarr; reviser</h3>
+<p>One call writes, another critiques against explicit criteria, a third revises. Separate calls (or at least separate
+roles) work better than "write it and check it" in one breath, because the critic is not anchored on defending its own text.</p>
+<pre data-lang="text" data-title="Critic prompt">
+You are reviewing a customer-facing reply drafted by another assistant.
+Criteria (score each 1-5 and quote the problem): accuracy vs. the order data provided,
+policy compliance (returns within 14 days, no promises about delivery dates), tone (friendly,
+concise), and clarity. Then list concrete edits. Do not rewrite the reply yourself.
+Order data: &lt;json>
+Draft reply: &lt;text>
+</pre>
+
+<h3>3. Self-consistency (sample and vote)</h3>
+<p>For classification or reasoning where one answer is right, run the same prompt <em>N</em> times at moderate temperature
+and take the majority. Disagreement is a useful signal: route low-agreement cases to a human.</p>
+<pre data-lang="python" data-title="self_consistency.py (sketch)">
+from collections import Counter
+
+def classify_with_vote(ticket: str, ask, n: int = 5) -> tuple[str, float]:
+    """ask(prompt, temperature) -> str. Returns (label, agreement)."""
+    prompt = f"Classify this support ticket as one of: PICKUP, RETURN, PAYMENT, PRODUCT, OTHER.\nAnswer with the label only.\n\n{ticket}"
+    votes = Counter(ask(prompt, temperature=0.7).strip().upper() for _ in range(n))
+    label, count = votes.most_common(1)[0]
+    return label, count / n          # e.g. ("RETURN", 0.8); below 0.6 -> human review
+</pre>
+
+<h3>4. Extract &rarr; then reason</h3>
+<p>Ask the model first to <em>extract</em> the relevant facts (quotes, numbers, IDs) from long input, and only then answer
+using the extracted facts. This reduces hallucination on long documents and makes the reasoning auditable.</p>
+<pre data-lang="text">
+Step 1: From the policy document below, quote verbatim every sentence relevant to returning opened items.
+Step 2: Using ONLY those quotes, answer: can a customer return opened headphones after 10 days?
+If the quotes don't answer it, say "Not covered by policy".
+</pre>
+
+<h3>5. Routing</h3>
+<p>A cheap first call decides <em>which</em> prompt or model handles the request: order-status questions go to a tool-using
+flow, policy questions go to RAG, and complaints go to a human. Routing keeps every downstream prompt small and specialised.</p>
+
+<h3>6. Role-separated perspectives</h3>
+<p>Ask for the same artefact reviewed from several perspectives (security, performance, store-operations, accessibility),
+each as a separate call, then merge. It surfaces issues one generic review misses.</p>
+
+<h3>7. Ask for uncertainty explicitly</h3>
+<pre data-lang="text">
+For each field you extract, include "confidence": "high" | "medium" | "low".
+Use "low" if the value is inferred rather than stated. Never invent an order ID.
+</pre>
+
+<h3>8. Meta-prompting</h3>
+<p>Use a strong model to improve your prompt: "Here is my prompt and 5 inputs where it failed, with expected outputs.
+Diagnose why, and propose a revised prompt." Then <b>test</b> the revision (see below). Don't just trust it.</p>
+
+<h2>System prompts that hold up</h2>
+<p>A production system prompt is read on every request, so it deserves the same care as code.</p>
+<pre data-lang="markdown" data-title="system prompt: store support assistant (excerpt)">
+# Role
+You help retail store staff answer customer questions about orders, pickup and returns.
+
+# Facts you may rely on
+Only the data in the &lt;context> block and results from tools. If something is not there,
+say you don't know and suggest checking the order system.
+
+# Policies
+- Returns: 14 days from pickup/delivery, receipt or order ID required.
+- Never promise delivery dates; give the "estimated" date from the order data only.
+- Never reveal another customer's data.
+
+# Style
+Friendly, concise (max 120 words), plain language. Use the customer's first name if known.
+
+# Output
+Reply text only. If you need a tool, call it rather than guessing.
+</pre>
+<ul>
+  <li><b>Sections with headings</b> (or XML-style tags) help models follow long instructions.</li>
+  <li><b>State priorities</b> when rules can conflict ("privacy over helpfulness").</li>
+  <li><b>Give the reason</b> behind non-obvious rules, so the model generalises correctly.</li>
+  <li><b>Keep examples realistic and diverse.</b> Models over-copy a single example.</li>
+  <li><b>Put variable data in clearly delimited blocks</b> (<code>&lt;context&gt;...&lt;/context&gt;</code>) separate from instructions. This also helps against prompt injection.</li>
+</ul>
+
+<h2>Prompts as code</h2>
+<p>Once prompts drive features, treat them like source code:</p>
+<table>
+  <thead><tr><th>Practice</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td><b>Version control</b></td><td>Store prompts as files (<code>prompts/classify_ticket.v3.md</code>) in git, not inline strings scattered through code.</td></tr>
+    <tr><td><b>Templates</b></td><td>Use named placeholders (<code>{{ticket}}</code>) and render with a template function. Never concatenate raw user input into instructions without delimiters.</td></tr>
+    <tr><td><b>Golden tests</b></td><td>Keep 20&ndash;50 representative inputs with expected outputs. Run them whenever the prompt or model changes.</td></tr>
+    <tr><td><b>Change review</b></td><td>Prompt changes go through PR review with before/after test results.</td></tr>
+    <tr><td><b>Model pinning</b></td><td>Pin the exact model version in config. A model upgrade is a change that needs testing.</td></tr>
+  </tbody>
+</table>
+<pre data-lang="scala" data-title="PromptTemplate.scala: tiny, safe templating">
+//> using scala 3
+final case class PromptTemplate(name: String, text: String):
+  private val Placeholder = """\{\{(\w+)\}\}""".r
+
+  /** Fails loudly if a variable is missing or unused, so typos never reach the model. */
+  def render(vars: Map[String, String]): Either[String, String] =
+    val needed  = Placeholder.findAllMatchIn(text).map(_.group(1)).toSet
+    val missing = needed -- vars.keySet
+    val extra   = vars.keySet -- needed
+    if missing.nonEmpty then Left(s"$name: missing ${missing.mkString(", ")}")
+    else if extra.nonEmpty then Left(s"$name: unused ${extra.mkString(", ")}")
+    else Right(Placeholder.replaceAllIn(text, m => scala.util.matching.Regex.quoteReplacement(vars(m.group(1)))))
+
+@main def demo(): Unit =
+  val classify = PromptTemplate(
+    "classify_ticket.v3",
+    """Classify the ticket between the tags as PICKUP, RETURN, PAYMENT, PRODUCT or OTHER.
+      |Answer with the label only.
+      |&lt;ticket>{{ticket}}&lt;/ticket>""".stripMargin
+  )
+  println(classify.render(Map("ticket" -> "My pickup order says ready but the store can't find it")))
+  println(classify.render(Map("tiket" -> "typo")))
+</pre>
+<pre data-lang="python" data-title="golden_test.py: regression-test a prompt">
+import json, pathlib
+
+def run_golden(classify, path="golden/classify_ticket.jsonl", min_accuracy=0.9) -> None:
+    cases = [json.loads(l) for l in pathlib.Path(path).read_text().splitlines() if l.strip()]
+    failures = [c for c in cases if classify(c["input"]) != c["expected"]]
+    acc = 1 - len(failures) / len(cases)
+    for f in failures[:10]:
+        print(f"FAIL expected={f['expected']!r} input={f['input'][:70]!r}")
+    print(f"accuracy={acc:.0%} on {len(cases)} cases")
+    assert acc >= min_accuracy, "prompt regression"
+</pre>
+
+<h2>Long inputs: map &rarr; reduce</h2>
+<p>When input is bigger than you want in one context (a month of tickets, a large codebase), <b>map</b> a prompt over chunks
+(extract or summarise each), then <b>reduce</b> the partial results with a final prompt. This is the same pattern as Spark's map/reduce,
+applied to language.</p>
+
+<div class="callout tip"><span class="c-title">Try it (25 min)</span>
+<ol>
+  <li>Write 15 short, realistic support tickets (pickup delays, returns, payment issues, product questions).</li>
+  <li>Build a 3-step chain: classify each (JSON) &rarr; count in code &rarr; summarise the top issue with suggested fixes.</li>
+  <li>Add a critic step for the summary. Compare the report with and without the critic.</li>
+  <li>Save the classification prompt to a file and write 10 golden cases for it.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Prefer <b>chains of small, typed steps</b> over one giant prompt. Use code for exact work.</li>
+  <li>Core patterns: plan&rarr;execute, generator&rarr;critic, self-consistency, extract&rarr;reason, routing, map&rarr;reduce.</li>
+  <li>System prompts need sections, priorities, reasons and delimited data.</li>
+  <li>Prompts are code: version them, template them safely, and regression-test them.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

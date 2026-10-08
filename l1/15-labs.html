@@ -93,7 +93,7 @@ keep notes in your learning log. Expect 6&ndash;10 hours in total.</p>
 <h2>Lab 5 &middot; Agent fixes a failing Scala test</h2>
 <p><b>Goal:</b> watch the agent loop (think &rarr; act &rarr; observe) on a real bug.</p>
 <p>Create a folder <code>lab5/</code> with these two files:</p>
-<pre data-lang="scala" data-title="lab5/Stats.scala">
+<pre data-lang="scala" data-title="lab5/Stats.scala" data-verify="lab5">
 //> using scala 3
 //> using test.dep org.scalameta::munit::1.0.0
 
@@ -110,7 +110,7 @@ object Stats:
   def mode(xs: Seq[Int]): Option[Int] =
     xs.groupBy(identity).maxByOption(_._2.size).map(_._1)
 </pre>
-<pre data-lang="scala" data-title="lab5/Stats.test.scala">
+<pre data-lang="scala" data-title="lab5/Stats.test.scala" data-verify="lab5">
 class StatsSuite extends munit.FunSuite:
   test("mean"):
     assertEquals(Stats.mean(Seq(1.0, 2.0, 3.0)), Some(2.0))
@@ -122,14 +122,15 @@ class StatsSuite extends munit.FunSuite:
     assertEquals(Stats.mode(Seq(3, 1, 3, 1, 2)), Some(1))
 </pre>
 <ol>
-  <li>Run <code>scala-cli test lab5</code> and see the failures.</li>
-  <li>Commit. Then tell your agent: "Make all tests in lab5 pass. Don't change the tests. Run <code>scala-cli test lab5</code> to verify."</li>
+  <li>Run <code>scala-cli test lab5</code>. <code>median even</code> fails. <code>mode</code> probably <em>passes</em>, but only by luck.</li>
+  <li>Commit. Then tell your agent: "Make all tests in lab5 pass. Don't change the tests. Also check whether any passing test passes only by accident. Run <code>scala-cli test lab5</code> to verify."</li>
   <li>Watch the trace. How many iterations? Did it read the test first?</li>
-  <li>Review the diff. Is the tie-breaking in <code>mode</code> deterministic now?</li>
+  <li>Review the diff. Did the agent notice the hidden problem in <code>mode</code>? That is the difference between "tests pass" and "code is correct".</li>
 </ol>
 <details><summary>Hints (open only if stuck)</summary>
-<p><code>median</code> must average the two middle values for even sizes. <code>mode</code> uses <code>groupBy</code> (unordered Map),
-so ties are non-deterministic. It needs a secondary ordering, e.g. <code>maxByOption(g =&gt; (g._2.size, -g._1))</code>.</p></details>
+<p><code>median</code> must average the two middle values for even sizes. <code>mode</code> uses <code>groupBy</code>, which returns a hash map
+with no meaningful order. The tie-break test passes only because of how small integers happen to hash. Change the data and it can
+break. It needs an explicit secondary ordering, e.g. <code>maxByOption(g =&gt; (g._2.size, -g._1))</code>.</p></details>
 
 <h2>Lab 6 &middot; Type-driven Scala domain</h2>
 <ol>

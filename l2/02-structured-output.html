@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Structured Output &amp; JSON Schema | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 02 &middot; Structured Output &amp; JSON Schema</h1>
+<p class="lead">When code consumes model output, free text is a liability. This page shows how to get <b>typed,
+validated data</b> out of a model and into Scala case classes and Python models, with a repair loop for the cases where
+it still goes wrong.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">55 min</span><span class="pill">Tracks 3, 10</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Choose between "ask nicely", JSON mode, schema-enforced output and tool arguments.</li>
+  <li>Write a JSON Schema that models produce reliably.</li>
+  <li>Decode and validate model output into Scala 3 case classes (circe) and Python (pydantic).</li>
+  <li>Build a validate &rarr; feedback &rarr; retry loop.</li>
+</ul></div>
+
+<h2>The problem</h2>
+<p>A customer emails the store: <em>"Hi, order ORD-482913. The left earbud from the headphones is dead and I'd also like to
+send back the phone case, wrong colour. Refund please. I can drop them at the Riverside store."</em> Your returns system
+needs this:</p>
+<pre data-lang="json" data-title="What the code needs">
+{
+  "orderId": "ORD-482913",
+  "items": [
+    { "sku": "HEADPHONES", "quantity": 1, "reason": "DAMAGED" },
+    { "sku": "PHONE_CASE", "quantity": 1, "reason": "WRONG_ITEM" }
+  ],
+  "wantsRefund": true,
+  "storeId": "RIVERSIDE"
+}
+</pre>
+<p>A model answering in prose ("Sure! Here's the extracted info: &hellip;") breaks your parser. Even "JSON only" prompts
+sometimes add code fences, comments, trailing commas, or a different field name. You need guarantees.</p>
+
+<h2>Four levels of strictness</h2>
+<table>
+  <thead><tr><th>Level</th><th>How</th><th>Guarantee</th><th>Use when</th></tr></thead>
+  <tbody>
+    <tr><td><b>1. Ask nicely</b></td><td>"Return only JSON like this example&hellip;"</td><td>None. Usually works, sometimes doesn't.</td><td>Prototypes, local models without schema support</td></tr>
+    <tr><td><b>2. JSON mode</b></td><td>API flag like <code>response_format: {"type": "json_object"}</code></td><td>Valid JSON syntax, but any shape</td><td>Simple cases</td></tr>
+    <tr><td><b>3. Schema-enforced</b></td><td>Provide a JSON Schema; the provider constrains decoding to it</td><td>Valid JSON matching the schema's structure</td><td>Production extraction and classification</td></tr>
+    <tr><td><b>4. Tool arguments</b></td><td>Define a "tool" whose parameters are your schema (page 04)</td><td>Same as 3, plus the model chooses whether to call</td><td>Agents, or when the model decides what to do</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">How enforcement works</span>
+With <b>constrained decoding</b>, at each step the server only allows tokens that keep the output valid against the
+schema (or grammar). The model literally cannot produce a missing brace or an unknown field. Support and exact
+parameter names vary by provider and local runner, so check yours. The concepts are the same everywhere.</div>
+
+<h2>Validation is still your job</h2>
+<p>Schema enforcement guarantees <b>shape</b>, not <b>truth</b>. The model can still return a well-formed but invented order
+ID, a wrong reason, or a quantity of 0. Always run domain validation in code.</p>
+<figure class="diagram">
+<svg viewBox="0 0 740 200" width="740" role="img" aria-label="Validate and retry loop">
+  <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="70" width="120" height="56" rx="10"/><text class="d-text" x="70" y="102" text-anchor="middle">Prompt + schema</text>
+  <rect class="d-box2" x="170" y="70" width="100" height="56" rx="10"/><text class="d-title" x="220" y="102" text-anchor="middle">LLM</text>
+  <rect class="d-box3" x="310" y="70" width="120" height="56" rx="10"/><text class="d-text" x="370" y="94" text-anchor="middle">1. Parse JSON</text><text class="d-small" x="370" y="112" text-anchor="middle">decode to types</text>
+  <rect class="d-box3" x="470" y="70" width="120" height="56" rx="10"/><text class="d-text" x="530" y="94" text-anchor="middle">2. Validate</text><text class="d-small" x="530" y="112" text-anchor="middle">business rules</text>
+  <rect class="d-box4" x="630" y="70" width="100" height="56" rx="10"/><text class="d-text" x="680" y="102" text-anchor="middle">Typed value</text>
+  <path class="d-line" d="M130 98 H166" marker-end="url(#s1)"/><path class="d-line" d="M270 98 H306" marker-end="url(#s1)"/><path class="d-line" d="M430 98 H466" marker-end="url(#s1)"/><path class="d-line" d="M590 98 H626" marker-end="url(#s1)"/>
+  <path class="d-dash" d="M450 126 C 450 180, 220 180, 220 130" marker-end="url(#s1)"/>
+  <text class="d-small" x="335" y="190" text-anchor="middle">errors &rarr; send back as feedback &rarr; retry (max 2&ndash;3), then escalate to a human</text>
+</svg>
+</figure>
+
+<h2>Designing schemas models get right</h2>
+<ul class="checklist">
+  <li><b>Use enums</b> for categories (<code>"reason": {"enum": ["DAMAGED", ...]}</code>). Never free text when the set is known.</li>
+  <li><b>Describe every field.</b> Descriptions are part of the prompt: <code>"description": "Order ID, format ORD-123456. Do not guess."</code></li>
+  <li><b>Mark required fields</b>, and set <code>"additionalProperties": false</code>.</li>
+  <li><b>Represent "unknown" explicitly.</b> Use a nullable field (<code>["string", "null"]</code>) rather than letting the model invent a value.</li>
+  <li><b>Keep it flat and small.</b> Deeply nested, huge schemas reduce accuracy. Split into multiple calls if needed.</li>
+  <li><b>Put reasoning first when needed.</b> An optional <code>"reasoning"</code> string <em>before</em> the answer fields lets the model think before committing (it generates in order).</li>
+  <li><b>Use one naming convention</b> that matches your code (camelCase for Scala/JSON here).</li>
+</ul>
+<pre data-lang="json" data-title="return_request.schema.json">
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orderId", "items", "wantsRefund", "storeId"],
+  "properties": {
+    "orderId":     { "type": ["string", "null"], "description": "Order ID in format ORD-123456. null if not stated. Never guess." },
+    "items": {
+      "type": "array",
+      "description": "Items the customer wants to return",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sku", "quantity", "reason"],
+        "properties": {
+          "sku":      { "type": "string",  "description": "Product code from the catalogue list provided" },
+          "quantity": { "type": "integer", "description": "Number of units, at least 1" },
+          "reason":   { "type": "string",  "enum": ["DAMAGED", "WRONG_ITEM", "NOT_AS_DESCRIBED", "CHANGED_MIND", "OTHER"] }
+        }
+      }
+    },
+    "wantsRefund": { "type": "boolean", "description": "true for refund, false for exchange/store credit" },
+    "storeId":     { "type": ["string", "null"], "description": "Store ID from the store list if the customer named one, else null" }
+  }
+}
+</pre>
+<div class="callout warn"><span class="c-title">Strict-mode limitations</span>
+Providers that strictly enforce schemas often support only a <b>subset</b> of JSON Schema. Common requirements are that every
+property is listed in <code>required</code> (so optional means nullable), <code>additionalProperties: false</code>, and limited
+support for <code>pattern</code>, <code>minimum</code> or <code>format</code>. That is one more reason to validate formats and ranges in your code.</div>
+
+<h2>The request (OpenAI-compatible shape)</h2>
+<pre data-lang="json" data-title="POST /v1/chat/completions (body)">
+{
+  "model": "&lt;model>",
+  "temperature": 0,
+  "messages": [
+    { "role": "system", "content": "Extract return requests from customer emails. Valid SKUs: HEADPHONES, PHONE_CASE, CHARGER, TABLET. Valid stores: RIVERSIDE, CENTRAL, AIRPORT." },
+    { "role": "user",   "content": "&lt;email>Hi, order ORD-482913 ...&lt;/email>" }
+  ],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": { "name": "return_request", "strict": true, "schema": { "...": "the schema above" } }
+  }
+}
+</pre>
+<p>Notice the <b>allowed values in the system prompt</b>: the model maps "phone case, wrong colour" to <code>PHONE_CASE</code> /
+<code>WRONG_ITEM</code> only because you told it the valid codes. Page 03 sends this request from real code.</p>
+
+<h2>Scala 3: decode, validate, retry</h2>
+<p>This example runs offline: it feeds sample "model outputs" through the same pipeline you would use in production.</p>
+<pre data-lang="scala" data-title="ReturnExtraction.scala  (run: scala-cli ReturnExtraction.scala)">
+//> using scala 3
+//> using dep io.circe::circe-core:0.14.15
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.{Decoder, Encoder}
+import io.circe.parser.decode
+import io.circe.syntax.*
+
+enum ReturnReason:
+  case DAMAGED, WRONG_ITEM, NOT_AS_DESCRIBED, CHANGED_MIND, OTHER
+
+object ReturnReason:
+  given Decoder[ReturnReason] = Decoder.decodeString.emap: s =>
+    values.find(_.toString == s).toRight(s"unknown reason '$s'")
+  given Encoder[ReturnReason] = Encoder.encodeString.contramap(_.toString)
+
+final case class ReturnItem(sku: String, quantity: Int, reason: ReturnReason) derives Decoder, Encoder.AsObject
+final case class ReturnRequest(
+    orderId: Option[String],
+    items: List[ReturnItem],
+    wantsRefund: Boolean,
+    storeId: Option[String]
+) derives Decoder, Encoder.AsObject
+
+val KnownSkus   = Set("HEADPHONES", "PHONE_CASE", "CHARGER", "TABLET")
+val KnownStores = Set("RIVERSIDE", "CENTRAL", "AIRPORT")
+val OrderIdFmt  = """ORD-\d{6}""".r
+
+/** Business rules the schema cannot express. Returns ALL problems, not just the first. */
+def validate(r: ReturnRequest): Either[List[String], ReturnRequest] =
+  val errors =
+    r.orderId.filterNot(OrderIdFmt.matches).map(id => s"orderId '$id' must match ORD-123456").toList ++
+    Option.when(r.items.isEmpty)("items must not be empty").toList ++
+    r.items.filter(_.quantity &lt; 1).map(i => s"quantity for ${i.sku} must be >= 1") ++
+    r.items.filterNot(i => KnownSkus(i.sku)).map(i => s"unknown sku '${i.sku}'") ++
+    r.storeId.filterNot(KnownStores).map(s => s"unknown storeId '$s'").toList
+  if errors.isEmpty then Right(r) else Left(errors)
+
+def parse(raw: String): Either[List[String], ReturnRequest] =
+  decode[ReturnRequest](raw).left.map(e => List(s"invalid JSON for schema: ${e.getMessage}")).flatMap(validate)
+
+/** ask(feedback) calls the model; feedback is None on the first attempt. */
+def extractWithRetry(ask: Option[String] => String, maxAttempts: Int = 3): Either[List[String], ReturnRequest] =
+  def loop(attempt: Int, feedback: Option[String]): Either[List[String], ReturnRequest] =
+    parse(ask(feedback)) match
+      case ok @ Right(_)                     => ok
+      case Left(errs) if attempt &lt; maxAttempts =>
+        loop(attempt + 1, Some(s"Your previous answer had these problems:\n- ${errs.mkString("\n- ")}\nFix them and answer again."))
+      case failed                            => failed // escalate to a human
+  loop(1, None)
+
+@main def demo(): Unit =
+  // Simulated model: first answer has a bad SKU and quantity, second is corrected
+  val answers = Iterator(
+    """{"orderId":"ORD-482913","items":[{"sku":"EARBUDS","quantity":0,"reason":"DAMAGED"}],"wantsRefund":true,"storeId":"RIVERSIDE"}""",
+    """{"orderId":"ORD-482913","items":[{"sku":"HEADPHONES","quantity":1,"reason":"DAMAGED"},{"sku":"PHONE_CASE","quantity":1,"reason":"WRONG_ITEM"}],"wantsRefund":true,"storeId":"RIVERSIDE"}"""
+  )
+  val result = extractWithRetry { feedback =>
+    feedback.foreach(f => println(s"--- feedback sent to model ---\n$f\n"))
+    answers.next()
+  }
+  println(result.map(_.asJson.spaces2))
+</pre>
+<p>Points worth noticing:</p>
+<ul>
+  <li><b>Enums decode strictly</b>. An unknown reason fails decoding instead of silently becoming a string.</li>
+  <li><b><code>Option</code> maps to nullable</b>, matching <code>["string","null"]</code> in the schema.</li>
+  <li><b>Validation accumulates all errors</b>, so the model can fix everything in one retry.</li>
+  <li><b>The feedback is specific</b>: exact problems, not "try again".</li>
+</ul>
+
+<h2>Python: pydantic does both jobs</h2>
+<p>Pydantic v2 models give you validation <em>and</em> can generate the JSON Schema to send to the model, so there is one source of truth.</p>
+<pre data-lang="python" data-title="return_extraction.py  (uv add pydantic)" data-verify="run">
+from enum import Enum
+from typing import Callable
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+KNOWN_SKUS = {"HEADPHONES", "PHONE_CASE", "CHARGER", "TABLET"}
+KNOWN_STORES = {"RIVERSIDE", "CENTRAL", "AIRPORT"}
+
+
+class ReturnReason(str, Enum):
+    DAMAGED = "DAMAGED"
+    WRONG_ITEM = "WRONG_ITEM"
+    NOT_AS_DESCRIBED = "NOT_AS_DESCRIBED"
+    CHANGED_MIND = "CHANGED_MIND"
+    OTHER = "OTHER"
+
+
+class ReturnItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sku: str = Field(description="Product code from the catalogue list provided")
+    quantity: int = Field(ge=1, description="Number of units, at least 1")
+    reason: ReturnReason
+
+    @field_validator("sku")
+    @classmethod
+    def known_sku(cls, v: str) -> str:
+        if v not in KNOWN_SKUS:
+            raise ValueError(f"unknown sku '{v}'")
+        return v
+
+
+class ReturnRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    orderId: str | None = Field(pattern=r"^ORD-\d{6}$", description="ORD-123456, null if not stated")
+    items: list[ReturnItem] = Field(min_length=1)
+    wantsRefund: bool
+    storeId: str | None
+
+    @field_validator("storeId")
+    @classmethod
+    def known_store(cls, v: str | None) -> str | None:
+        if v is not None and v not in KNOWN_STORES:
+            raise ValueError(f"unknown storeId '{v}'")
+        return v
+
+
+SCHEMA = ReturnRequest.model_json_schema()   # send this in response_format
+
+
+def extract_with_retry(ask: Callable[[str | None], str], max_attempts: int = 3) -> ReturnRequest:
+    feedback = None
+    for attempt in range(1, max_attempts + 1):
+        raw = ask(feedback)
+        try:
+            return ReturnRequest.model_validate_json(raw)
+        except ValidationError as e:
+            problems = [f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()]
+            feedback = "Your previous answer had these problems:\n- " + "\n- ".join(problems) + "\nFix them and answer again."
+    raise RuntimeError(f"extraction failed after {max_attempts} attempts; escalate to a human")
+
+
+if __name__ == "__main__":
+    answers = iter([
+        '{"orderId":"ORD-482913","items":[{"sku":"EARBUDS","quantity":0,"reason":"DAMAGED"}],"wantsRefund":true,"storeId":"RIVERSIDE"}',
+        '{"orderId":"ORD-482913","items":[{"sku":"HEADPHONES","quantity":1,"reason":"DAMAGED"}],"wantsRefund":true,"storeId":"RIVERSIDE"}',
+    ])
+
+    def fake_ask(feedback: str | None) -> str:
+        if feedback:
+            print("--- feedback ---\n" + feedback + "\n")
+        return next(answers)
+
+    print(extract_with_retry(fake_ask).model_dump_json(indent=2))
+</pre>
+<div class="callout tip"><span class="c-title">Scala equivalent of "schema from types"</span>
+In Scala you can hand-write the schema (as above, simple and explicit) or generate it from case classes with a JSON Schema
+library. Tapir, for example, can derive schemas from your types. Hand-written is fine for a handful of schemas. Generate when
+you have many, so schema and types cannot drift apart.</div>
+
+<h2>Common failure modes</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>JSON cut off mid-object</td><td>Hit max output tokens</td><td>Raise the limit; detect <code>finish_reason == "length"</code> and retry</td></tr>
+    <tr><td>Wrapped in <code>```json</code> fences</td><td>No JSON mode (level 1)</td><td>Use JSON/schema mode, or strip fences before parsing</td></tr>
+    <tr><td>Invented IDs or SKUs</td><td>Field required but data absent</td><td>Make it nullable, say "never guess", validate against known values</td></tr>
+    <tr><td>Correct shape, wrong category</td><td>Ambiguous enum meaning</td><td>Describe each enum value; add few-shot examples</td></tr>
+    <tr><td>Refusal text instead of JSON</td><td>Safety refusal</td><td>Handle the provider's refusal field/finish reason explicitly</td></tr>
+    <tr><td>Numbers as strings, odd dates</td><td>Loose schema</td><td>Use proper types and an explicit format description, then parse dates in code</td></tr>
+  </tbody>
+</table>
+
+<div class="callout tip"><span class="c-title">Try it (30 min)</span>
+<ol>
+  <li>Run <code>ReturnExtraction.scala</code> (or the Python version). Read the feedback message it prints.</li>
+  <li>Add a new rule: returns with reason <code>CHANGED_MIND</code> cannot be refunds (store credit only). Implement it in validation.</li>
+  <li>With a real model (page 03 shows how), extract from 5 messy emails you write yourself, including one with no order ID. Does it return <code>null</code> or guess?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Prefer <b>schema-enforced output</b> or tool arguments for anything code consumes.</li>
+  <li>Schemas guarantee <b>shape</b>. Your code must still validate <b>meaning</b>.</li>
+  <li>Use enums, descriptions, nullable-for-unknown, and flat, small schemas.</li>
+  <li>Decode into real types (circe case classes, pydantic models) and use a feedback &rarr; retry loop with a human fallback.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
