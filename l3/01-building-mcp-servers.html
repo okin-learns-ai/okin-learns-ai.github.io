@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Building MCP Servers (Python &amp; Scala/JVM) | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 01 &middot; Building MCP Servers (Python &amp; Scala/JVM)</h1>
+<p class="lead">Level 2 taught you to <i>use</i> MCP servers. Now you build them. An MCP server is a small program that exposes
+tools, resources and prompts to any MCP-compatible host over a standard JSON-RPC protocol. This page builds one in Python with
+the official SDK, shows how the same thing works on the JVM from Scala, and covers testing, packaging and security.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">60 min</span><span class="pill">Track 3</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain the MCP lifecycle: initialize, capability negotiation, tools/list, tools/call, shutdown.</li>
+  <li>Build an MCP server in Python with <code>FastMCP</code>: tools, resources and prompts.</li>
+  <li>Build the same server on the JVM (official Java SDK used from Scala) or plain JSON-RPC over stdio.</li>
+  <li>Test a server with unit tests and the MCP Inspector, and package it for teammates.</li>
+  <li>Apply the security rules: least-privilege tools, input validation, no ambient credentials.</li>
+</ul></div>
+
+<h2>What a server actually is</h2>
+<p>MCP is JSON-RPC 2.0 over a transport. The host starts your server as a subprocess (stdio) or connects over HTTP.
+After a handshake, the host lists what you offer and calls it. That's the whole protocol:</p>
+<svg viewBox="0 0 720 150" class="diagram" role="img" aria-label="MCP message flow">
+  <rect class="d-box" x="20" y="30" width="160" height="90" rx="8"/><text class="d-title" x="100" y="62" text-anchor="middle">Host (IDE /</text><text class="d-title" x="100" y="80" text-anchor="middle">agent app)</text>
+  <rect class="d-box2" x="540" y="30" width="160" height="90" rx="8"/><text class="d-title" x="620" y="62" text-anchor="middle">Your MCP</text><text class="d-title" x="620" y="80" text-anchor="middle">server</text>
+  <line class="d-arrow" x1="180" y1="52" x2="535" y2="52"/><text class="d-small" x="357" y="44" text-anchor="middle">initialize &rarr; capabilities</text>
+  <line class="d-arrow" x1="535" y1="80" x2="185" y2="80"/><text class="d-small" x="357" y="72" text-anchor="middle">tools/list, tools/call, resources/read</text>
+  <line class="d-arrow" x1="180" y1="106" x2="535" y2="106"/><text class="d-small" x="357" y="98" text-anchor="middle">JSON-RPC results + progress</text>
+</svg>
+<table>
+  <thead><tr><th>You expose</th><th>Host sees</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><b>Tools</b></td><td>Functions the model may call</td><td><code>check_inventory(sku, store)</code></td></tr>
+    <tr><td><b>Resources</b></td><td>Readable data, addressed by URI</td><td><code>policy://returns</code></td></tr>
+    <tr><td><b>Prompts</b></td><td>Reusable prompt templates</td><td><code>summarise_ticket</code></td></tr>
+  </tbody>
+</table>
+
+<h2>A Python server with FastMCP</h2>
+<p>The official Python SDK's <code>FastMCP</code> turns typed functions into tools. Docstrings become tool descriptions, and type
+hints become the input schema &mdash; so write them well (page L2&middot;04 rules still apply).</p>
+<pre data-lang="python" data-title="store_server.py: an MCP server with two tools and a resource  (uv add mcp)" data-verify="store">
+try:
+    from mcp.server.fastmcp import FastMCP            # mcp 1.x
+except ImportError:                                  # mcp 2.x renamed it
+    from mcp.server.mcpserver import MCPServer as FastMCP
+
+mcp = FastMCP("store-tools")
+
+INVENTORY = {
+    ("EARBUDS-AIR2", "riverside"): 14,
+    ("CASE-RUGGED", "riverside"): 0,
+    ("CHARGER-65W", "riverside"): 32,
+}
+POLICIES = {"returns": "Unopened items: 30 days. Opened electronics: 14 days with receipt."}
+
+
+@mcp.tool()
+def check_inventory(sku: str, store: str) -> dict:
+    """Check stock of a product at a store.
+
+    Args:
+        sku: product SKU, e.g. "EARBUDS-AIR2"
+        store: store slug, e.g. "riverside"
+    """
+    qty = INVENTORY.get((sku.upper(), store.lower()))
+    if qty is None:
+        return {"found": False, "sku": sku, "store": store}
+    return {"found": True, "sku": sku, "store": store, "quantity": qty}
+
+
+@mcp.tool()
+def order_status(order_id: str) -> dict:
+    """Look up an order's status. Returns found=False for unknown orders."""
+    demo = {"ORD-482913": {"status": "READY_FOR_PICKUP", "store": "riverside"}}
+    if order_id not in demo:
+        return {"found": False, "orderId": order_id}
+    return {"found": True, "orderId": order_id, **demo[order_id]}
+
+
+@mcp.resource("policy://{name}")
+def policy(name: str) -> str:
+    """Store policy text by name (e.g. policy://returns)."""
+    return POLICIES.get(name, f"No policy named {name!r}")
+
+
+@mcp.prompt()
+def summarise_ticket(ticket: str) -> str:
+    """One-line ticket summary for the daily report."""
+    return f"Summarise this support ticket in one line, keep order IDs verbatim:\n{ticket}"
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+</pre>
+<p>Run it directly for a quick check, or connect a host:</p>
+<pre data-lang="bash">
+python store_server.py            # waits on stdio; Ctrl+C to quit
+npx @modelcontextprotocol/inspector python store_server.py   # click-test tools in a browser
+</pre>
+<div class="callout note"><span class="c-title">stdio vs HTTP</span>
+Use <b>stdio</b> for local tools the IDE launches (the common case). Use the HTTP transport only when a remote team or service
+must reach the server &mdash; then you also need authentication, which stdio gets "for free" from OS user permissions.</div>
+
+<h2>Unit-test the tools, not the transport</h2>
+<pre data-lang="python" data-title="test_store_server.py: call tools as plain functions" data-verify="store">
+from store_server import check_inventory, order_status, policy
+
+
+def test_known_sku_reports_quantity():
+    r = check_inventory("earbuds-air2", "Riverside")
+    assert r == {"found": True, "sku": "earbuds-air2", "store": "Riverside", "quantity": 14}
+
+
+def test_unknown_sku_is_not_an_error():
+    assert check_inventory("NOPE", "riverside")["found"] is False
+
+
+def test_unknown_order_is_not_an_error():
+    assert order_status("ORD-000000")["found"] is False
+
+
+def test_missing_policy_says_so():
+    assert "No policy" in policy("warranty")
+</pre>
+<div class="callout warn"><span class="c-title">Design rule from L2, still binding</span>
+Tools must be <b>specific, constrained and read-only unless writes are essential</b>. A model is choosing these arguments;
+validate them (enums, ranges, allow-lists) exactly as you would HTTP request parameters.</div>
+
+<h2>On the JVM: same protocol, two routes</h2>
+<p>For Scala/JVM shops there are two realistic options:</p>
+<table>
+  <thead><tr><th>Route</th><th>When</th></tr></thead>
+  <tbody>
+    <tr><td><b>Official MCP Java SDK</b> (<code>io.modelcontextprotocol.sdk</code>) called from Scala, or Kotlin wrappers</td><td>Anything real: handles the lifecycle, schemas and transports for you</td></tr>
+    <tr><td><b>Plain JSON-RPC over stdio</b> (below)</td><td>Learning the protocol, or a tiny internal tool with zero dependencies</td></tr>
+  </tbody>
+</table>
+<p>This minimal server answers <code>initialize</code>, <code>tools/list</code> and <code>tools/call</code> itself. It compiles with
+plain scala-cli &mdash; no dependencies:</p>
+<pre data-lang="scala" data-title="MiniMcp.scala: the MCP lifecycle by hand (scala-cli run MiniMcp.scala)" data-verify="run">
+import scala.io.StdIn.readLine
+import scala.util.matching.Regex
+
+// Minimal stdio MCP server: enough protocol to expose one tool.
+// Real servers should use the official Java SDK, which handles edge cases.
+object MiniMcp:
+  private val inventory = Map("EARBUDS-AIR2" -> 14, "CHARGER-65W" -> 32)
+
+  private def strField(json: String, field: String): Option[String] =
+    new Regex(s"\"$field\"\\s*:\\s*\"([^\"]*)\"").findFirstMatchIn(json).map(_.group(1))
+
+  private def numField(json: String, field: String): Option[Long] =
+    new Regex(s"\"$field\"\\s*:\\s*(\\d+)").findFirstMatchIn(json).map(_.group(1).toLong)
+
+  private def reply(id: Long, resultJson: String): String =
+    s"""{"jsonrpc":"2.0","id":$id,"result":$resultJson}"""
+
+  private def toolResult(text: String): String =
+    s"""{"content":[{"type":"text","text":${toJsonString(text)}}]}"""
+
+  private def toJsonString(s: String): String =
+    "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+  def handle(line: String): Option[String] =
+    val id = numField(line, "id").getOrElse(-1L)
+    if line.contains("\"initialize\"") then
+      Some(reply(id, """{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},""" +
+        """"serverInfo":{"name":"mini-inventory","version":"0.1.0"}}"""))
+    else if line.contains("notifications/") then None            // notifications get no reply
+    else if line.contains("\"tools/list\"") then
+      Some(reply(id, """{"tools":[{"name":"check_inventory","description":"Stock of a SKU at the demo store",""" +
+        """"inputSchema":{"type":"object","properties":{"sku":{"type":"string"}},"required":["sku"]}}]}"""))
+    else if line.contains("\"tools/call\"") then
+      val qty = strField(line, "sku").map(s => inventory.getOrElse(s.toUpperCase, 0)).getOrElse(0)
+      Some(reply(id, toolResult(s"quantity=$qty")))
+    else if line.contains("\"ping\"") then Some(reply(id, "{}"))
+    else Some(s"""{"jsonrpc":"2.0","id":$id,"error":{"code":-32601,"message":"method not found"}}""")
+
+  def main(args: Array[String]): Unit =
+    Iterator.continually(readLine()).takeWhile(_ != null)
+      .flatMap(handle).foreach(println)
+</pre>
+<p>Paste an <code>initialize</code> JSON-RPC line at it and it answers. Point an IDE's MCP config at
+<code>scala-cli run MiniMcp.scala</code> and the tool appears. The exercise: notice how much work the SDK saves you &mdash;
+schema validation, every transport, error handling, spec versioning.</p>
+
+<h2>Packaging for teammates</h2>
+<ul class="checklist">
+  <li><b>Pin versions</b> (Python: <code>uv</code>/<code>pip-tools</code>; JVM: build tool). A server that upgrades itself under a teammate is a debugging nightmare.</li>
+  <li><b>One-command start:</b> the MCP config in the host should be copy-pasteable from your README, e.g. <code>uv run store_server.py</code>.</li>
+  <li><b>Never bake in secrets.</b> Read API keys from env vars; document which ones are needed. (L2&middot;09 covers safe config.)</li>
+  <li><b>Version the server</b> in <code>serverInfo</code> &mdash; it shows up in hosts and helps debug "which version are you running?".</li>
+  <li><b>Log to stderr, never stdout</b> on stdio servers. stdout is the protocol channel; one stray <code>print</code> corrupts it.</li>
+</ul>
+
+<h2>Security review checklist</h2>
+<ul class="checklist">
+  <li>Every tool argument is validated (types, enums, length limits) before use.</li>
+  <li>Read-only by default; write tools need confirmation at the host layer.</li>
+  <li>No tool returns secrets, tokens or raw stack traces to the model.</li>
+  <li>Resource URIs can't escape their namespace (no <code>../../etc/passwd</code> equivalent).</li>
+  <li>HTTP transports have real auth, not just an obscure URL.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Run <code>store_server.py</code> under the MCP Inspector and call each tool by hand.</li>
+  <li>Add a third tool <code>stores_near(postcode)</code> with an allow-listed set of postcodes. Test it.</li>
+  <li>Connect the server to your IDE's MCP config and ask the assistant a question that needs it.</li>
+  <li>Port one tool to <code>MiniMcp.scala</code>. Then read the Java SDK's server example to see what it does differently.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>MCP = JSON-RPC: initialize &rarr; list &rarr; call, over stdio or HTTP. SDKs do the plumbing.</li>
+  <li>In Python, <code>FastMCP</code> derives tool schemas from type hints and docstrings &mdash; write them as contracts.</li>
+  <li>Unit-test tool functions directly; use the Inspector for interactive checks.</li>
+  <li>Least-privilege tools, validated arguments, secrets from env, logging on stderr.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

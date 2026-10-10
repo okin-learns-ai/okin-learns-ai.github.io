@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Advanced RAG &amp; Knowledge Graphs | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 05 &middot; Advanced RAG &amp; Knowledge Graphs</h1>
+<p class="lead">Basic RAG (embed, retrieve top-k, prompt) works for demos. Production retrieval needs hybrid search, re-ranking,
+query rewriting and honest evaluation. This page adds each layer, explains when knowledge graphs help, and finishes with
+agentic retrieval &mdash; where the model decides what to look up.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">60 min</span><span class="pill">Track 3</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Combine keyword (BM25) and vector search with Reciprocal Rank Fusion.</li>
+  <li>Add a re-ranker stage and explain why it improves precision.</li>
+  <li>Rewrite, expand and decompose queries before retrieval.</li>
+  <li>Decide when a knowledge graph (GraphRAG) beats plain chunks.</li>
+  <li>Measure retrieval quality separately from answer quality.</li>
+</ul></div>
+
+<h2>The full retrieval pipeline</h2>
+<svg viewBox="0 0 720 120" class="diagram" role="img" aria-label="Advanced RAG pipeline">
+  <rect class="d-box" x="15" y="40" width="95" height="44" rx="6"/><text class="d-small" x="62" y="58" text-anchor="middle">query</text><text class="d-small" x="62" y="74" text-anchor="middle">rewrite</text>
+  <line class="d-arrow" x1="110" y1="62" x2="128" y2="62"/>
+  <rect class="d-box2" x="130" y="40" width="120" height="44" rx="6"/><text class="d-small" x="190" y="58" text-anchor="middle">hybrid retrieve</text><text class="d-small" x="190" y="74" text-anchor="middle">BM25 + vector</text>
+  <line class="d-arrow" x1="250" y1="62" x2="268" y2="62"/>
+  <rect class="d-box3" x="270" y="40" width="95" height="44" rx="6"/><text class="d-small" x="317" y="58" text-anchor="middle">fuse</text><text class="d-small" x="317" y="74" text-anchor="middle">(RRF)</text>
+  <line class="d-arrow" x1="365" y1="62" x2="383" y2="62"/>
+  <rect class="d-box4" x="385" y="40" width="95" height="44" rx="6"/><text class="d-small" x="432" y="58" text-anchor="middle">re-rank</text><text class="d-small" x="432" y="74" text-anchor="middle">top 50 &rarr; 5</text>
+  <line class="d-arrow" x1="480" y1="62" x2="498" y2="62"/>
+  <rect class="d-box" x="500" y="40" width="95" height="44" rx="6"/><text class="d-small" x="547" y="58" text-anchor="middle">prompt</text><text class="d-small" x="547" y="74" text-anchor="middle">with sources</text>
+  <line class="d-arrow" x1="595" y1="62" x2="613" y2="62"/>
+  <rect class="d-box2" x="615" y="40" width="90" height="44" rx="6"/><text class="d-small" x="660" y="58" text-anchor="middle">answer +</text><text class="d-small" x="660" y="74" text-anchor="middle">citations</text>
+</svg>
+<p>Each stage fixes a failure of the previous one. Add them only when you can show the failure exists (L3&middot;04 evals).</p>
+
+<h2>Stage 1: fix the query first</h2>
+<p>Users type "the thing for earbuds" when they mean "EARBUDS-AIR2 silicone tips". Before retrieving:</p>
+<table>
+  <thead><tr><th>Technique</th><th>What it does</th><th>When to use</th></tr></thead>
+  <tbody>
+    <tr><td><b>Query rewriting</b></td><td>LLM turns chatty input into a clean search query, using conversation context</td><td>Multi-turn chats where "it", "that one" need resolving</td></tr>
+    <tr><td><b>Query expansion</b></td><td>Add synonyms/related terms ("earbuds" &rarr; "earphones", "headphones")</td><td>Vocabulary mismatch between users and docs</td></tr>
+    <tr><td><b>HyDE</b></td><td>LLM writes a hypothetical <i>answer</i>, embed that instead of the question</td><td>Short or unusual queries that embed poorly</td></tr>
+    <tr><td><b>Decomposition</b></td><td>Split a compound question into sub-questions, retrieve for each</td><td>"Compare return policy vs warranty period for earbuds and chargers"</td></tr>
+  </tbody>
+</table>
+
+<h2>Stage 2: hybrid retrieval</h2>
+<p>Vector search understands meaning but misses exact codes ("ORD-482913"). Keyword search (BM25) nails codes but misses
+meaning. Use both, fuse the rankings with <b>Reciprocal Rank Fusion</b> &mdash; no score calibration needed, just rank positions:</p>
+<pre data-lang="python" data-title="hybrid.py: BM25 + vector search fused with RRF  (runs offline)" data-verify="run">
+import math
+import re
+from collections import Counter
+
+
+def tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9\-]+", text.lower())
+
+
+def bm25_scores(query: str, docs: list[str], k1: float = 1.5, b: float = 0.75) -> list[float]:
+    """Classic BM25 over the corpus."""
+    q_terms, doc_terms = tokenize(query), [tokenize(d) for d in docs]
+    avg_len = sum(len(t) for t in doc_terms) / len(doc_terms)
+    df = Counter(t for terms in doc_terms for t in set(terms))
+    n = len(docs)
+    scores = []
+    for terms in doc_terms:
+        tf = Counter(terms)
+        score = sum(
+            math.log((n - df[t] + 0.5) / (df[t] + 0.5) + 1)
+            * (tf[t] * (k1 + 1)) / (tf[t] + k1 * (1 - b + b * len(terms) / avg_len))
+            for t in q_terms if t in tf)
+        scores.append(score)
+    return scores
+
+
+def ranks(scores: list[float]) -> list[int]:
+    """Index order sorted by score descending."""
+    return sorted(range(len(scores)), key=lambda i: -scores[i])
+
+
+def rrf(bm25_rank: list[int], vec_rank: list[int], k: int = 60) -> list[int]:
+    """Fuse two rankings by rank position, not raw score."""
+    fused = Counter()
+    for pos, idx in enumerate(bm25_rank):
+        fused[idx] += 1 / (k + pos + 1)
+    for pos, idx in enumerate(vec_rank):
+        fused[idx] += 1 / (k + pos + 1)
+    return [i for i, _ in fused.most_common()]
+
+
+if __name__ == "__main__":
+    docs = [
+        "Return policy: unopened items within 30 days, receipt required.",
+        "Order ORD-482913 is ready for pickup at the Riverside store.",
+        "Wireless earbuds with noise cancellation and 24h battery.",
+        "Opened electronics may be returned within 14 days with receipt.",
+    ]
+    # Query with an exact code -> BM25 wins. Semantic query -> vector wins.
+    # Here we fake vector ranking to show fusion; real code embeds query+docs.
+    for query, fake_vec_rank in [
+        ("ORD-482913 status", [1, 3, 0, 2]),
+        ("can I bring back opened earphones", [3, 2, 0, 1]),
+    ]:
+        fused = rrf(ranks(bm25_scores(query, docs)), fake_vec_rank)
+        top = docs[fused[0]]
+        print(f"{query!r} -> doc {fused[0]}: {top[:55]}...")
+    assert True
+</pre>
+<p>Notice the fusion: BM25 ranked the exact-code doc first, the fake vector ranking agreed, and the merged list surfaces the
+right doc for both query types.</p>
+
+<h2>Stage 3: re-rank for precision</h2>
+<p>Retrieval is recall-oriented: fetch 30&ndash;50 candidates cheaply. A <b>re-ranker</b> (a cross-encoder or an LLM) then scores
+each candidate <i>against the query</i> properly and keeps the top 5. It's slower per item but applied to few items &mdash;
+the classic "cheap recall, expensive precision" split:</p>
+<ul>
+  <li><b>Cross-encoder re-ranker</b> (a small model that reads query+doc together): fast, consistent, run locally.</li>
+  <li><b>LLM re-ranker</b>: prompt "rate relevance 0&ndash;10" per doc, or listwise ranking. More expensive, more flexible.</li>
+</ul>
+
+<h2>Stage 4: when chunks aren't enough &mdash; knowledge graphs</h2>
+<p>Plain chunk retrieval fails on <b>multi-hop</b> questions: "Which stores selling the earbuds also had a June staffing gap?"
+needs store &rarr; product &rarr; staffing relationships, not text similarity.</p>
+<div class="compare">
+  <div class="good"><h4>Knowledge graph / GraphRAG when</h4>
+  <ul><li>Questions need multi-hop reasoning over relationships</li><li>Entities matter: stores, SKUs, orders, people, dates</li><li>You need "how are X and Y connected" answers</li><li>Global summaries ("what are the main themes across all tickets")</li></ul></div>
+  <div class="bad"><h4>Stick with chunks when</h4>
+  <ul><li>Questions are single-hop ("what's the return policy")</li><li>Docs are self-contained answers, not a web of facts</li><li>You can't justify the extraction pipeline to build the graph</li></ul></div>
+</div>
+<p>GraphRAG extracts entities and relationships into a graph at index time (LLM-assisted), then retrieves <i>subgraphs</i> and
+community summaries, not just chunks. More work to build; only worth it for genuinely relational questions.</p>
+
+<h2>Stage 5: agentic retrieval</h2>
+<p>The endpoint of RAG sophistication is giving the model retrieval as a <b>tool</b>: it decides whether to search, what to
+search for, reads the result, and searches again if needed (a small agent loop, L3&middot;02). Use it when queries are
+unpredictable or multi-step. The cost is latency and non-determinism &mdash; for fixed FAQ-style traffic, a static pipeline
+is cheaper and more predictable.</p>
+
+<h2>Measure retrieval separately from answering</h2>
+<table>
+  <thead><tr><th>Metric</th><th>What it isolates</th></tr></thead>
+  <tbody>
+    <tr><td><b>Recall@k</b> / hit@k</td><td>Did the right doc appear in the top k? (retrieval quality)</td></tr>
+    <tr><td><b>MRR</b> (mean reciprocal rank)</td><td>How high did the first relevant doc rank?</td></tr>
+    <tr><td><b>Answer correctness</b></td><td>Given retrieval, did the model answer right? (generation quality)</td></tr>
+  </tbody>
+</table>
+<p>If recall@5 is 60%, no prompt will save you &mdash; fix retrieval. If recall is 95% but answers are wrong, fix generation.
+Always know which side is failing before you tune.</p>
+
+<div class="callout tip"><span class="c-title">Try it (75 min)</span>
+<ol>
+  <li>Take 15 store docs. Build a golden query set: 5 exact-code, 5 semantic, 5 multi-hop.</li>
+  <li>Measure hit@5 for vector-only vs. hybrid+RRF. How many exact-code queries did vector miss?</li>
+  <li>Add an LLM re-ranker on the top 20. Does hit@5 improve? At what cost?</li>
+  <li>Try one multi-hop question. Would a graph help, or is it overkill here?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Production RAG = rewrite query &rarr; hybrid retrieve &rarr; fuse (RRF) &rarr; re-rank &rarr; answer with citations.</li>
+  <li>Vectors for meaning, BM25 for exact codes, RRF to merge without comparing scores.</li>
+  <li>Knowledge graphs earn their cost on multi-hop relational questions, not simple FAQs.</li>
+  <li>Measure retrieval (hit@k) and answering separately so you know which to fix.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

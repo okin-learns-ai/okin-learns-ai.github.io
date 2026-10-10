@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Fine-tuning, LoRA &amp; Distillation | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 06 &middot; Fine-tuning, LoRA &amp; Distillation</h1>
+<p class="lead">Fine-tuning changes the model itself by continuing its training on your data. It's powerful and usually the
+<i>last</i> thing you should reach for &mdash; after prompting, structured output and RAG. This page covers when it's justified,
+the data it needs, parameter-efficient methods (LoRA/QLoRA), distillation, and how to tell if it worked.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">55 min</span><span class="pill">Tracks 3, 13</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Decide prompting vs. RAG vs. fine-tuning with a clear framework.</li>
+  <li>Build a fine-tuning dataset (SFT format) and avoid the classic data mistakes.</li>
+  <li>Explain LoRA and QLoRA and pick sensible starting hyperparameters.</li>
+  <li>Describe distillation: a big model teaching a small one.</li>
+  <li>Evaluate a fine-tune honestly: task eval, regression eval, cost/latency.</li>
+</ul></div>
+
+<h2>The decision order (fine-tune last)</h2>
+<svg viewBox="0 0 720 110" class="diagram" role="img" aria-label="Escalation ladder">
+  <rect class="d-box" x="15" y="35" width="150" height="45" rx="6"/><text class="d-small" x="90" y="55" text-anchor="middle">1. Prompting</text><text class="d-small" x="90" y="72" text-anchor="middle">+ few-shot</text>
+  <line class="d-arrow" x1="165" y1="57" x2="185" y2="57"/>
+  <rect class="d-box2" x="187" y="35" width="150" height="45" rx="6"/><text class="d-small" x="262" y="55" text-anchor="middle">2. Structured output</text><text class="d-small" x="262" y="72" text-anchor="middle">+ RAG</text>
+  <line class="d-arrow" x1="337" y1="57" x2="357" y2="57"/>
+  <rect class="d-box3" x="359" y="35" width="150" height="45" rx="6"/><text class="d-small" x="434" y="55" text-anchor="middle">3. Tool use /</text><text class="d-small" x="434" y="72" text-anchor="middle">agents</text>
+  <line class="d-arrow" x1="509" y1="57" x2="529" y2="57"/>
+  <rect class="d-box4" x="531" y="35" width="170" height="45" rx="6"/><text class="d-small" x="616" y="55" text-anchor="middle">4. Fine-tuning</text><text class="d-small" x="616" y="72" text-anchor="middle">(last resort)</text>
+</svg>
+<table>
+  <thead><tr><th>Your problem</th><th>Right fix</th><th>NOT fine-tuning</th></tr></thead>
+  <tbody>
+    <tr><td>Model doesn't know your data (policies, SKUs, internal docs)</td><td><b>RAG</b> &mdash; inject it at query time</td><td>Facts change; a frozen model goes stale</td></tr>
+    <tr><td>Output format is wrong</td><td><b>Structured output / JSON schema</b></td><td>Schema enforcement is cheaper and exact</td></tr>
+    <tr><td>Task is just hard</td><td><b>Better prompt + stronger model</b></td><td>Fine-tuning can't add capability data can't teach</td></tr>
+    <tr><td>Consistent style/format/behaviour across thousands of calls</td><td><b>Fine-tuning</b> &mdash; finally justified</td><td>&mdash;</td></tr>
+    <tr><td>Small model must match big model on a narrow task (cost/latency)</td><td><b>Distillation</b></td><td>&mdash;</td></tr>
+    <tr><td>Domain jargon the base model butchers</td><td><b>Fine-tuning</b> (or RAG first)</td><td>&mdash;</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">Rule of thumb</span>
+If you can write it as instructions or retrieve it as context, don't fine-tune. Fine-tune for <b>behaviour and form</b>
+(style, format, task pattern, domain tone), not for <b>knowledge</b> &mdash; knowledge goes stale and belongs in retrieval.</div>
+
+<h2>The data is the hard part</h2>
+<p>Fine-tuning learns whatever you show it &mdash; including your mistakes. Supervised fine-tuning (SFT) uses
+<b>input &rarr; desired output</b> pairs:</p>
+<pre data-lang="text" data-title="sft.jsonl: chat-format training examples">
+{"messages": [{"role": "system", "content": "You are a store assistant. Reply with a JSON action."}, {"role": "user", "content": "any earbuds at riverside?"}, {"role": "assistant", "content": "{\"action\": \"check_inventory\", \"sku\": \"EARBUDS-AIR2\", \"store\": \"riverside\"}"}]}
+{"messages": [{"role": "system", "content": "You are a store assistant. Reply with a JSON action."}, {"role": "user", "content": "I want to return opened headphones bought 10 days ago"}, {"role": "assistant", "content": "{\"action\": \"check_return_policy\", \"category\": \"opened_electronics\"}"}]}
+</pre>
+<ul class="checklist">
+  <li><b>Quality over quantity:</b> 500&ndash;2000 great examples beat 50k sloppy ones.</li>
+  <li><b>Every example must be perfect</b> &mdash; the model copies errors faithfully. Review by hand or with a strong model + human spot-check.</li>
+  <li><b>Cover edge cases:</b> refusals, missing data, "I don't know" &mdash; or the model learns to always guess.</li>
+  <li><b>Hold out a test set</b> the trainer never sees, or you can't tell memorising from learning.</li>
+  <li><b>Deduplicate and decontaminate</b> &mdash; no near-duplicates, no eval-set leakage.</li>
+</ul>
+
+<h2>LoRA and QLoRA: fine-tune without a server farm</h2>
+<p>Full fine-tuning updates all billions of parameters &mdash; expensive and risks "catastrophic forgetting" of general ability.
+<b>LoRA</b> (Low-Rank Adaptation) freezes the base model and trains only small adapter matrices injected into each layer:</p>
+<svg viewBox="0 0 720 140" class="diagram" role="img" aria-label="LoRA adapters">
+  <rect class="d-box" x="30" y="40" width="180" height="60" rx="8"/><text class="d-title" x="120" y="65" text-anchor="middle">Base model</text><text class="d-small" x="120" y="85" text-anchor="middle">frozen weights</text>
+  <text class="d-title" x="285" y="74">+</text>
+  <rect class="d-box2" x="320" y="40" width="160" height="60" rx="8"/><text class="d-title" x="400" y="65" text-anchor="middle">LoRA adapters</text><text class="d-small" x="400" y="85" text-anchor="middle">tiny, trainable</text>
+  <line class="d-arrow" x1="480" y1="70" x2="520" y2="70"/>
+  <rect class="d-box3" x="525" y="40" width="170" height="60" rx="8"/><text class="d-title" x="610" y="65" text-anchor="middle">Specialised model</text><text class="d-small" x="610" y="85" text-anchor="middle">~1% params trained</text>
+</svg>
+<ul>
+  <li><b>LoRA:</b> train ~0.1&ndash;1% of parameters, keep adapters as small files, swap them per task. Fits on one consumer GPU or Apple silicon (MLX LoRA).</li>
+  <li><b>QLoRA:</b> LoRA on a quantised (4-bit) base &mdash; halves the memory again, tiny quality cost. The usual default now.</li>
+</ul>
+<table>
+  <thead><tr><th>Starting hyperparameters</th><th>Sensible start</th></tr></thead>
+  <tbody>
+    <tr><td>LoRA rank (r)</td><td>8&ndash;16 (higher = more capacity, more overfitting risk)</td></tr>
+    <tr><td>Learning rate</td><td>1e-4 &ndash; 2e-4 for LoRA</td></tr>
+    <tr><td>Epochs</td><td>1&ndash;3; more memorises, not learns</td></tr>
+    <tr><td>Batch size / seq len</td><td>As large as memory allows / covers your examples</td></tr>
+  </tbody>
+</table>
+<pre data-lang="bash">
+# On Apple silicon, MLX runs LoRA locally:
+mlx_lm.lora --model mlx-community/&lt;model>-4bit --train --data ./sft_data
+# Produces adapter files (not a full model copy) — merge or load alongside the base.
+</pre>
+
+<h2>Distillation: big model teaches small model</h2>
+<p>Use a frontier model to generate high-quality answers, then fine-tune a small model to imitate them. You get near-big-model
+quality on a narrow task at small-model cost and latency. The catch: check the teacher model's <b>licence</b> &mdash; many
+providers restrict using outputs to train competing models.</p>
+
+<h2>Evaluate honestly</h2>
+<ul class="checklist">
+  <li><b>Task eval:</b> your golden set (L3&middot;04) on the held-out test slice &mdash; did it improve?</li>
+  <li><b>Regression eval:</b> general capability checks &mdash; did it forget things it used to do?</li>
+  <li><b>Compare against the strong baseline:</b> does it beat a good prompt on the big model? If not, why bother?</li>
+  <li><b>Cost/latency:</b> the point of a small model is speed and price &mdash; measure both.</li>
+  <li><b>Overfitting signs:</b> training loss drops, eval accuracy flat or falling &mdash; stop earlier, fewer epochs, more data.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (90 min)</span>
+<ol>
+  <li>Write 50 SFT examples teaching a strict JSON-action format for the Store Assistant.</li>
+  <li>Hold out 10 as a test set. Check they cover intents, refusals and missing data.</li>
+  <li>Run LoRA on a small local model (MLX on Mac, or a hosted fine-tune service). Evaluate on the test set.</li>
+  <li>Compare: fine-tuned small model vs. few-shot prompted base model. Which wins on format compliance? On cost?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Fine-tune last: prompt &rarr; structure/RAG &rarr; agents &rarr; then fine-tune, for behaviour not knowledge.</li>
+  <li>Data quality decides everything; hold out a test set; include refusals and edge cases.</li>
+  <li>LoRA/QLoRA train ~1% of params on one GPU or a Mac; QLoRA is the usual default.</li>
+  <li>Distillation shrinks a big model to a cheap small one &mdash; mind the teacher's licence.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

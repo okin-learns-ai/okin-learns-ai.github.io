@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Capstone: Production Agent with MCP &amp; Evals | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 10 &middot; Capstone: A Production-Grade Agent</h1>
+<p class="lead">Everything in Level 3 converges here: an agent (page 02) whose tools come from your own MCP server (page 01),
+orchestrated where needed (page 03), measured by an eval suite (page 04), observed in production (page 07) and reviewed for
+security (page 08). This page gives the architecture, the build order and the acceptance criteria &mdash; the labs built most
+of the pieces already.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">6&ndash;10 h</span><span class="pill">Capstone</span></div>
+
+<div class="objectives"><h3>The deliverable</h3>
+<ul>
+  <li>A <b>Store Ops Agent</b>: answers staff questions by calling your MCP server's tools.</li>
+  <li>Tools served by a <b>real MCP server</b> you wrote (Python <code>FastMCP</code> or JVM), not hardcoded.</li>
+  <li>An <b>eval suite</b> in CI: golden set, trajectory checks, a safety set that always runs.</li>
+  <li><b>Observability:</b> traced calls, cost tracking, a kill switch.</li>
+  <li>A written <b>security review</b>: OWASP LLM Top 10 walk-through, red-team log, residual risks.</li>
+</ul></div>
+
+<h2>Architecture</h2>
+<svg viewBox="0 0 720 200" class="diagram" role="img" aria-label="Capstone architecture">
+  <rect class="d-box" x="20" y="70" width="110" height="60" rx="8"/><text class="d-title" x="75" y="95" text-anchor="middle">Staff chat</text><text class="d-small" x="75" y="115" text-anchor="middle">(CLI / web)</text>
+  <line class="d-arrow" x1="130" y1="100" x2="160" y2="100"/>
+  <rect class="d-box2" x="165" y="70" width="140" height="60" rx="8"/><text class="d-title" x="235" y="92" text-anchor="middle">Agent loop</text><text class="d-small" x="235" y="112" text-anchor="middle">state, limits, memory</text>
+  <line class="d-arrow" x1="305" y1="100" x2="335" y2="100"/>
+  <rect class="d-box3" x="340" y="70" width="150" height="60" rx="8"/><text class="d-title" x="415" y="92" text-anchor="middle">Your MCP server</text><text class="d-small" x="415" y="112" text-anchor="middle">inventory, orders, policy</text>
+  <line class="d-arrow" x1="490" y1="100" x2="520" y2="100"/>
+  <rect class="d-box4" x="525" y="70" width="170" height="60" rx="8"/><text class="d-title" x="610" y="92" text-anchor="middle">Store systems</text><text class="d-small" x="610" y="112" text-anchor="middle">(simulated here)</text>
+  <rect class="d-box" x="165" y="155" width="140" height="38" rx="6"/><text class="d-small" x="235" y="179" text-anchor="middle">tracer + cost + kill switch</text>
+  <rect class="d-box" x="340" y="155" width="150" height="38" rx="6"/><text class="d-small" x="415" y="179" text-anchor="middle">eval suite (CI)</text>
+  <line class="d-arrow" x1="235" y1="130" x2="235" y2="152"/>
+  <line class="d-arrow" x1="415" y1="130" x2="415" y2="152"/>
+</svg>
+
+<h2>Build order</h2>
+<ol>
+  <li><b>MCP server first</b> (lab 1): inventory, order status, policy lookup as tools + a policy resource. Unit-tested, README'd.</li>
+  <li><b>Agent loop</b> (lab 2): state, limits, memory, error recovery &mdash; talking to the MCP server, not to functions.</li>
+  <li><b>Orchestration only where it pays</b> (lab 3): maybe a researcher&ndash;critic pair for policy answers; skip it if one agent suffices.</li>
+  <li><b>Eval suite</b> (lab 4): golden set, trajectory grading, safety cases in CI.</li>
+  <li><b>Observability</b> (lab 7): tracing, cost, kill switch.</li>
+  <li><b>Security review</b> (lab 8): red-team, fix, write it up.</li>
+</ol>
+
+<h2>Reference skeleton (Scala)</h2>
+<p>The agent talks to the MCP server over stdio &mdash; the same loop shape as page 02, but tool calls go through the MCP client.
+Here's the core, compilable shape (a full implementation is the project):</p>
+<pre data-lang="scala" data-title="StoreOpsAgent.scala: agent loop calling an MCP server  (scala-cli run StoreOpsAgent.scala)" data-verify="run">
+import scala.collection.mutable
+
+// Simulated MCP client: in production this speaks JSON-RPC to a real server subprocess.
+// The interface is what matters — the agent never touches store data directly.
+trait McpClient:
+  def callTool(name: String, args: Map[String, String]): String
+  def listTools(): List[String]
+
+class FakeMcp extends McpClient:
+  private val inv = Map("EARBUDS-AIR2" -> 14)
+  def listTools() = List("check_inventory", "order_status")
+  def callTool(name: String, args: Map[String, String]) = name match
+    case "check_inventory" =>
+      args.get("sku").map(s => s"""{"sku":"$s","qty":${inv.getOrElse(s.toUpperCase, 0)}}""")
+        .getOrElse("""{"error":"missing sku"}""")
+    case "order_status" =>
+      s"""{"order":"${args.getOrElse("order_id", "?")}","status":"READY_FOR_PICKUP"}"""
+    case _ => """{"error":"unknown tool"}"""
+
+case class Limits(maxSteps: Int = 10, maxToolCalls: Int = 6)
+
+class Agent(mcp: McpClient, limits: Limits):
+  private val trace = mutable.Buffer[String]()
+
+  def run(task: String): String =
+    var steps, toolCalls = 0
+    var done = false
+    val answer = new StringBuilder
+    while !done && steps &lt; limits.maxSteps do
+      steps += 1
+      // Placeholder model: in production this is the LLM deciding tool calls.
+      // Here we drive the loop shape with a scripted "model".
+      val decision = if steps == 1 then """TOOL:check_inventory {"sku":"EARBUDS-AIR2"}""" else "ANSWER:done"
+      if decision.startsWith("TOOL:") then
+        if toolCalls >= limits.maxToolCalls then
+          answer.append("stopped: tool budget"); done = true
+        else
+          toolCalls += 1
+          val Array(name, rest) = decision.stripPrefix("TOOL:").split(" ", 2)
+          val result = mcp.callTool(name, parseArgs(rest))
+          trace += s"step $steps: $name -> $result"
+          if result.contains("error") then { answer.append(s"error: $result"); done = true }
+      else
+        answer.append("completed"); done = true
+    if !done then answer.append("stopped: step limit")
+    answer.toString
+
+  private def parseArgs(s: String): Map[String, String] =
+    """"(\w+)":"([^"]*)"""".r.findAllMatchIn(s).map(m => m.group(1) -> m.group(2)).toMap
+
+  def getTrace: List[String] = trace.toList
+
+object StoreOpsAgent:
+  def main(args: Array[String]): Unit =
+    val agent = Agent(FakeMcp(), Limits())
+    val result = agent.run("how many earbuds?")
+    println(s"answer: $result")
+    agent.getTrace.foreach(println)
+    assert(agent.getTrace.head.contains("EARBUDS-AIR2"))
+</pre>
+<p>The point isn't the fake model &mdash; it's that the <b>agent never touches inventory data except through the MCP client</b>,
+every tool call is traced and counted, and limits guarantee termination. Swap <code>FakeMcp</code> for a real stdio client and
+the structure is unchanged.</p>
+
+<h2>Acceptance criteria</h2>
+<ul class="checklist">
+  <li><b>MCP server:</b> 3+ tools, 1+ resource, unit tests, README with config snippet; a teammate can connect unaided.</li>
+  <li><b>Agent:</b> serialisable state, all four limits enforced and reported, tool errors fed back not crashed.</li>
+  <li><b>Evals:</b> 30+ golden cases incl. held-out slice; trajectory checks; safety cases always run; results versioned; a deliberate regression is caught.</li>
+  <li><b>Observability:</b> every call traced with tokens/latency/cost; you can report yesterday's spend per feature; kill switch verified.</li>
+  <li><b>Security:</b> red-team log of 10+ attempts; each success has a fix or a documented accepted risk; OWASP checklist completed.</li>
+  <li><b>Write-up:</b> one page on what worked, what didn't, and what you'd do differently.</li>
+</ul>
+
+<div class="callout ok"><span class="c-title">What "done" looks like</span>
+Not a demo that worked once on camera. A system where: a teammate connects to your MCP server using only your README; a prompt
+regression is caught in CI before it ships; a runaway agent hits a budget and reports it; and a red-team attempt at least gets
+logged even when it can't be fully stopped.</div>
+
+<div class="callout tip"><span class="c-title">Then Level 4</span>
+Level 3 was about <i>building</i> systems with models as a black box. Level 4 opens the box: the maths, transformer internals,
+training, inference optimisation and architecture-level decisions.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

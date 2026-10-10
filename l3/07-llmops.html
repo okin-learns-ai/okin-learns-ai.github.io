@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>LLMOps: Deploy, Observe, Optimise | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 07 &middot; LLMOps: Deploy, Observe, Optimise</h1>
+<p class="lead">Shipping an LLM feature is the start, not the end. Unlike normal code, it can regress without a deploy
+(model updates), cost can balloon quietly (token sprawl), and quality problems are invisible unless you measure them.
+LLMOps is the operational discipline: tracing, evals in production, caching, routing, cost control and guardrails.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">55 min</span><span class="pill">Tracks 3, 8</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Instrument LLM calls with tracing that captures prompts, responses, tokens and latency.</li>
+  <li>Set up caching (exact and semantic), prompt caching, and model routing.</li>
+  <li>Track cost per request and per feature, and set budgets that alert.</li>
+  <li>Add production guardrails: input/output checks, fallbacks, kill switches.</li>
+  <li>Design a deploy-and-monitor loop that catches quality regressions.</li>
+</ul></div>
+
+<h2>What breaks in production</h2>
+<table>
+  <thead><tr><th>Failure</th><th>Why it's sneaky</th><th>Signal</th></tr></thead>
+  <tbody>
+    <tr><td>Quality regression</td><td>Provider silently updates the model under the same name</td><td>Eval score drops on live traffic</td></tr>
+    <tr><td>Cost explosion</td><td>A prompt grows, a loop spins, usage scales &mdash; all billed per token</td><td>Cost/request and daily spend charts</td></tr>
+    <tr><td>Latency spikes</td><td>Long contexts, slow tool calls, big models on trivial tasks</td><td>p50/p95/p99 per endpoint</td></tr>
+    <tr><td>Silent failures</td><td>Model returns plausible-wrong output; no exception is thrown</td><td>Output validation, user feedback, evals</td></tr>
+    <tr><td>Prompt drift</td><td>Someone edits a prompt, nobody re-ran evals</td><td>Prompt versioning + CI evals</td></tr>
+  </tbody>
+</table>
+
+<h2>Trace every call</h2>
+<p>You can't fix what you can't see. Log structured records per LLM call &mdash; and per tool call inside an agent run:</p>
+<pre data-lang="python" data-title="telemetry.py: structured logging for LLM calls" data-verify="run">
+import json
+import time
+from contextlib import contextmanager
+
+
+class Tracer:
+    """Minimal LLM call tracer. In production, send spans to an observability backend
+    (e.g. an OpenTelemetry collector, LangSmith, Langfuse, Braintrust)."""
+
+    def __init__(self):
+        self.records = []
+
+    @contextmanager
+    def span(self, name: str, **attrs):
+        start = time.perf_counter()
+        rec = {"span": name, **attrs}
+        try:
+            yield rec
+        finally:
+            rec["latency_ms"] = round((time.perf_counter() - start) * 1000, 1)
+            self.records.append(rec)
+
+    def report(self):
+        for r in self.records:
+            print(json.dumps(r))
+
+
+if __name__ == "__main__":
+    tr = Tracer()
+    with tr.span("chat.completions", model="demo", feature="store-assistant") as span:
+        time.sleep(0.01)                      # pretend to call the API
+        span["prompt_tokens"] = 420
+        span["completion_tokens"] = 95
+        span["cost_usd"] = 0.0008
+        span["finish_reason"] = "stop"
+        span["status"] = "ok"
+    tr.report()
+</pre>
+<p>Log the <b>what</b> (feature, model, token counts, latency, cost, finish_reason, status) and a <b>trace ID</b> that links the
+LLM call to the tool calls and the user request. Be careful with <b>prompts/responses</b>: they may contain PII &mdash; redact or
+sample, don't log raw user data by default.</p>
+
+<h2>Caching: three kinds</h2>
+<table>
+  <thead><tr><th>Cache</th><th>What it saves</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><b>Exact response cache</b></td><td>Identical query &rarr; stored answer</td><td>Key on (prompt, model, params). High hit rate on FAQs</td></tr>
+    <tr><td><b>Semantic cache</b></td><td>Near-identical query &rarr; stored answer</td><td>Embed the query, compare to cached. Needs a similarity threshold + staleness rules</td></tr>
+    <tr><td><b>Prompt caching</b> (provider-side)</td><td>Repeated prefix (system prompt, tool defs, docs) billed cheaper</td><td>Put stable content first, variable content last &mdash; same rule as L2&middot;03</td></tr>
+  </tbody>
+</table>
+<p>For a store assistant, "what's your return policy" asked 500 times a day is one LLM call, not 500. But cache carefully:
+answers with personal or time-sensitive data shouldn't be served from a cache.</p>
+
+<h2>Routing: right model, right price</h2>
+<p>Not every call needs the frontier model. Route by task:</p>
+<pre data-lang="text" data-title="routing rules (concept)">
+intent classification, extraction, short answers  -> small/fast model
+complex reasoning, long documents, agent planning -> frontier model
+refusals / safety checks                          -> fast, cheap model or code
+embeddings                                        -> dedicated embedding model
+</pre>
+<p>Implement it as a thin layer in your client (L2&middot;03's router pattern grows up): choose the model per request, log which
+was picked, and add a <b>fallback</b> &mdash; if the primary model errors or times out, retry a backup. Track quality per route
+so "we saved money by routing down" doesn't quietly become "we tanked accuracy".</p>
+
+<h2>Cost control</h2>
+<ul class="checklist">
+  <li><b>Cost per request and per feature</b> on a dashboard &mdash; tokens &times; price, summed by feature tag.</li>
+  <li><b>Budgets that alert:</b> daily spend ceiling; a runaway agent loop shouldn't drain the account overnight.</li>
+  <li><b>Token budgets per call</b> (<code>max_tokens</code>) and per agent run (L3&middot;02 limits).</li>
+  <li><b>Trim context:</b> compaction, smaller retrieved sets, drop history you don't need.</li>
+  <li><b>Prompt caching and smaller models</b> for the bulk traffic; frontier for the hard slice.</li>
+  <li><b>Watch the tail:</b> a few users running giant contexts can dominate spend.</li>
+</ul>
+
+<h2>Guardrails in production</h2>
+<table>
+  <thead><tr><th>Layer</th><th>Check</th></tr></thead>
+  <tbody>
+    <tr><td><b>Input</b></td><td>Length limits, injection patterns flagged (L3&middot;08), PII handling, rate limits per user</td></tr>
+    <tr><td><b>Output</b></td><td>Schema validation, citation checks (L2&middot;06), forbidden-content filters, format checks</td></tr>
+    <tr><td><b>Action</b></td><td>Confirmation before writes, allow-listed tools, least-privilege per route</td></tr>
+    <tr><td><b>System</b></td><td>Fallback model on errors, kill switch per feature, circuit breaker on repeated failures</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">The kill switch is non-negotiable</span>
+Every LLM feature needs a flag that turns it off (or degrades to a safe fallback) without a deploy. When the model starts
+hallucinating refunds at 2 a.m., "we'll push a fix tomorrow" isn't a plan.</div>
+
+<h2>The deploy-and-monitor loop</h2>
+<svg viewBox="0 0 720 90" class="diagram" role="img" aria-label="Deploy monitor loop">
+  <rect class="d-box" x="15" y="25" width="110" height="40" rx="6"/><text class="d-small" x="70" y="42" text-anchor="middle">change</text><text class="d-small" x="70" y="58" text-anchor="middle">(prompt/model)</text>
+  <line class="d-arrow" x1="125" y1="45" x2="140" y2="45"/>
+  <rect class="d-box2" x="142" y="25" width="110" height="40" rx="6"/><text class="d-small" x="197" y="42" text-anchor="middle">eval in CI</text><text class="d-small" x="197" y="58" text-anchor="middle">(golden set)</text>
+  <line class="d-arrow" x1="252" y1="45" x2="267" y2="45"/>
+  <rect class="d-box3" x="269" y="25" width="110" height="40" rx="6"/><text class="d-small" x="324" y="42" text-anchor="middle">deploy %</text><text class="d-small" x="324" y="58" text-anchor="middle">(canary)</text>
+  <line class="d-arrow" x1="379" y1="45" x2="394" y2="45"/>
+  <rect class="d-box4" x="396" y="25" width="140" height="40" rx="6"/><text class="d-small" x="466" y="42" text-anchor="middle">monitor live</text><text class="d-small" x="466" y="58" text-anchor="middle">evals + cost + latency</text>
+  <line class="d-arrow" x1="536" y1="45" x2="551" y2="45"/>
+  <rect class="d-box" x="553" y="25" width="140" height="40" rx="6"/><text class="d-small" x="623" y="42" text-anchor="middle">feedback</text><text class="d-small" x="623" y="58" text-anchor="middle">into golden set</text>
+</svg>
+<ul class="checklist">
+  <li>Canary new prompts/models to a % of traffic; compare eval scores before full rollout.</li>
+  <li>Sample live traffic into the golden set monthly (privacy-aware) &mdash; real inputs keep evals honest.</li>
+  <li>Collect lightweight feedback (&#128077;/&#128078;, "was this helpful?") as a weak quality signal.</li>
+  <li>Alert on eval-score drop, cost spike, latency regression &mdash; the three silent killers.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Add <code>Tracer</code>-style logging to the Store Assistant: tokens, latency, cost, finish_reason per call.</li>
+  <li>Add an exact-response cache. Run the same 5 queries twice &mdash; measure the savings.</li>
+  <li>Route: trivial questions to a small local model, hard ones to a stronger one. Log the split.</li>
+  <li>Set a daily cost budget and a kill-switch flag. Test that the flag actually disables the LLM path.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>LLM features regress silently (model updates, prompt drift, cost creep) &mdash; observe or be surprised.</li>
+  <li>Trace calls with tokens, latency, cost, trace ID. Redact PII; sample, don't log everything.</li>
+  <li>Cache aggressively (exact, semantic, prompt), route by task difficulty, budget with alerts.</li>
+  <li>Guardrails in/out/action/system + a kill switch. Canary deploys, live evals, feed production back into the golden set.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

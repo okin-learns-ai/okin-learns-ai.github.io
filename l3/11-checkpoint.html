@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 3 Checkpoint Quiz | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 11 &middot; Level 3 Checkpoint Quiz</h1>
+<p class="lead">20 questions covering all of Level 3. Aim for 16/20 (80%) or more, and finish the capstone, before starting Level 4.
+Reload to retry; answer order is shuffled each time.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">20 min</span></div>
+
+<div class="quiz-score" id="quiz-score"></div>
+
+<h2>MCP servers &amp; agents (pages 01&ndash;02)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">1. In MCP, the host learns what a server offers by&hellip;</div>
+<label><input type="radio" value="a">Reading the server's source code</label>
+<label><input type="radio" value="b">Guessing from the server name</label>
+<label><input type="radio" value="c">Calling initialize, then tools/list / resources/list / prompts/list</label>
+<label><input type="radio" value="d">The server emails documentation</label>
+<div class="explain">Capability discovery is part of the protocol. See <a href="01-building-mcp-servers.html">page 01</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">2. With FastMCP, a tool's input schema comes from&hellip;</div>
+<label><input type="radio" value="a">A separate YAML file</label>
+<label><input type="radio" value="b">The function's type hints, with the docstring as description</label>
+<label><input type="radio" value="c">The model invents it at call time</label>
+<label><input type="radio" value="d">There is no schema</label>
+<div class="explain">Write type hints and docstrings as contracts &mdash; they become the schema the model sees.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">3. On a stdio MCP server, where should logs go?</div>
+<label><input type="radio" value="a">stdout</label>
+<label><input type="radio" value="b">Into the JSON-RPC replies</label>
+<label><input type="radio" value="c">Nowhere</label>
+<label><input type="radio" value="d">stderr &mdash; stdout is the protocol channel</label>
+<div class="explain">One stray print on stdout corrupts the JSON-RPC stream.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">4. An agent's memory strategy should&hellip;</div>
+<label><input type="radio" value="a">Keep facts verbatim, compact big tool outputs, drop dead ends</label>
+<label><input type="radio" value="b">Keep everything forever</label>
+<label><input type="radio" value="c">Summarise the task itself</label>
+<label><input type="radio" value="d">Store nothing</label>
+<div class="explain">See <a href="02-building-agents-from-scratch.html">page 02</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">5. A tool throws an exception. The agent should&hellip;</div>
+<label><input type="radio" value="a">Crash immediately</label>
+<label><input type="radio" value="b">Retry the identical call forever</label>
+<label><input type="radio" value="c">Return the error to the model as data, and cap consecutive failures</label>
+<label><input type="radio" value="d">Delete the tool</label>
+<div class="explain">Models recover well from errors fed back as results. Three repeats = stuck.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">6. Which is NOT a required stopping condition?</div>
+<label><input type="radio" value="a">Max steps</label>
+<label><input type="radio" value="b">A fixed temperature</label>
+<label><input type="radio" value="c">Max tool calls</label>
+<label><input type="radio" value="d">Token/cost or wall-clock budget</label>
+<div class="explain">Temperature steers the model; limits guarantee the loop ends.</div></div>
+
+<h2>Multi-agent &amp; evals (pages 03&ndash;04)</h2>
+
+<div class="quiz" data-answer="a"><div class="q">7. Multi-agent systems are justified mainly when&hellip;</div>
+<label><input type="radio" value="a">Subtasks are independent, need different permissions, or need a separate critic</label>
+<label><input type="radio" value="b">You want to spend more tokens</label>
+<label><input type="radio" value="c">One agent is too simple to impress anyone</label>
+<label><input type="radio" value="d">The task is a single FAQ lookup</label>
+<div class="explain">See <a href="03-multi-agent-systems.html">page 03</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">8. Agents should communicate via&hellip;</div>
+<label><input type="radio" value="a">Shared full message histories</label>
+<label><input type="radio" value="b">Global variables</label>
+<label><input type="radio" value="c">The model's internal thoughts</label>
+<label><input type="radio" value="d">Small artefacts (JSON, summaries) merged in testable code</label>
+<div class="explain">Artefacts keep contexts clean and results verifiable.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">9. Three pipeline stages at 90% accuracy each give roughly&hellip;</div>
+<label><input type="radio" value="a">90%</label>
+<label><input type="radio" value="b">73% end-to-end</label>
+<label><input type="radio" value="c">99%</label>
+<label><input type="radio" value="d">30%</label>
+<div class="explain">0.9&sup3; &asymp; 0.73. Errors compound multiplicatively &mdash; check between stages.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">10. The best use of an LLM-as-judge is&hellip;</div>
+<label><input type="radio" value="a">Replacing all code graders</label>
+<label><input type="radio" value="b">Judging with a vague "is this good?"</label>
+<label><input type="radio" value="c">Rubric-scored grading of what code can't check, validated against human labels</label>
+<label><input type="radio" value="d">Grading its own model's output</label>
+<div class="explain">See <a href="04-evals.html">page 04</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">11. Agent evals should grade&hellip;</div>
+<label><input type="radio" value="a">The trajectory: right tools, right order, within budget, plus the final answer</label>
+<label><input type="radio" value="b">Only the final answer</label>
+<label><input type="radio" value="c">Only token count</label>
+<label><input type="radio" value="d">Nothing, agents can't be tested</label>
+<div class="explain">A right answer reached via 15 wasted calls or a security violation is still a failure.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">12. A golden dataset should NOT&hellip;</div>
+<label><input type="radio" value="a">Be versioned with the prompts</label>
+<label><input type="radio" value="b">Include prior production failures</label>
+<label><input type="radio" value="c">Grow over time</label>
+<label><input type="radio" value="d">Be used to tune prompts AND measure them (same set)</label>
+<div class="explain">Tuning on the test set = overfitting the test. Keep a held-out slice.</div></div>
+
+<h2>RAG &amp; fine-tuning (pages 05&ndash;06)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">13. Users search exact codes like "ORD-482913" and vector search misses them. Fix?</div>
+<label><input type="radio" value="a">A bigger embedding model</label>
+<label><input type="radio" value="b">More chunks</label>
+<label><input type="radio" value="c">Hybrid BM25 + vector, fused with Reciprocal Rank Fusion</label>
+<label><input type="radio" value="d">Raise temperature</label>
+<div class="explain">See <a href="05-advanced-rag.html">page 05</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">14. A re-ranker improves precision by&hellip;</div>
+<label><input type="radio" value="a">Fetching more documents</label>
+<label><input type="radio" value="b">Scoring each retrieved candidate against the query properly, keeping the best few</label>
+<label><input type="radio" value="c">Rewriting the documents</label>
+<label><input type="radio" value="d">Caching answers</label>
+<div class="explain">Cheap recall (fetch ~50), expensive precision (re-rank to ~5).</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">15. When does a knowledge graph (GraphRAG) beat chunks?</div>
+<label><input type="radio" value="a">Multi-hop questions over entity relationships</label>
+<label><input type="radio" value="b">Simple single-hop FAQs</label>
+<label><input type="radio" value="c">When you want a cheaper index</label>
+<label><input type="radio" value="d">Always</label>
+<div class="explain">Graphs earn their build cost on relational questions, not FAQs.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">16. Fine-tune for&hellip;</div>
+<label><input type="radio" value="a">Adding facts that change often</label>
+<label><input type="radio" value="b">Fixing output format when a schema exists</label>
+<label><input type="radio" value="c">Anything, it's always best</label>
+<label><input type="radio" value="d">Consistent behaviour/format, or shrinking a big model to a small one (distillation)</label>
+<div class="explain">Knowledge goes in RAG; behaviour goes in fine-tuning. See <a href="06-fine-tuning.html">page 06</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">17. LoRA works by&hellip;</div>
+<label><input type="radio" value="a">Retraining all parameters faster</label>
+<label><input type="radio" value="b">Freezing the base model and training small adapter matrices</label>
+<label><input type="radio" value="c">Quantising the dataset</label>
+<label><input type="radio" value="d">Using more GPUs</label>
+<div class="explain">~1% of params trained; QLoRA does it on a quantised base to save memory.</div></div>
+
+<h2>LLMOps &amp; security (pages 07&ndash;08)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">18. The three "silent killers" of LLM features in production are&hellip;</div>
+<label><input type="radio" value="a">Syntax errors, typos, bad variable names</label>
+<label><input type="radio" value="b">Too many comments</label>
+<label><input type="radio" value="c">Quality regression, cost creep, latency spikes</label>
+<label><input type="radio" value="d">Merge conflicts</label>
+<div class="explain">See <a href="07-llmops.html">page 07</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">19. The most reliable prompt-injection defense is&hellip;</div>
+<label><input type="radio" value="a">Architecture: least-privilege tools, validated args, human approval for consequential actions</label>
+<label><input type="radio" value="b">A longer system prompt saying "don't get injected"</label>
+<label><input type="radio" value="c">Hiding the system prompt better</label>
+<label><input type="radio" value="d">Asking the model nicely</label>
+<div class="explain">Prompt-level defenses are bypassable; architecture bounds the damage. See <a href="08-ai-security.html">page 08</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">20. A "rug pull" on an MCP server means&hellip;</div>
+<label><input type="radio" value="a">The server runs out of memory</label>
+<label><input type="radio" value="b">A DNS failure</label>
+<label><input type="radio" value="c">The model refuses to call it</label>
+<label><input type="radio" value="d">A trusted server silently changes its tools or behaviour in an update</label>
+<div class="explain">Pin versions, review tool schemas on update, keep least privilege.</div></div>
+
+<h2>What next?</h2>
+<div class="callout ok"><span class="c-title">Level 3 complete?</span>
+Scored 16+ and finished the <a href="10-capstone.html">capstone</a>? You're ready for
+<a href="../roadmap.html#l4">Level 4 &middot; Expert</a>: the maths and transformer internals, training and post-training,
+inference optimisation, and architecture decisions.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@ Author: Sanat -- For My Wife Okin
 - Every <pre data-lang="python"> block is byte-compiled.
 - Blocks whose data-title starts with test_*.py are run with pytest.
 - Blocks with data-verify="run" are executed (must exit 0 within 60 s).
+- Blocks sharing a data-verify="<group>" value are placed in the same folder,
+  so tests can import their sibling modules.
 
 Usage:  python tools/verify_python.py [page-glob]   (run with a Python that has
         pydantic, httpx, pytest, hypothesis and mcp installed, e.g. a venv)
@@ -35,8 +37,10 @@ def main() -> int:
             code = html.unescape(re.sub(r"</?code>", "", m.group(2))).strip("\n")
             first = (attrs.get("data-title") or "").split(" ")[0].split("/")[-1].rstrip(":")
             name = first if first.endswith(".py") else f"snippet_{i}.py"
-            d = work / f"{page.parent.name}_{page.stem[:2]}_{i}"
-            d.mkdir()
+            group = attrs.get("data-verify")
+            key = group if group not in (None, "run") else str(i)
+            d = work / f"{page.parent.name}_{page.stem[:2]}_{key}"
+            d.mkdir(exist_ok=True)
             f = d / name
             f.write_text(code + "\n", encoding="utf-8")
             if name.startswith("test_"):

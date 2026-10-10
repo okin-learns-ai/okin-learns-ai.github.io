@@ -7,8 +7,8 @@ window.SITE = {
   subtitle: "Beginner \u2192 Expert",
   dedication: "For My Wife Okin",
   author: "Sanat",
-  version: "Levels 1\u20132 complete",
-  updated: "2026-10-08"
+  version: "Levels 1\u20133 complete",
+  updated: "2026-10-09"
 };
 
 window.NAV = [
@@ -53,14 +53,17 @@ window.NAV = [
     { n: "15", title: "Level 2 Checkpoint Quiz", href: "l2/15-checkpoint.html" }
   ]},
   { group: "Level 3 \u00b7 Advanced", level: 3, items: [
-    { title: "Building MCP Servers (Python & Scala/JVM)", href: "roadmap.html#l3", soon: true },
-    { title: "Building Agents from Scratch", href: "roadmap.html#l3", soon: true },
-    { title: "Multi-Agent Systems & Orchestration", href: "roadmap.html#l3", soon: true },
-    { title: "Evals: Measuring LLM Quality", href: "roadmap.html#l3", soon: true },
-    { title: "Advanced RAG & Knowledge Graphs", href: "roadmap.html#l3", soon: true },
-    { title: "Fine-tuning, LoRA & Distillation", href: "roadmap.html#l3", soon: true },
-    { title: "LLMOps: Deploy, Observe, Optimize Cost", href: "roadmap.html#l3", soon: true },
-    { title: "AI Security: Prompt Injection & Defenses", href: "roadmap.html#l3", soon: true }
+    { n: "01", title: "Building MCP Servers (Python & Scala/JVM)", href: "l3/01-building-mcp-servers.html" },
+    { n: "02", title: "Building Agents from Scratch", href: "l3/02-building-agents-from-scratch.html" },
+    { n: "03", title: "Multi-Agent Systems & Orchestration", href: "l3/03-multi-agent-systems.html" },
+    { n: "04", title: "Evals: Measuring LLM Quality", href: "l3/04-evals.html" },
+    { n: "05", title: "Advanced RAG & Knowledge Graphs", href: "l3/05-advanced-rag.html" },
+    { n: "06", title: "Fine-tuning, LoRA & Distillation", href: "l3/06-fine-tuning.html" },
+    { n: "07", title: "LLMOps: Deploy, Observe, Optimize Cost", href: "l3/07-llmops.html" },
+    { n: "08", title: "AI Security: Prompt Injection & Defenses", href: "l3/08-ai-security.html" },
+    { n: "09", title: "Level 3 Labs", href: "l3/09-labs.html" },
+    { n: "10", title: "Capstone: Production Agent + MCP + Evals", href: "l3/10-capstone.html" },
+    { n: "11", title: "Level 3 Checkpoint Quiz", href: "l3/11-checkpoint.html" }
   ]},
   { group: "Level 4 \u00b7 Expert", level: 4, items: [
     { title: "Transformer Internals & the Math", href: "roadmap.html#l4", soon: true },

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Multi-Agent Systems &amp; Orchestration | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 03 &middot; Multi-Agent Systems &amp; Orchestration</h1>
+<p class="lead">One agent with the right tools solves most tasks. Multi-agent systems help when work is long-running, splits into
+independent subtasks, or benefits from a critic that isn't the author. This page covers the patterns that work in production,
+the coordination costs nobody mentions in demos, and agent-to-agent protocols.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">55 min</span><span class="pill">Track 3</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Pick the right pattern: pipeline, orchestrator&ndash;worker, planner&ndash;executor, critic loops, or just one agent.</li>
+  <li>Pass artefacts between agents without polluting each one's context.</li>
+  <li>Estimate the real costs: latency, tokens, compounded error rates.</li>
+  <li>Describe agent-to-agent protocols (A2A, ACP) and when they matter.</li>
+</ul></div>
+
+<h2>Start with the honest question</h2>
+<div class="callout warn"><span class="c-title">Do you need more than one agent?</span>
+Each extra agent adds latency, multiplies token cost, and introduces a new failure surface. Multi-agent earns its keep when
+subtasks are <b>genuinely independent</b> (parallel work), need <b>different tools or permissions</b>, or need
+<b>separation of duties</b> (the critic must not be the author). If a single agent with good tools can do it, do that.</div>
+
+<h2>The patterns that work</h2>
+<svg viewBox="0 0 720 240" class="diagram" role="img" aria-label="Multi-agent patterns">
+  <text class="d-title" x="90" y="30">Pipeline</text>
+  <rect class="d-box" x="20" y="45" width="60" height="36" rx="6"/><text class="d-small" x="50" y="68" text-anchor="middle">triage</text>
+  <line class="d-arrow" x1="80" y1="63" x2="93" y2="63"/>
+  <rect class="d-box2" x="95" y="45" width="60" height="36" rx="6"/><text class="d-small" x="125" y="68" text-anchor="middle">draft</text>
+  <line class="d-arrow" x1="155" y1="63" x2="168" y2="63"/>
+  <rect class="d-box3" x="170" y="45" width="60" height="36" rx="6"/><text class="d-small" x="200" y="68" text-anchor="middle">send</text>
+
+  <text class="d-title" x="350" y="30">Orchestrator&ndash;worker</text>
+  <rect class="d-box" x="320" y="45" width="70" height="36" rx="6"/><text class="d-small" x="355" y="68" text-anchor="middle">orchestr.</text>
+  <line class="d-arrow" x1="390" y1="55" x2="410" y2="45"/><rect class="d-box2" x="412" y="28" width="60" height="30" rx="6"/><text class="d-small" x="442" y="48" text-anchor="middle">worker</text>
+  <line class="d-arrow" x1="390" y1="63" x2="410" y2="63"/><rect class="d-box3" x="412" y="50" width="60" height="30" rx="6"/><text class="d-small" x="442" y="70" text-anchor="middle">worker</text>
+  <line class="d-arrow" x1="390" y1="72" x2="410" y2="82"/><rect class="d-box4" x="412" y="72" width="60" height="30" rx="6"/><text class="d-small" x="442" y="92" text-anchor="middle">worker</text>
+
+  <text class="d-title" x="590" y="30">Author&ndash;critic</text>
+  <rect class="d-box" x="555" y="45" width="55" height="36" rx="6"/><text class="d-small" x="582" y="68" text-anchor="middle">author</text>
+  <rect class="d-box2" x="640" y="45" width="55" height="36" rx="6"/><text class="d-small" x="667" y="68" text-anchor="middle">critic</text>
+  <line class="d-arrow" x1="610" y1="55" x2="638" y2="55"/>
+  <line class="d-arrow" x1="638" y1="75" x2="612" y2="75"/>
+
+  <text class="d-title" x="90" y="140">Planner&ndash;executor</text>
+  <rect class="d-box" x="20" y="155" width="60" height="36" rx="6"/><text class="d-small" x="50" y="178" text-anchor="middle">planner</text>
+  <line class="d-arrow" x1="80" y1="173" x2="93" y2="173"/>
+  <rect class="d-box2" x="95" y="155" width="70" height="36" rx="6"/><text class="d-small" x="130" y="178" text-anchor="middle">executor</text>
+  <line class="d-arrow" x1="165" y1="173" x2="178" y2="173"/>
+  <rect class="d-box3" x="180" y="155" width="70" height="36" rx="6"/><text class="d-small" x="215" y="178" text-anchor="middle">re-plan?</text>
+  <path class="d-arrow" d="M 215 191 L 215 215 L 50 215 L 50 195"/>
+</svg>
+<table>
+  <thead><tr><th>Pattern</th><th>Shape</th><th>Best for</th><th>Watch out</th></tr></thead>
+  <tbody>
+    <tr><td><b>Pipeline</b></td><td>A &rarr; B &rarr; C, deterministic order</td><td>Document workflows: extract &rarr; draft &rarr; review</td><td>Doesn't need agents at every stage &mdash; code is fine</td></tr>
+    <tr><td><b>Orchestrator&ndash;worker</b></td><td>One agent spawns N parallel sub-agents, merges results</td><td>Independent subtasks: search 5 sources, check 10 files</td><td>Merging; workers reporting partial results as complete</td></tr>
+    <tr><td><b>Planner&ndash;executor</b></td><td>Planner emits steps; executor runs them; planner re-plans on failure</td><td>Long tasks where early steps decide later ones</td><td>Re-planning loops need hard caps</td></tr>
+    <tr><td><b>Author&ndash;critic</b></td><td>Author produces, a separate agent reviews, iterate until pass or cap</td><td>Code, copy, anything with a checkable quality bar</td><td>Politeness drift &mdash; critics go soft; give them a checklist</td></tr>
+    <tr><td><b>Handoffs</b></td><td>One agent transfers the conversation to a specialist</td><td>Triage &rarr; specialist in chat products</td><td>State transfer; the specialist needs context, not a cold start</td></tr>
+  </tbody>
+</table>
+
+<h2>Artefacts, not conversations</h2>
+<p>The biggest practical rule: agents pass <b>artefacts</b> (files, JSON, summaries), not their full message histories.
+A worker returns "here are the 3 findings with citations", not 40 messages of exploration. This keeps each agent's context
+clean, makes results testable, and lets you swap agents without rewiring anything.</p>
+<pre data-lang="python" data-title="orchestrator.py: fan out workers, merge artefacts  (runs offline)" data-verify="run">
+from concurrent.futures import ThreadPoolExecutor
+
+
+def make_worker(model, role: str):
+    def work(task: str) -> dict:
+        # In production this is a real model call with the role as system prompt.
+        # Returns an artefact (dict), not a conversation.
+        return model(f"[{role}] {task}")
+    return work
+
+
+def orchestrate(task: str, subtasks: list[str], workers, merge) -> dict:
+    with ThreadPoolExecutor(max_workers=len(subtasks)) as pool:
+        artefacts = list(pool.map(lambda t: workers[t[0]](t[1]),
+                                  enumerate(subtasks)))
+    return merge(task, artefacts)
+
+
+if __name__ == "__main__":
+    # Scripted stand-ins: each "worker" returns a fake finding.
+    scripted = lambda model: make_worker(model, "researcher")
+    workers = [scripted(lambda p: {"finding": p[:40], "source": "doc-A"}),
+               scripted(lambda p: {"finding": p[:40], "source": "doc-B"}),
+               scripted(lambda p: {"finding": p[:40], "source": "doc-C"})]
+
+    def merge(task, artefacts):
+        return {"task": task, "n_findings": len(artefacts),
+                "sources": sorted({a["source"] for a in artefacts})}
+
+    result = orchestrate(
+        "Why did pickup cancellations spike in June?",
+        ["check order logs", "check staffing rota", "check promotion calendar"],
+        workers, merge)
+    print(result)
+</pre>
+<p>Three workers run in parallel, each returns a small artefact, and <code>merge</code> is plain code you can unit-test.
+That's the skeleton of every orchestrator&ndash;worker system.</p>
+
+<h2>The costs nobody mentions</h2>
+<ul class="checklist">
+  <li><b>Tokens multiply.</b> An orchestrator that replays each worker's output pays for every token twice. Artefacts keep this bounded.</li>
+  <li><b>Errors compound.</b> Three stages at 90% accuracy each &rarr; ~73% end-to-end. Add checks between stages, not just at the end.</li>
+  <li><b>Latency adds up serially</b> in pipelines; parallel workers pay the max, not the sum.</li>
+  <li><b>Debugging gets hard fast.</b> Log every artefact passed between agents with run IDs &mdash; you'll need them (L3&middot;07).</li>
+  <li><b>Determinism where possible.</b> If a step is just "format these results", write code, not a prompt.</li>
+</ul>
+
+<h2>Agents talking to agents: A2A and ACP</h2>
+<p>MCP connects a model to <b>tools</b>. Agent-to-agent protocols connect <b>agents to agents</b> &mdash; one agent delegating a
+task to another, possibly across organisations or runtimes.</p>
+<table>
+  <thead><tr><th>Protocol</th><th>Focus</th></tr></thead>
+  <tbody>
+    <tr><td><b>A2A</b> (Agent2Agent)</td><td>Agent cards describing capabilities, task delegation with lifecycle (submitted &rarr; working &rarr; completed), streaming updates</td></tr>
+    <tr><td><b>ACP</b> and similar</td><td>Similar goals: discovery, structured task exchange between independent agents</td></tr>
+  </tbody>
+</table>
+<p>These matter when agents live in different systems (your support agent calls a vendor's logistics agent). Inside one
+codebase, a function call is still simpler and better. The field is young &mdash; expect the spec names and versions to keep
+moving; the <i>patterns</i> above are the durable knowledge.</p>
+
+<h2>Permissions differ per agent &mdash; that's a feature</h2>
+<p>Separation of duties is a security pattern, not just an org chart: the <b>drafting</b> agent can read the ticket queue;
+the <b>sending</b> agent can send replies but not read the whole queue; the <b>critic</b> can only read. Each agent gets
+least-privilege tools (L2&middot;09), and a compromise of one doesn't compromise the rest. L3&middot;08 goes deeper.</p>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Take a real multi-step task (e.g. "summarise these 3 documents, then compare them"). Do it with one agent and log the token use.</li>
+  <li>Now do it as orchestrator&ndash;worker: one agent per document, merge in code. Compare tokens and answer quality.</li>
+  <li>Add an author&ndash;critic loop to the merge step with a 4-item checklist. How many iterations until the critic passes?</li>
+  <li>Break a worker (return an error artefact). Does your merge handle partial results honestly?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Default to one agent. Multi-agent earns its cost for independent subtasks, different permissions, or critic separation.</li>
+  <li>Pass artefacts, not conversations. Merge in code you can test.</li>
+  <li>Errors compound multiplicatively &mdash; put checks between stages.</li>
+  <li>A2A-style protocols are for cross-system agents; inside one codebase, call a function.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 3 Labs | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L3 &middot; 09 &middot; Level 3 Labs</h1>
+<p class="lead">Eight hands-on labs, one per Level 3 page. These are bigger than Level 2 labs &mdash; you're now building real
+systems, not just using tools. Each has a goal, steps and a success criterion. Together they produce the pieces the capstone
+assembles. Expect 10&ndash;16 hours in total.</p>
+<div class="meta-row"><span class="pill level">Level 3</span><span class="pill time">10&ndash;16 h total</span><span class="pill">Scala 3 &amp; Python</span></div>
+
+<h2>Setup</h2>
+<ul class="checklist">
+  <li>Everything from Level 2 labs: Scala (scala-cli, sbt), Python + <code>uv</code>, a local model runner.</li>
+  <li>Python extras: <code>uv add mcp</code> for lab 1; an OpenTelemetry viewer (Langfuse/LangSmith) optional for lab 7.</li>
+  <li>A git repo <code>ai-labs-l3/</code>. Commit after every lab &mdash; you'll diff experiments.</li>
+  <li>A running Store Assistant from Level 2 to extend.</li>
+</ul>
+
+<table>
+  <thead><tr><th>#</th><th>Lab</th><th>Page</th><th>Time</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Build and ship an MCP server</td><td>01</td><td>90 min</td></tr>
+    <tr><td>2</td><td>A durable agent loop</td><td>02</td><td>90 min</td></tr>
+    <tr><td>3</td><td>Orchestrator&ndash;worker with real merging</td><td>03</td><td>75 min</td></tr>
+    <tr><td>4</td><td>An eval suite that catches regressions</td><td>04</td><td>90 min</td></tr>
+    <tr><td>5</td><td>Hybrid search that beats vector-only</td><td>05</td><td>75 min</td></tr>
+    <tr><td>6</td><td>Fine-tune a strict-format model</td><td>06</td><td>90 min</td></tr>
+    <tr><td>7</td><td>Instrument a live LLM feature</td><td>07</td><td>75 min</td></tr>
+    <tr><td>8</td><td>Red-team your own assistant</td><td>08</td><td>75 min</td></tr>
+  </tbody>
+</table>
+
+<h2>Lab 1 &middot; Build and ship an MCP server</h2>
+<ol>
+  <li>Extend <code>store_server.py</code> (page 01) with a third tool, a resource and a prompt.</li>
+  <li>Write unit tests for every tool (call them as functions).</li>
+  <li>Run it under the MCP Inspector; click through each capability.</li>
+  <li>Write a README: what it exposes, required env vars, the MCP config snippet. Give it to a friend/teammate &mdash; can they connect without asking you anything?</li>
+</ol>
+<p><b>Success:</b> a teammate connects using only your README, and every tool validates bad input cleanly.</p>
+
+<h2>Lab 2 &middot; A durable agent loop</h2>
+<ol>
+  <li>Extend <code>agent.py</code> (page 02) to serialise <code>State</code> to JSON after every step.</li>
+  <li>Add resume: kill the process mid-run, restart, continue from the saved state.</li>
+  <li>Add a token budget and a compactor (replace old tool outputs with summaries).</li>
+  <li>Write tests: state round-trips through JSON; limits fire; a looping model gets stopped.</li>
+</ol>
+<p><b>Success:</b> the agent survives a kill-and-resume and stops cleanly on every limit, reporting which one.</p>
+
+<h2>Lab 3 &middot; Orchestrator&ndash;worker with real merging</h2>
+<ol>
+  <li>Take a real research task (e.g. "summarise the return, warranty and pickup policies and find the contradictions").</li>
+  <li>Run it one-agent (log tokens), then as orchestrator&ndash;worker: one worker per doc, merge artefacts in code.</li>
+  <li>Add an author&ndash;critic loop on the merged summary with a written checklist (max 3 iterations).</li>
+  <li>Break a worker (raise an exception). Make merge handle partial results honestly.</li>
+</ol>
+<p><b>Success:</b> multi-agent beats one-agent on quality for this task, or you've measured that it doesn't and can say why.</p>
+
+<h2>Lab 4 &middot; An eval suite that catches regressions</h2>
+<ol>
+  <li>Build a 30-case golden set for the Store Assistant: intents, tool calls, refusals, 5 injection attempts.</li>
+  <li>Split it: 20 tune, 10 held-out. Never touch the held-out while developing.</li>
+  <li>Run evals in CI (or a script). Record pass-rate in a file with prompt/model version.</li>
+  <li>Deliberately make a prompt change that regresses. Prove the suite catches it.</li>
+</ol>
+<p><b>Success:</b> the held-out set catches a real regression you introduced on purpose, and results are versioned.</p>
+
+<h2>Lab 5 &middot; Hybrid search that beats vector-only</h2>
+<ol>
+  <li>Index 20&ndash;30 store docs. Build a golden query set: exact codes, semantic, multi-hop.</li>
+  <li>Measure hit@5 for vector-only, BM25-only, and RRF hybrid.</li>
+  <li>Add an LLM re-ranker on the top 20. Re-measure.</li>
+  <li>Write one sentence on where each method wins.</li>
+</ol>
+<p><b>Success:</b> you have a number showing hybrid beats vector-only on exact-code queries, and you know the re-ranker's cost/benefit.</p>
+
+<h2>Lab 6 &middot; Fine-tune a strict-format model</h2>
+<ol>
+  <li>Write 100 SFT examples teaching the JSON-action format (page 06). Include refusals and missing-data cases.</li>
+  <li>Hold out 15 as a test set. Check coverage: every intent, every edge case.</li>
+  <li>Run LoRA on a small model (MLX on a Mac, or a hosted service). Track training and eval loss.</li>
+  <li>Compare fine-tuned vs. few-shot prompted base model on the held-out set: format compliance, accuracy, cost/call.</li>
+</ol>
+<p><b>Success:</b> you can state, with numbers, whether fine-tuning beat prompting for this narrow task &mdash; and whether it was worth it.</p>
+
+<h2>Lab 7 &middot; Instrument a live LLM feature</h2>
+<ol>
+  <li>Add tracing (page 07's <code>Tracer</code> or a real backend) to the Store Assistant: model, tokens, latency, cost, tool calls, trace ID.</li>
+  <li>Add an exact-response cache and measure hit rate over 50 real-ish queries.</li>
+  <li>Add routing: trivial &rarr; small model, hard &rarr; frontier. Log which route each request took.</li>
+  <li>Add a cost budget and a kill-switch flag. Test both.</li>
+</ol>
+<p><b>Success:</b> you can answer "what did yesterday's traffic cost and which feature spent it" from your own logs, and the kill switch works.</p>
+
+<h2>Lab 8 &middot; Red-team your own assistant</h2>
+<ol>
+  <li>Attack the Store Assistant: direct injection in the user message, indirect injection inside a policy doc and a product review.</li>
+  <li>Try to make it: leak its system prompt, call a tool with unauthorised args, exfiltrate data, promise an impossible refund.</li>
+  <li>For every success, add a defense (page 08 layers) and re-test.</li>
+  <li>Write up the top 3 findings and the residual risk honestly.</li>
+</ol>
+<p><b>Success:</b> you have a written attack log, defenses for each success, and you can say clearly what you could not fully prevent.</p>
+
+<h2>Then the capstone</h2>
+<div class="callout ok"><span class="c-title">Ready?</span>
+The capstone (page 10) assembles labs 1&ndash;4 and 7&ndash;8 into one system: an agent backed by your own MCP server, with an
+eval suite, observability and a security review.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
