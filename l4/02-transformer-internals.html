@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Transformer Internals: Attention to GPT | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 02 &middot; Transformer Internals: Attention to a Tiny GPT</h1>
+<p class="lead">The transformer is the architecture behind every modern LLM. It's a stack of blocks, and each block does only
+two things: <b>attention</b> (tokens exchange information) and a <b>feed-forward network</b> (each token is processed alone).
+This page implements attention from scratch in plain Python, walks through a full block, and sketches a tiny GPT in PyTorch.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">75 min</span><span class="pill">Track 1</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain queries, keys and values, and compute one attention step by hand.</li>
+  <li>Explain multi-head attention, residuals, layer norm and positional encodings.</li>
+  <li>Read a transformer block diagram and predict every tensor shape.</li>
+  <li>Explain why the model is autoregressive and what the causal mask does.</li>
+  <li>Skim the famous "nanoGPT"-style model code and know what each line does.</li>
+</ul></div>
+
+<h2>The whole architecture in one diagram</h2>
+<svg viewBox="0 0 720 300" class="diagram" role="img" aria-label="Transformer block stack">
+  <rect class="d-box" x="270" y="10" width="180" height="40" rx="8"/><text class="d-small" x="360" y="28" text-anchor="middle">token ids in</text><text class="d-small" x="360" y="44" text-anchor="middle">"cat sat" &rarr; [12, 87]</text>
+  <line class="d-arrow" x1="360" y1="50" x2="360" y2="62"/>
+  <rect class="d-box2" x="270" y="65" width="180" height="40" rx="8"/><text class="d-small" x="360" y="82" text-anchor="middle">embed + position</text><text class="d-small" x="360" y="98" text-anchor="middle">ids &rarr; vectors</text>
+  <line class="d-arrow" x1="360" y1="105" x2="360" y2="117"/>
+  <rect class="d-box3" x="230" y="120" width="260" height="110" rx="10"/>
+  <text class="d-title" x="360" y="140" text-anchor="middle">&times; N blocks</text>
+  <rect class="d-box2" x="250" y="150" width="105" height="30" rx="6"/><text class="d-small" x="302" y="170" text-anchor="middle">attention</text>
+  <rect class="d-box4" x="365" y="150" width="105" height="30" rx="6"/><text class="d-small" x="417" y="170" text-anchor="middle">feed-fwd</text>
+  <text class="d-small" x="360" y="205" text-anchor="middle">+ residuals &amp; layer norm around each</text>
+  <line class="d-arrow" x1="360" y1="230" x2="360" y2="242"/>
+  <rect class="d-box" x="270" y="245" width="180" height="40" rx="8"/><text class="d-small" x="360" y="262" text-anchor="middle">logits per position</text><text class="d-small" x="360" y="278" text-anchor="middle">softmax &rarr; next-token probs</text>
+</svg>
+<p>A decoder-only transformer (GPT-style): tokens in &rarr; vectors &rarr; N identical blocks &rarr; a probability over the
+vocabulary for the next token. Repeat to generate.</p>
+
+<h2>Attention: the one idea that matters</h2>
+<p>Each token asks: "which previous tokens are relevant to me?" It computes this with three learned projections per token:</p>
+<ul>
+  <li><b>Query (Q)</b> &mdash; "what am I looking for"</li>
+  <li><b>Key (K)</b> &mdash; "what do I contain" (an advertisement)</li>
+  <li><b>Value (V)</b> &mdash; "what do I actually pass along if you attend to me"</li>
+</ul>
+<p>Score = <code>Q &middot; K</code> for every pair &rarr; scale &rarr; softmax &rarr; weights &rarr; weighted sum of the
+<b>values</b>. That's it. Here it is in 15 lines:</p>
+<pre data-lang="python" data-title="attention.py: scaled dot-product attention from scratch" data-verify="run">
+import math
+
+
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def softmax(xs):
+    m = max(xs)
+    e = [math.exp(x - m) for x in xs]
+    s = sum(e)
+    return [v / s for v in e]
+
+
+def attention(Q, K, V, mask=None):
+    """Q,K,V: lists of rows (seq_len x d). Returns seq_len x d."""
+    d = len(Q[0])
+    scores = [[dot(q, k) / math.sqrt(d) for k in K] for q in Q]
+    if mask:                                    # causal: token i can't see j > i
+        scores = [[s if not mask[i][j] else -1e9
+                   for j, s in enumerate(row)] for i, row in enumerate(scores)]
+    weights = [softmax(row) for row in scores]
+    return [[sum(w * v[j] for w, v in zip(ws, V))
+             for j in range(len(V[0]))] for ws in weights], weights
+
+
+if __name__ == "__main__":
+    # 3 tokens, 2-dim vectors (toy). Each token attends to all previous + itself.
+    X = [[1, 0], [0, 1], [1, 1]]
+    mask = [[j > i for j in range(3)] for i in range(3)]
+    out, w = attention(X, X, X, mask)
+    print("attention weights row 0:", [round(x, 2) for x in w[0]])   # [1.0, 0, 0]
+    print("weights row 2:", [round(x, 2) for x in w[2]])             # splits across all
+    # Token 0 can only see itself; token 2 sees all three.
+    assert w[0][1] &lt; 1e-6 and w[0][2] &lt; 1e-6
+</pre>
+<p>Run it: token 0 puts 100% weight on itself (the mask hides the future); the last token spreads weight across all three.
+In a real model, <code>Q, K, V</code> aren't the input itself but learned linear projections of it.</p>
+
+<h2>Multi-head attention</h2>
+<p>One attention "head" learns one kind of relationship. Multiple heads run attention in parallel with separate projections,
+each on a smaller slice (<code>d_model / n_heads</code>), then concatenate. Head 1 might track subject&ndash;verb agreement,
+head 4 coreference, head 7 code indentation. Same cost, more kinds of pattern.</p>
+
+<h2>The rest of a block</h2>
+<table>
+  <thead><tr><th>Piece</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><b>Residual connection</b> (<code>x + block(x)</code>)</td><td>Lets each block add a correction instead of rewriting everything. Makes deep networks trainable.</td></tr>
+    <tr><td><b>Layer norm</b></td><td>Rescales each token's vector to a standard mean/variance. Keeps numbers stable across 100+ layers.</td></tr>
+    <tr><td><b>Feed-forward (MLP)</b></td><td>A per-token two-layer network (<code>d &rarr; 4d &rarr; d</code>). Attention mixes tokens; the MLP processes each alone. Most parameters live here.</td></tr>
+    <tr><td><b>Positional encoding</b></td><td>Attention alone is order-blind. Position info is added/learned (or via RoPE rotation) so the model knows "cat sat" differs from "sat cat".</td></tr>
+    <tr><td><b>Causal mask</b></td><td>Zeros out future positions in attention &mdash; the model can only look back, which is what makes next-token prediction honest.</td></tr>
+  </tbody>
+</table>
+
+<h2>A block, end to end</h2>
+<pre data-lang="text" data-title="one transformer block">
+x = x + attention(norm(x))      # mix information across tokens
+x = x + feedforward(norm(x))    # process each token independently
+# after N blocks:
+logits = unembed(norm(x))       # project to vocab size
+</pre>
+<p>That's a GPT block. Stack it 12&ndash;100+ times, train on next-token prediction, and you have a language model.</p>
+
+<h2>Training a tiny GPT (PyTorch sketch)</h2>
+<p>The canonical ~300-line implementation is <b>nanoGPT</b>. The core training loop is short:</p>
+<pre data-lang="python" data-title="train.py sketch (needs torch + a text corpus)" data-verify="skip">
+import torch
+
+model = TinyGPT(vocab_size, d_model=128, n_heads=4, n_layers=4)
+opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+
+for step in range(5000):
+    xb, yb = get_batch("train")            # xb: tokens, yb: same shifted by 1
+    logits = model(xb)                     # (batch, seq, vocab)
+    loss = cross_entropy(logits.view(-1, V), yb.view(-1))
+    opt.zero_grad(); loss.backward(); opt.step()
+    if step % 500 == 0: print(step, loss.item())
+</pre>
+<p>Everything on this page is in that loop: the model is the block stack, the loss is cross-entropy over every position,
+<code>backward()</code> is backprop, and the optimizer's step is gradient descent.</p>
+
+<h2>Why this matters even if you never train one</h2>
+<ul>
+  <li><b>Attention = context use.</b> Long prompts cost more because attention is O(n&sup2;) over tokens &mdash; that's why context windows cost money.</li>
+  <li><b>KV cache</b> (next page): generation reuses the K/V of past tokens. Understanding it explains inference cost.</li>
+  <li><b>Heads explain behaviour.</b> "The model ignored the middle of the document" is an attention pattern, not magic.</li>
+  <li><b>It's not a black box.</b> Once you've written attention by hand, LLM behaviour stops being mysterious.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (90 min)</span>
+<ol>
+  <li>Extend <code>attention.py</code>: print the full weight matrix. Which token attends to which?</li>
+  <li>Remove the mask and see token 0 "cheat" by attending to the future &mdash; that's why the mask exists.</li>
+  <li>Install PyTorch and clone nanoGPT (or write the ~50-line tiny GPT). Train on a small text file until it generates semi-coherent text.</li>
+  <li>Compute shapes: for <code>d_model=768, n_heads=12</code>, what's each head's dimension? (64)</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>A transformer = embed + N blocks + unembed. Each block = attention + feed-forward, wrapped in residuals and layer norm.</li>
+  <li>Attention: Q&middot;K scores &rarr; softmax &rarr; weighted sum of V. You can write it in 15 lines.</li>
+  <li>Multi-head = parallel attention on slices; causal mask = can't see the future.</li>
+  <li>Training = next-token cross-entropy + backprop + gradient descent (L4&middot;01 maths, at scale).</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

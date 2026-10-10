@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 4 Checkpoint Quiz | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 10 &middot; Level 4 Checkpoint Quiz</h1>
+<p class="lead">20 questions covering all of Level 4. Aim for 16/20 (80%) or more, and finish the capstone, before Level 5.
+Reload to retry; answer order is shuffled each time.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">20 min</span></div>
+
+<div class="quiz-score" id="quiz-score"></div>
+
+<h2>Maths &amp; internals (pages 01&ndash;02)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">1. The dot product of [1,2,3] and [4,5,6] is&hellip;</div>
+<label><input type="radio" value="a">[4,10,18]</label>
+<label><input type="radio" value="b">32</label>
+<label><input type="radio" value="c">12</label>
+<label><input type="radio" value="d">[5,7,9]</label>
+<div class="explain">1&middot;4 + 2&middot;5 + 3&middot;6 = 32. See <a href="01-the-maths.html">page 01</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">2. Softmax turns logits into&hellip;</div>
+<label><input type="radio" value="a">Integers</label>
+<label><input type="radio" value="b">Logits in a wider range</label>
+<label><input type="radio" value="c">A probability distribution (all positive, summing to 1)</label>
+<label><input type="radio" value="d">Binary 0/1 values</label>
+<div class="explain">Exponentials make them positive and amplify the top score.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">3. Cross-entropy loss heavily punishes&hellip;</div>
+<label><input type="radio" value="a">Confident wrong answers (low p on the correct token)</label>
+<label><input type="radio" value="b">Confident right answers</label>
+<label><input type="radio" value="c">Long outputs</label>
+<label><input type="radio" value="d">Large vocabularies</label>
+<div class="explain">-log(p): p=0.01 &rarr; loss 4.6; p=1 &rarr; 0.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">4. In attention, Q&middot;K computes&hellip;</div>
+<label><input type="radio" value="a">The final answer</label>
+<label><input type="radio" value="b">Positional encodings</label>
+<label><input type="radio" value="c">The loss</label>
+<label><input type="radio" value="d">How relevant each key is to each query</label>
+<div class="explain">Then softmax &rarr; weights &rarr; weighted sum of values. See <a href="02-transformer-internals.html">page 02</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">5. The causal mask exists so&hellip;</div>
+<label><input type="radio" value="a">The model runs faster</label>
+<label><input type="radio" value="b">Heads don't collide</label>
+<label><input type="radio" value="c">A token can't attend to future tokens, keeping next-token prediction honest</label>
+<label><input type="radio" value="d">Attention uses less memory</label>
+<div class="explain">Without it the model "cheats" by looking ahead.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">6. In a transformer block, the feed-forward network&hellip;</div>
+<label><input type="radio" value="a">Mixes information across tokens</label>
+<label><input type="radio" value="b">Processes each token independently (most parameters live here)</label>
+<label><input type="radio" value="c">Computes attention scores</label>
+<label><input type="radio" value="d">Does nothing important</label>
+<div class="explain">Attention mixes; the MLP transforms per-token.</div></div>
+
+<h2>Training &amp; inference (pages 03&ndash;04)</h2>
+
+<div class="quiz" data-answer="a"><div class="q">7. A "base model" is&hellip;</div>
+<label><input type="radio" value="a">A next-token text completer before post-training</label>
+<label><input type="radio" value="b">The smallest model size</label>
+<label><input type="radio" value="c">A model with no weights</label>
+<label><input type="radio" value="d">A model trained only on code</label>
+<div class="explain">Post-training (SFT + preferences) makes it an assistant. See <a href="03-training-and-post-training.html">page 03</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">8. DPO vs RLHF: DPO is&hellip;</div>
+<label><input type="radio" value="a">Always better quality</label>
+<label><input type="radio" value="b">More expensive</label>
+<label><input type="radio" value="c">Needs a reward model</label>
+<label><input type="radio" value="d">Simpler &mdash; optimises on preference pairs without a separate reward model</label>
+<div class="explain">Fewer moving parts; usually the default now.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">9. RLVR produces reasoning because&hellip;</div>
+<label><input type="radio" value="a">It reads reasoning textbooks</label>
+<label><input type="radio" value="b">The prompts say "think step by step"</label>
+<label><input type="radio" value="c">Rewarding verifiable answers makes long reasoning chains improve reward &mdash; self-checking emerges</label>
+<label><input type="radio" value="d">It uses a bigger model</label>
+<div class="explain">Verifiable rewards (maths, tests) let reasoning be learned, not scripted.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">10. The KV cache&hellip;</div>
+<label><input type="radio" value="a">Caches model weights on disk</label>
+<label><input type="radio" value="b">Stores past tokens' keys and values so generation doesn't recompute them &mdash; and grows with context &times; users</label>
+<label><input type="radio" value="c">Is a type of quantisation</label>
+<label><input type="radio" value="d">Only matters for training</label>
+<div class="explain">See <a href="04-inference-optimisation.html">page 04</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">11. Decode (generation) is bottlenecked by&hellip;</label></div>
+<label><input type="radio" value="a">Memory bandwidth (reading weights per token)</label>
+<label><input type="radio" value="b">Disk speed</label>
+<label><input type="radio" value="c">Network latency only</label>
+<label><input type="radio" value="d">The tokenizer</label>
+<div class="explain">That's why bandwidth and quantisation dominate generation speed.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">12. Speculative decoding speeds up generation by&hellip;</div>
+<label><input type="radio" value="a">Using a bigger model</label>
+<label><input type="radio" value="b">Skipping the softmax</label>
+<label><input type="radio" value="c">Caching the prompt</label>
+<label><input type="radio" value="d">A small draft model proposes tokens; the big model verifies them in one parallel pass</label>
+<div class="explain">Same output, ~2&ndash;3&times; faster.</div></div>
+
+<h2>Reasoning &amp; architecture (pages 05&ndash;06)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">13. Test-time compute means&hellip;</div>
+<label><input type="radio" value="a">A bigger training set</label>
+<label><input type="radio" value="b">More GPUs</label>
+<label><input type="radio" value="c">Letting the model generate more reasoning tokens per answer to get better results</label>
+<label><input type="radio" value="d">Faster hardware</label>
+<div class="explain">A second scaling axis beyond model size. See <a href="05-reasoning-models.html">page 05</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">14. Reasoning models help most on&hellip;</div>
+<label><input type="radio" value="a">Tasks with a checkable right answer (maths, code, logic)</label>
+<label><input type="radio" value="b">Quick lookups and classification</label>
+<label><input type="radio" value="c">Casual chat</label>
+<label><input type="radio" value="d">Everything equally</label>
+<div class="explain">Elsewhere the extra thinking buys little and costs a lot.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">15. Hidden "thinking" tokens&hellip;</div>
+<label><input type="radio" value="a">Are free</label>
+<label><input type="radio" value="b">Are billed as output tokens and can dwarf the visible answer</label>
+<label><input type="radio" value="c">Are always faithful reasoning</label>
+<label><input type="radio" value="d">Don't affect latency</label>
+<div class="explain">Monitor them in production.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">16. An "AI gateway" is&hellip;</div>
+<label><input type="radio" value="a">A faster model</label>
+<label><input type="radio" value="b">A brand of GPU</label>
+<label><input type="radio" value="c">A firewall</label>
+<label><input type="radio" value="d">A single layer all LLM calls pass through: routing, budgets, guardrails, caching, tracing, fallback</label>
+<div class="explain">See <a href="06-ai-native-architecture.html">page 06</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">17. The strongest reason to keep models swappable behind the gateway is&hellip;</div>
+<label><input type="radio" value="a">It's tidier</label>
+<label><input type="radio" value="b">Providers like it</label>
+<label><input type="radio" value="c">Build-vs-buy drifts: models improve, prices change, a second provider avoids lock-in and single points of failure</label>
+<label><input type="radio" value="d">It saves memory</label>
+<div class="explain">Vendor risk is real; make a swap a config change.</div></div>
+
+<h2>Governance (page 07)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">18. Under the EU AI Act, a customer-support chatbot is most likely&hellip;</div>
+<label><input type="radio" value="a">Unacceptable (banned)</label>
+<label><input type="radio" value="b">Limited risk &mdash; transparency duty (disclose it's AI)</label>
+<label><input type="radio" value="c">High risk</label>
+<label><input type="radio" value="d">Unregulated entirely</label>
+<div class="explain">High risk covers hiring, credit, critical decisions &mdash; not a normal chatbot. See <a href="07-governance.html">page 07</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">19. Model risk management starts with&hellip;</div>
+<label><input type="radio" value="a">An inventory/register of every model feature in production</label>
+<label><input type="radio" value="b">Buying insurance</label>
+<label><input type="radio" value="c">A bigger model</label>
+<label><input type="radio" value="d">More prompts</label>
+<div class="explain">You can't govern what you don't list.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">20. The most effective governance approach is&hellip;</div>
+<label><input type="radio" value="a">Committee approval for every prompt change</label>
+<label><input type="radio" value="b">Banning all AI tools</label>
+<label><input type="radio" value="c">Doing nothing</label>
+<label><input type="radio" value="d">Paved paths: make the compliant option (approved models, evals in CI, templates) the easiest option</label>
+<div class="explain">Governance that blocks work pushes people to shadow AI.</div></div>
+
+<h2>What next?</h2>
+<div class="callout ok"><span class="c-title">Level 4 complete?</span>
+Scored 16+ and finished the <a href="09-capstone.html">capstone</a>? You're ready for
+<a href="../roadmap.html#l5">Level 5 &middot; Master &amp; Specialist</a>: reading research, interpretability, on-device AI,
+multimodal systems, and leading AI adoption.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

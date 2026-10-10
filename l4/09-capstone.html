@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Capstone: Train &amp; Serve a Tiny GPT | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 09 &middot; Capstone: Train &amp; Serve a Tiny GPT</h1>
+<p class="lead">The Level 4 capstone closes the loop on everything this level covered: implement a tiny GPT (page 02), train it
+(03), quantise and serve it (04), benchmark it (04/05), and document the whole thing like a real system (06&ndash;07). You end
+with a model you built and a design doc you'd actually show a team.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">8&ndash;14 h</span><span class="pill">Capstone</span></div>
+
+<div class="objectives"><h3>The deliverable</h3>
+<ul>
+  <li>A <b>tiny GPT trained by you</b> on a corpus you chose (character- or word-level is fine).</li>
+  <li>A <b>quantised + served</b> version with a small OpenAI-compatible or simple API.</li>
+  <li>A <b>benchmark</b>: TTFT, tokens/s, quality on a handful of prompts.</li>
+  <li>A <b>design document</b>: architecture, data, evals, limitations, risk &mdash; model-card style.</li>
+</ul></div>
+
+<h2>The arc</h2>
+<svg viewBox="0 0 720 90" class="diagram" role="img" aria-label="Capstone arc">
+  <rect class="d-box" x="10" y="25" width="100" height="42" rx="6"/><text class="d-small" x="60" y="43" text-anchor="middle">implement</text><text class="d-small" x="60" y="59" text-anchor="middle">(page 02)</text>
+  <line class="d-arrow" x1="110" y1="46" x2="125" y2="46"/>
+  <rect class="d-box2" x="128" y="25" width="100" height="42" rx="6"/><text class="d-small" x="178" y="43" text-anchor="middle">train</text><text class="d-small" x="178" y="59" text-anchor="middle">(03)</text>
+  <line class="d-arrow" x1="228" y1="46" x2="243" y2="46"/>
+  <rect class="d-box3" x="246" y="25" width="110" height="42" rx="6"/><text class="d-small" x="301" y="43" text-anchor="middle">quantise</text><text class="d-small" x="301" y="59" text-anchor="middle">+ serve (04)</text>
+  <line class="d-arrow" x1="356" y1="46" x2="371" y2="46"/>
+  <rect class="d-box4" x="374" y="25" width="110" height="42" rx="6"/><text class="d-small" x="429" y="43" text-anchor="middle">benchmark</text><text class="d-small" x="429" y="59" text-anchor="middle">(04/05)</text>
+  <line class="d-arrow" x1="484" y1="46" x2="499" y2="46"/>
+  <rect class="d-box" x="502" y="25" width="200" height="42" rx="6"/><text class="d-small" x="602" y="43" text-anchor="middle">design doc + model card</text><text class="d-small" x="602" y="59" text-anchor="middle">(06/07)</text>
+</svg>
+
+<h2>Step 1: implement and train</h2>
+<p>Use the attention you wrote in lab 2, or adapt nanoGPT. Keep it small enough to train on CPU/a laptop in minutes&ndash;hours:
+<code>d_model ~128</code>, 4 layers, 4 heads, character-level tokeniser. Pick a corpus you know well (a book, your docs, code).</p>
+<pre data-lang="python" data-title="tiny_gpt.py: the essential model (needs torch)" data-verify="skip">
+import torch, torch.nn as nn, torch.nn.functional as F
+
+class Block(nn.Module):
+    def __init__(self, d, h):
+        super().__init__()
+        self.attn = nn.MultiheadAttention(d, h, batch_first=True)
+        self.ln1, self.ln2 = nn.LayerNorm(d), nn.LayerNorm(d)
+        self.ff = nn.Sequential(nn.Linear(d, 4*d), nn.GELU(), nn.Linear(4*d, d))
+    def forward(self, x, mask):
+        a, _ = self.attn(x, x, x, attn_mask=mask, need_weights=False)
+        x = self.ln1(x + a)
+        return self.ln2(x + self.ff(x))
+
+class TinyGPT(nn.Module):
+    def __init__(self, V, d=128, h=4, L=4, T=128):
+        super().__init__()
+        self.tok, self.pos = nn.Embedding(V, d), nn.Embedding(T, d)
+        self.blocks = nn.ModuleList(Block(d, h) for _ in range(L))
+        self.head, self.T = nn.Linear(d, V), T
+        mask = torch.triu(torch.ones(T, T), 1).bool()   # causal
+        self.register_buffer("mask", mask)
+    def forward(self, idx):
+        t = idx.size(1)
+        x = self.tok(idx) + self.pos(torch.arange(t))
+        for b in self.blocks: x = b(x, self.mask[:t, :t])
+        return self.head(x)
+</pre>
+<p>Train it (page 02's loop): get batch &rarr; logits &rarr; cross-entropy vs. shifted targets &rarr; <code>backward</code> &rarr;
+step. Watch the loss drop; generate samples along the way to see it learn.</p>
+
+<h2>Step 2: quantise and serve</h2>
+<p>Quantisation for your own tiny model is dramatic but simple &mdash; cast weights to int8/fp16 and measure the size/speed
+change. For serving, wrap generation behind a small endpoint:</p>
+<pre data-lang="python" data-title="serve.py: minimal generation endpoint (toy)" data-verify="run">
+import json
+import time
+
+
+class TinyModel:
+    """Stand-in for a real GPT.generate — demonstrates the serving pattern."""
+    def generate(self, prompt_tokens, max_new):
+        t0 = time.perf_counter()
+        out = [7, 3, 3, 7][:max_new]          # pretend to decode
+        time.sleep(0.005 * max_new)          # pretend decode latency
+        return out, (time.perf_counter() - t0)
+
+
+def handle_request(body: dict, model) -> dict:
+    """OpenAI-ish request -> response with usage + latency."""
+    prompt = body.get("prompt_tokens", [])
+    max_new = min(body.get("max_tokens", 16), 128)
+    t0 = time.perf_counter()
+    tokens, decode_s = model.generate(prompt, max_new)
+    return {
+        "choices": [{"tokens": tokens}],
+        "usage": {"prompt_tokens": len(prompt), "completion_tokens": len(tokens)},
+        "latency_ms": round((time.perf_counter() - t0) * 1000, 1),
+        "finish_reason": "length" if len(tokens) == max_new else "stop",
+    }
+
+
+if __name__ == "__main__":
+    m = TinyModel()
+    r = handle_request({"prompt_tokens": [1, 2, 3], "max_tokens": 3}, m)
+    print(json.dumps(r))
+    assert r["usage"]["completion_tokens"] == 3
+</pre>
+<p>Point: the serving layer tracks usage and latency per call &mdash; the same fields you logged in L3&middot;07. A real version
+uses your trained model and a real HTTP server (or vLLM/llama.cpp once converted).</p>
+
+<h2>Step 3: benchmark</h2>
+<ul>
+  <li><b>TTFT</b> and <b>tokens/s</b> for short vs. long prompts.</li>
+  <li>Quality on 5&ndash;10 prompts from your corpus's domain (does it capture the style?).</li>
+  <li>Before/after quantisation: size, speed, and any quality change you can spot.</li>
+</ul>
+
+<h2>Step 4: the design document</h2>
+<p>One to two pages, model-card + design-doc style:</p>
+<ul class="checklist">
+  <li><b>Goal &amp; scope</b> &mdash; what it does, what it doesn't.</li>
+  <li><b>Architecture</b> &mdash; layers, heads, d_model, context length, parameter count (compute it!).</li>
+  <li><b>Data</b> &mdash; corpus, size, cleaning, known gaps.</li>
+  <li><b>Training</b> &mdash; objective, optimizer, steps, final loss, hardware.</li>
+  <li><b>Evaluation</b> &mdash; benchmark numbers, quality examples, failures.</li>
+  <li><b>Serving</b> &mdash; quantisation, latency/throughput, cost notes.</li>
+  <li><b>Limitations &amp; risks</b> &mdash; what it can't do, misuse, licence/provenance of the corpus.</li>
+</ul>
+
+<h2>Acceptance criteria</h2>
+<ul class="checklist">
+  <li>You trained the model and can point to the loss curve dropping.</li>
+  <li>It generates output recognisably in the corpus's style.</li>
+  <li>A serving endpoint returns usage + latency; you benchmarked it.</li>
+  <li>You computed the parameter count and the KV-cache size at max context.</li>
+  <li>The design doc would let a teammate understand and reproduce it.</li>
+</ul>
+
+<div class="callout ok"><span class="c-title">What "done" proves</span>
+You can take a model from code to a documented, served, benchmarked system. That's the Level 4 claim to "expert": not that you
+can quote the transformer paper, but that you can build and reason about the machinery end to end.</div>
+
+<div class="callout tip"><span class="c-title">Then Level 5</span>
+Level 5 is where you choose a speciality and go to the frontier: reading research, interpretability, on-device AI, multimodal
+systems, and leading AI adoption. Level 4's internals are what make Level 5's papers readable.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

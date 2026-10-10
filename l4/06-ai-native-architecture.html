@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI-Native Architecture &amp; Build vs Buy | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 06 &middot; AI-Native Architecture &amp; Build vs Buy</h1>
+<p class="lead">Adding AI to a product isn't like adding a normal feature: outputs are probabilistic, costs scale per call, the
+ground shifts under you monthly, and "it worked in the demo" is not an SLA. This page is the architecture-level view:
+designing AI-native systems, deciding what to build vs. buy, structuring a platform team, and reasoning about reliability and
+cost at the system level.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">55 min</span><span class="pill">Tracks 3, 8, 19</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain what makes AI-native systems different from classic software.</li>
+  <li>Apply a build-vs-buy framework at the model, framework and feature level.</li>
+  <li>Design for probabilistic output: evals, fallbacks, human-in-the-loop.</li>
+  <li>Structure a platform/gateway layer that lets teams adopt AI safely.</li>
+  <li>Model cost, reliability and vendor risk at the architecture level.</li>
+</ul></div>
+
+<h2>Why AI-native is different</h2>
+<table>
+  <thead><tr><th>Classic software</th><th>AI-native software</th></tr></thead>
+  <tbody>
+    <tr><td>Deterministic: same input, same output</td><td>Probabilistic: plausible-but-wrong is a normal outcome</td></tr>
+    <tr><td>Bugs are code errors</td><td>Failures are silent: a bad answer, not an exception</td></tr>
+    <tr><td>Unit tests prove correctness</td><td>Evals measure quality on a distribution</td></tr>
+    <tr><td>Cost scales with users (roughly flat/request)</td><td>Cost scales per call with tokens &mdash; context length matters</td></tr>
+    <tr><td>Dependencies are stable APIs</td><td>The model under you updates silently</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">The central design consequence</span>
+You can't prove an LLM feature correct; you can only bound its error rate. So AI-native architecture is <b>architecture for
+uncertainty</b>: evals as the test suite, guardrails as the type system, fallbacks as the error handler.</div>
+
+<h2>The reference architecture</h2>
+<svg viewBox="0 0 720 210" class="diagram" role="img" aria-label="AI-native reference architecture">
+  <rect class="d-box" x="20" y="75" width="110" height="55" rx="8"/><text class="d-title" x="75" y="97" text-anchor="middle">Product</text><text class="d-small" x="75" y="116" text-anchor="middle">(app / agent)</text>
+  <line class="d-arrow" x1="130" y1="102" x2="160" y2="102"/>
+  <rect class="d-box2" x="165" y="55" width="170" height="95" rx="8"/>
+  <text class="d-title" x="250" y="75" text-anchor="middle">AI gateway</text>
+  <text class="d-small" x="250" y="95" text-anchor="middle">routing, auth, budgets</text>
+  <text class="d-small" x="250" y="112" text-anchor="middle">guardrails, cache, fallback</text>
+  <text class="d-small" x="250" y="129" text-anchor="middle">tracing, evals hooks</text>
+  <line class="d-arrow" x1="335" y1="75" x2="365" y2="60"/>
+  <line class="d-arrow" x1="335" y1="102" x2="365" y2="102"/>
+  <line class="d-arrow" x1="335" y1="130" x2="365" y2="145"/>
+  <rect class="d-box3" x="370" y="35" width="150" height="40" rx="6"/><text class="d-small" x="445" y="60" text-anchor="middle">hosted frontier model</text>
+  <rect class="d-box4" x="370" y="85" width="150" height="40" rx="6"/><text class="d-small" x="445" y="110" text-anchor="middle">cheap/fast model</text>
+  <rect class="d-box" x="370" y="135" width="150" height="40" rx="6"/><text class="d-small" x="445" y="160" text-anchor="middle">local / self-hosted</text>
+  <rect class="d-box" x="560" y="55" width="140" height="95" rx="8"/>
+  <text class="d-title" x="630" y="75" text-anchor="middle">Platform</text>
+  <text class="d-small" x="630" y="95" text-anchor="middle">observability</text>
+  <text class="d-small" x="630" y="112" text-anchor="middle">eval store, dashboards</text>
+  <text class="d-small" x="630" y="129" text-anchor="middle">policy, audit log</text>
+  <line class="d-arrow" x1="335" y1="102" x2="555" y2="102"/>
+</svg>
+<p>The <b>gateway</b> is the key idea: one place where every LLM call passes through. Routing, budgets, guardrails, caching,
+tracing and fallback live there &mdash; not scattered across features. It gives you a single point to change models, enforce
+policy and observe cost, and it lets product teams use AI without each one reinventing the plumbing.</p>
+
+<h2>Build vs buy, at three levels</h2>
+<table>
+  <thead><tr><th>Level</th><th>Buy (API / platform)</th><th>Build (self-host / own)</th></tr></thead>
+  <tbody>
+    <tr><td><b>Model</b></td><td>Default for most teams: frontier quality, zero ops</td><td>When: data residency, volume cost, offline, custom fine-tune at scale</td></tr>
+    <tr><td><b>Serving/framework</b></td><td>Managed platforms get you running fast</td><td>When you outgrow their limits or need control (your own gateway, vLLM)</td></tr>
+    <tr><td><b>Feature (e.g. support bot)</b></td><td>SaaS copilots for generic needs</td><td>When it's your differentiator or needs your data/tools</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">Build vs buy drifts</span>
+The answer changes over time. SaaS copilots add features; open models catch up; your volume grows until self-hosting wins on
+cost. Re-evaluate yearly &mdash; and design so a model is swappable behind the gateway, so "buy" never becomes "stuck with".</div>
+
+<h2>Designing for probabilistic output</h2>
+<ul class="checklist">
+  <li><b>Evals before launch</b> (L3&middot;04) and in CI &mdash; the acceptance test is a score, not "it ran".</li>
+  <li><b>Graceful degradation:</b> when confidence is low, abstain, fall back to a smaller model, a rule, or a human.</li>
+  <li><b>Human-in-the-loop</b> for consequential actions: design the approval step, not just the prompt.</li>
+  <li><b>Guardrails as a layer,</b> not scattered prompt pleading (L3&middot;08).</li>
+  <li><b>Idempotent tools</b> so a retried tool call doesn't double-charge or double-book.</li>
+  <li><b>Version everything</b> &mdash; prompts, models, eval sets &mdash; so "it got worse" is measurable and revertable.</li>
+</ul>
+
+<h2>The platform team pattern</h2>
+<p>As AI adoption grows inside a company, the winning structure is a small <b>platform team</b> that owns the gateway, eval
+infrastructure, observability and approved model list &mdash; while product teams build features on top. This is the same
+shape as internal developer platforms, with the same benefits (consistency, safety, speed) and the same risk (the platform
+becomes a bottleneck if it's mandatory and slow).</p>
+
+<h2>Cost and reliability at the system level</h2>
+<ul class="checklist">
+  <li><b>Cost model:</b> cost per task = tokens &times; price &times; calls/task. Reasoning models and long contexts change it by 10&ndash;100&times;.</li>
+  <li><b>Vendor risk:</b> a single provider is a single point of failure <i>and</i> a pricing hostage. Design the gateway so a second provider is a config change.</li>
+  <li><b>Reliability:</b> LLM features inherit provider uptime + your model's error rate. SLA thinking applies: what does "available" mean when the answer can be wrong?</li>
+  <li><b>Data boundary:</b> where does data go? Which providers retain it? For many companies this decides build-vs-buy more than price.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Sketch your own system's AI gateway: routing, budgets, guardrails, tracing, fallback. What would each feature need?</li>
+  <li>Do the build-vs-buy table for one real feature you know (support bot, code review, search). Which cells change in a year?</li>
+  <li>Write a cost model for a feature: tokens/call &times; calls/day &times; price. Where does it break at 10&times; usage?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>AI-native = architecture for uncertainty: evals, guardrails, fallbacks, human approval.</li>
+  <li>Put a gateway between products and models: one place for routing, cost, safety, observability.</li>
+  <li>Build vs buy is per-level (model/serving/feature) and drifts &mdash; keep models swappable.</li>
+  <li>A small platform team enables product teams; don't let it become the bottleneck.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

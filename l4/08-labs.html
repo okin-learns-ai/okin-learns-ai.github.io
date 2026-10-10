@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 4 Labs | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 08 &middot; Level 4 Labs</h1>
+<p class="lead">Seven labs, one per page. Level 4 is where you stop treating the model as an API and start understanding the
+machinery &mdash; so these labs involve implementing pieces yourself and measuring the results. Expect 10&ndash;16 hours.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">10&ndash;16 h total</span><span class="pill">Python (+ PyTorch for labs 2&ndash;3)</span></div>
+
+<h2>Setup</h2>
+<ul class="checklist">
+  <li>Everything from earlier levels. Python with <code>uv</code>.</li>
+  <li>For labs 2&ndash;3 and the capstone: <code>uv add torch</code> (CPU is fine for a tiny model) and a small text file (any book/docs).</li>
+  <li>Optional for lab 4: a local model server (vLLM, llama.cpp or Ollama) to benchmark.</li>
+</ul>
+
+<table>
+  <thead><tr><th>#</th><th>Lab</th><th>Page</th><th>Time</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Implement the six maths primitives</td><td>01</td><td>75 min</td></tr>
+    <tr><td>2</td><td>Attention, then a tiny GPT</td><td>02</td><td>120 min</td></tr>
+    <tr><td>3</td><td>SFT vs. preference: feel the difference</td><td>03</td><td>60 min</td></tr>
+    <tr><td>4</td><td>Benchmark a serving setup</td><td>04</td><td>75 min</td></tr>
+    <tr><td>5</td><td>Measure the reasoning dial</td><td>05</td><td>60 min</td></tr>
+    <tr><td>6</td><td>Design an AI gateway</td><td>06</td><td>75 min</td></tr>
+    <tr><td>7</td><td>Write a model card + risk review</td><td>07</td><td>60 min</td></tr>
+  </tbody>
+</table>
+
+<h2>Lab 1 &middot; Implement the six maths primitives</h2>
+<ol>
+  <li>Reimplement <code>matmul</code>, <code>softmax</code>, <code>cross_entropy</code> from page 01 without looking.</li>
+  <li>Add a numerically-stable softmax test with logits <code>[1000, 1001]</code>.</li>
+  <li>Extend gradient descent to fit <code>y = w*x + b</code> (two parameters).</li>
+  <li>Verify against numpy if available (<code>np.allclose</code>).</li>
+</ol>
+<p><b>Success:</b> all pass tests you wrote, including the overflow case and a non-trivial gradient fit.</p>
+
+<h2>Lab 2 &middot; Attention, then a tiny GPT</h2>
+<ol>
+  <li>Extend page 02's <code>attention.py</code> to <b>multi-head</b>: split d into h heads, attend per head, concatenate.</li>
+  <li>Print the weight matrix for a 5-token input. Describe which token attends where.</li>
+  <li>Install PyTorch and implement (or read nanoGPT's) a 4-layer GPT; train on a small text until loss drops clearly.</li>
+  <li>Generate 50 tokens. Note what it learned (character-level? word-level?).</li>
+</ol>
+<p><b>Success:</b> a tiny model generates recognisable text patterns, and you can say what each line of the model does.</p>
+
+<h2>Lab 3 &middot; SFT vs. preference: feel the difference</h2>
+<ol>
+  <li>Take a base model and its instruct sibling (L2&middot;11). Give both 5 instruction prompts; tabulate who follows instructions.</li>
+  <li>Write 10 preference pairs (two answers each). Note how often the "better" one is obvious vs. judgement call.</li>
+  <li>If you did L3&middot;06: compare your LoRA fine-tune to the base model on instruction-following.</li>
+</ol>
+<p><b>Success:</b> a written comparison showing you can explain <i>why</i> the instruct model behaves differently.</p>
+
+<h2>Lab 4 &middot; Benchmark a serving setup</h2>
+<ol>
+  <li>Serve a model (vLLM/llama.cpp/Ollama). Measure TTFT and tokens/s for a 20-token and a 2000-token prompt.</li>
+  <li>Fire 1, then 5, then 10 concurrent requests. Plot throughput and per-request latency.</li>
+  <li>Estimate KV-cache memory for your model at 4k and 64k context; check actual memory.</li>
+  <li>Try a smaller quantisation. Re-measure.</li>
+</ol>
+<p><b>Success:</b> numbers showing prefill vs. decode bottlenecks and the latency/throughput trade-off.</p>
+
+<h2>Lab 5 &middot; Measure the reasoning dial</h2>
+<ol>
+  <li>Pick 10 hard problems (maths/logic/multi-step) and 10 easy ones.</li>
+  <li>Run on a standard model, then a reasoning model (or low vs. high effort).</li>
+  <li>Compare accuracy <i>and</i> total tokens. Where does reasoning pay off? Where is it waste?</li>
+  <li>Try self-consistency (5 samples, majority) on the standard model &mdash; how close does it get?</li>
+</ol>
+<p><b>Success:</b> a table showing you know when reasoning is worth the cost &mdash; on your own tasks, not a blog's.</p>
+
+<h2>Lab 6 &middot; Design an AI gateway</h2>
+<ol>
+  <li>Design a gateway for a real product: routing rules, per-feature budgets, guardrail hooks, caching, fallback model.</li>
+  <li>Implement a thin version (Python): a function that routes by task, logs cost, enforces a budget, falls back on error.</li>
+  <li>Add a second provider behind a config flag. Show a failover works.</li>
+</ol>
+<p><b>Success:</b> a working gateway where swapping the model is a one-line change and every call is traced and budgeted.</p>
+
+<h2>Lab 7 &middot; Write a model card + risk review</h2>
+<ol>
+  <li>Write a one-page model card for the Store Assistant (or a feature you know): purpose, data, evals, limitations, oversight.</li>
+  <li>Classify it under the EU AI Act tiers. What changes if it acts autonomously?</li>
+  <li>Walk the OWASP LLM Top 10 + your MRM checklist: top 3 gaps, and what you'd fix first.</li>
+</ol>
+<p><b>Success:</b> documentation a competent outsider could use to reproduce your risk assessment.</p>
+
+<h2>Then the capstone</h2>
+<div class="callout ok"><span class="c-title">Ready?</span>
+The capstone (page 09) is the biggest yet: train, quantise, serve and benchmark a tiny GPT yourself, and write the design
+document for it &mdash; the full "from model to production" arc.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

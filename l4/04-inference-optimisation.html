@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Inference Optimisation &amp; Serving | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 04 &middot; Inference Optimisation &amp; Serving</h1>
+<p class="lead">Why is generation slow, why does memory blow up on long prompts, and how do servers answer 100 users at once?
+Inference is its own engineering field. This page covers the KV cache, batching, paged attention, speculative decoding,
+quantisation for serving, and how to read a latency benchmark.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">60 min</span><span class="pill">Tracks 1, 18</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain the two phases (prefill vs. decode) and why they bottleneck differently.</li>
+  <li>Explain the KV cache and why long prompts and long generations cost memory.</li>
+  <li>Explain batching, continuous batching and paged attention.</li>
+  <li>Explain speculative decoding and quantisation for serving.</li>
+  <li>Choose a serving engine and reason about latency vs. throughput.</li>
+</ul></div>
+
+<h2>Two phases, two bottlenecks</h2>
+<table>
+  <thead><tr><th></th><th>Prefill</th><th>Decode</th></tr></thead>
+  <tbody>
+    <tr><td>What</td><td>Process the whole prompt at once (parallel over tokens)</td><td>Generate tokens one at a time (sequential)</td></tr>
+    <tr><td>Bottleneck</td><td><b>Compute</b> &mdash; big matrix multiplies</td><td><b>Memory bandwidth</b> &mdash; reading all weights per token</td></tr>
+    <tr><td>You feel it as</td><td>Time to first token (TTFT)</td><td>Tokens/second</td></tr>
+    <tr><td>Worst when</td><td>Huge prompts (RAG, long docs)</td><td>Long generations, many concurrent users</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Why Macs and GPUs differ</span>
+Generation speed is dominated by how fast you can stream the weights from memory &mdash; memory <i>bandwidth</i>, not
+FLOPS. That's why a high-bandwidth Mac runs a 4-bit model surprisingly well, and why datacenter GPUs (huge bandwidth) serve
+many users at once. Same reason smaller/quantised models feel faster: less data to read per token.</div>
+
+<h2>The KV cache</h2>
+<p>Without caching, generating token 1000 would recompute attention over all 1000 previous tokens from scratch. The
+<b>KV cache</b> stores every past token's keys and values, so each new token only computes its own Q/K/V and attends to the
+cache. This is why generation is feasible &mdash; and why memory grows:</p>
+<pre data-lang="text" data-title="kv cache memory (rough)">
+KV bytes &asymp; 2 (K and V) &times; n_layers &times; n_kv_heads &times; head_dim &times; seq_len &times; bytes_per_value
+</pre>
+<p>For a 70B model at 100k context, that's tens of GB &mdash; <i>per request</i>. Multiply by concurrent users and the cache,
+not the weights, becomes the memory problem. This is why long context is expensive even on a hosted API.</p>
+
+<h2>Serving many users: batching and paging</h2>
+<ul>
+  <li><b>Static batching:</b> wait for N requests, run them together. Simple but wastes GPU when they finish at different times.</li>
+  <li><b>Continuous batching:</b> as one request finishes a step, slot another in immediately. The default in modern servers; huge throughput win.</li>
+  <li><b>Paged attention</b> (vLLM): manage the KV cache like OS virtual memory &mdash; allocate in blocks, share across requests, no giant contiguous buffers. Far less wasted memory &rarr; more concurrent users.</li>
+</ul>
+<svg viewBox="0 0 720 110" class="diagram" role="img" aria-label="Continuous batching">
+  <text class="d-title" x="200" y="25">static batching (wait, then run together)</text>
+  <rect class="d-box" x="60" y="35" width="300" height="30" rx="5"/><text class="d-small" x="210" y="55" text-anchor="middle">req A ──────────</text>
+  <rect class="d-box2" x="60" y="70" width="300" height="30" rx="5"/><text class="d-small" x="210" y="90" text-anchor="middle">req B waits for A to finish, GPU idle gaps</text>
+  <text class="d-title" x="560" y="25">continuous (slot in as slots free)</text>
+  <rect class="d-box3" x="430" y="35" width="260" height="30" rx="5"/><text class="d-small" x="560" y="55" text-anchor="middle">A ────── done &rarr; C slots in</text>
+  <rect class="d-box4" x="430" y="70" width="260" height="30" rx="5"/><text class="d-small" x="560" y="90" text-anchor="middle">B runs full length, no idle gaps</text>
+</svg>
+
+<h2>Going faster</h2>
+<table>
+  <thead><tr><th>Technique</th><th>What it is</th><th>Trade-off</th></tr></thead>
+  <tbody>
+    <tr><td><b>Speculative decoding</b></td><td>A small "draft" model guesses several tokens; the big model verifies them in one pass. Accept what's right.</td><td>~2&ndash;3&times; speedup, same output; extra memory for draft model</td></tr>
+    <tr><td><b>Quantisation (serving)</b></td><td>4/8-bit weights (and sometimes KV) via AWQ/GPTQ/FP8.</td><td>Less memory, faster bandwidth-bound decode; small quality cost</td></tr>
+    <tr><td><b>Flash/kernels</b></td><td>Fused attention kernels (FlashAttention) compute attention without materialising the n&times;n matrix.</td><td>Faster + less memory; requires supported hardware</td></tr>
+    <tr><td><b>Prefix/prompt caching</b></td><td>Re-use the KV cache for a shared prompt prefix across requests.</td><td>Huge win for agents with the same long system prompt</td></tr>
+  </tbody>
+</table>
+<pre data-lang="python" data-title="spec_decode.py: the idea in 20 lines (toy)" data-verify="run">
+def speculative_step(draft, big, prompt_tokens, k=3):
+    """Draft proposes k tokens; big model verifies them in ONE forward pass."""
+    proposed = draft.generate(prompt_tokens, k)          # cheap, k tokens
+    verified = []
+    for i, tok in enumerate(proposed):
+        # big model scores all k positions in parallel (not k separate calls)
+        accepted = big.agrees(prompt_tokens + verified, tok)
+        if not accepted:
+            verified.append(big.sample(prompt_tokens + verified))  # big model fixes it
+            break
+        verified.append(tok)
+    return verified
+
+
+class Toy:
+    def __init__(self, script): self.script = script
+    def generate(self, ctx, k): return self.script[:k]
+    def agrees(self, ctx, tok): return tok in self.script
+    def sample(self, ctx): return self.script[len(ctx)]   # next correct token
+
+
+if __name__ == "__main__":
+    big = Toy(["the", "cat", "sat"])
+    draft = Toy(["the", "dog", "sat"])
+    print(speculative_step(draft, big, []))
+    # draft got "the" right, "dog" wrong -> big model emits "cat", stops
+    assert speculative_step(draft, big, []) == ["the", "cat"]
+</pre>
+<p>The point: the expensive model does <b>one</b> parallel scoring pass instead of k sequential generations.</p>
+
+<h2>Choosing a serving engine</h2>
+<table>
+  <thead><tr><th>Engine</th><th>Best for</th></tr></thead>
+  <tbody>
+    <tr><td><b>vLLM</b></td><td>High-throughput GPU serving; paged attention, continuous batching. The common default.</td></tr>
+    <tr><td><b>llama.cpp</b></td><td>CPU / edge / single user; GGUF models (L2&middot;11).</td></tr>
+    <tr><td><b>MLX</b></td><td>Apple silicon, local and near-production.</td></tr>
+    <tr><td><b>TensorRT-LLM / TGI</b></td><td>NVIDIA-optimised / general hosted serving.</td></tr>
+    <tr><td><b>Managed APIs</b></td><td>No ops at all &mdash; you pay per token instead of per GPU.</td></tr>
+  </tbody>
+</table>
+
+<h2>Reading a benchmark</h2>
+<ul class="checklist">
+  <li><b>TTFT</b> (time to first token) &mdash; prefill speed; what interactive users feel.</li>
+  <li><b>Tokens/sec per request</b> &mdash; decode speed.</li>
+  <li><b>Total throughput</b> (tokens/sec across all users) &mdash; what you pay for on a server.</li>
+  <li><b>p50/p95/p99</b>, not just averages &mdash; the tail is what SLOs are made of.</li>
+  <li>Latency and throughput trade off: bigger batches = more throughput, worse per-user latency.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Serve a model with vLLM or llama.cpp server. Hit it with 1 request, then 10 concurrent. How do TTFT and tokens/s change?</li>
+  <li>Send a 4k-token prompt vs a 20-token prompt. Compare TTFT &mdash; feel the prefill cost.</li>
+  <li>Estimate KV-cache memory for your model at 8k and 128k context. When does it exceed the weights?</li>
+  <li>Compare a 4-bit and 8-bit quantisation on the same hardware: speed vs. quality on your task.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Prefill is compute-bound (TTFT); decode is memory-bandwidth-bound (tokens/sec).</li>
+  <li>The KV cache makes generation possible but grows with context &times; users.</li>
+  <li>Continuous batching + paged attention are why servers handle many users.</li>
+  <li>Speculative decoding, quantisation, fused kernels and prefix caching each buy speed &mdash; for a price.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

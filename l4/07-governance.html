@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Governance, Regulation &amp; Responsible AI | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 07 &middot; Governance, Regulation &amp; Responsible AI</h1>
+<p class="lead">At expert level you're not just building AI &mdash; you're accountable for it. Regulation is arriving fast
+(the EU AI Act, sector rules, internal audit), and "we didn't know the model would do that" isn't a defense. This page covers
+the regulatory landscape, model risk management, documentation duties, and how to build responsibly without killing velocity.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">50 min</span><span class="pill">Tracks 8, 19</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Describe the EU AI Act's risk tiers and what triggers them.</li>
+  <li>Apply model risk management: inventory, classification, documentation, monitoring.</li>
+  <li>Write the documentation regulators and auditors actually ask for.</li>
+  <li>Reason about IP, data protection and employment implications.</li>
+  <li>Design governance that keeps teams fast, not just compliant.</li>
+</ul></div>
+
+<h2>Why this is now your problem</h2>
+<p>When AI was an experiment, governance was a slide in a deck. Now LLM features touch customers, money and personal data,
+so they fall under real obligations: privacy law (GDPR and friends), emerging AI-specific regulation, and industry audit
+expectations. Senior engineers who build these systems get asked &mdash; and should be able to answer &mdash; "where does the
+data go, what's the worst it can do, and who signed off?"</p>
+
+<h2>The EU AI Act (the one to know)</h2>
+<p>The first comprehensive AI law, phased in from 2024. It sorts AI uses into risk tiers:</p>
+<table>
+  <thead><tr><th>Tier</th><th>Examples</th><th>Obligation</th></tr></thead>
+  <tbody>
+    <tr><td><b>Unacceptable</b></td><td>Social scoring, manipulative dark patterns, some biometric surveillance</td><td>Banned</td></tr>
+    <tr><td><b>High risk</b></td><td>Hiring/credit/insurance decisions, critical infrastructure, law enforcement, education</td><td>Strict: risk management, data governance, documentation, human oversight, logging, conformity assessment</td></tr>
+    <tr><td><b>Limited</b></td><td>Chatbots, generated content</td><td>Transparency: disclose it's AI, label generated content</td></tr>
+    <tr><td><b>Minimal</b></td><td>Spam filters, most dev tools</td><td>Largely free</td></tr>
+  </tbody>
+</table>
+<p>Even if you're not in the EU, it's the template other jurisdictions copy &mdash; and it applies to providers <i>and
+deployers</i>. Your store assistant is probably "limited" (transparency duty: tell users it's AI); a resume-screening tool
+would be "high risk" with the full weight of obligations.</p>
+<div class="callout warn"><span class="c-title">Don't build a compliance program on this page</span>
+Laws evolve and details matter. Know the shape, then work with legal/compliance on anything regulated. The engineer's job is
+to build systems that <i>can</i> be compliant: logged, documented, overseen.</div>
+
+<h2>Model risk management (MRM)</h2>
+<p>Borrowed from banking, now spreading to all AI. Treat each model/LLM feature as a risk-managed asset:</p>
+<ul class="checklist">
+  <li><b>Inventory:</b> a register of every model/feature in production &mdash; you can't govern what you don't list.</li>
+  <li><b>Risk classification:</b> what decision does it influence, and what if it's wrong? Auto-complete &ne; loan approval.</li>
+  <li><b>Validation:</b> evals and testing before deployment (L3&middot;04) &mdash; documented, repeatable.</li>
+  <li><b>Documentation:</b> purpose, data, training/fine-tuning, evals, limitations, approval trail.</li>
+  <li><b>Monitoring:</b> drift and quality over time (L3&middot;07) plus an incident path.</li>
+  <li><b>Human oversight:</b> someone accountable, and a way to override or shut it off (kill switch).</li>
+</ul>
+
+<h2>Documentation that gets asked for</h2>
+<table>
+  <thead><tr><th>Artifact</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td><b>Model card</b></td><td>What it does, training data (in general terms), evals, limitations, intended use, out-of-scope uses</td></tr>
+    <tr><td><b>System card / datasheet</b></td><td>The whole feature: model + prompts + tools + data + guardrails, not just the model</td></tr>
+    <tr><td><b>Data lineage</b></td><td>Where training/retrieval/user data comes from and where it goes</td></tr>
+    <tr><td><b>Decision log</b></td><td>Why this model, why this threshold, who approved</td></tr>
+    <tr><td><b>Incident log</b></td><td>What went wrong, when, how fixed &mdash; auditors love this</td></tr>
+  </tbody>
+</table>
+<p>The pattern: document enough that a competent outsider could understand and reproduce your risk assessment. If you can't
+explain why a decision was made six months later, the documentation failed.</p>
+
+<h2>IP, data and people</h2>
+<ul class="checklist">
+  <li><b>Training data:</b> is your fine-tune data yours to use? Scraped data has copyright questions still in court.</li>
+  <li><b>Generated code/IP:</b> model output can resemble licensed code; check policy on attribution and provenance tools.</li>
+  <li><b>Personal data:</b> don't feed PII to models without a lawful basis; anonymise, minimise, check provider data terms.</li>
+  <li><b>Provider terms:</b> does the API train on your inputs? Retention? Many offer zero-retention tiers for a reason.</li>
+  <li><b>People:</b> AI that makes employment, credit or access decisions about people is the highest-risk category &mdash; be careful.</li>
+</ul>
+
+<h2>Governance that doesn't kill velocity</h2>
+<div class="compare">
+  <div class="good"><h4>Lightweight and effective</h4>
+  <ul><li>A model register + a one-page risk template per feature</li><li>Approved-model list maintained by the platform team (L4&middot;06)</li><li>Evals required in CI &mdash; compliance <i>is</i> the quality gate</li><li>Kill switch + incident path, tested</li></ul></div>
+  <div class="bad"><h4>Heavyweight and counterproductive</h4>
+  <ul><li>Committee approval for every prompt change</li><li>Bans that push people to shadow AI on personal devices</li><li>Paperwork nobody reads, that blocks shipping but not risk</li></ul></div>
+</div>
+<p>The best governance is <b>paved paths</b>: make the compliant way the easiest way (approved models behind the gateway,
+templates, built-in evals) so following it is faster than going around it.</p>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Write a one-page model card for the Store Assistant: purpose, data, evals, limitations, oversight.</li>
+  <li>Classify it under the EU AI Act tiers. What would change if it set staff schedules or approved refunds autonomously?</li>
+  <li>Draft the "model register" row: owner, risk tier, data flows, eval cadence, kill switch.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>The EU AI Act's risk tiers (banned/high/limited/minimal) are the regulatory template to know.</li>
+  <li>Model risk management: inventory, classify, validate, document, monitor, oversee.</li>
+  <li>Document enough that an outsider can reproduce your risk reasoning.</li>
+  <li>Good governance paves paths, not paperwork &mdash; make compliant the easy path.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

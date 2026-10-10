@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Reasoning Models &amp; Test-time Compute | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 05 &middot; Reasoning Models &amp; Test-time Compute</h1>
+<p class="lead">For a decade, making a model better meant a bigger model and more training data. Reasoning models added a
+second lever: <b>let it think longer at inference time</b>. Instead of answering immediately, they generate long internal
+chains of thought &mdash; exploring, checking, backtracking &mdash; and accuracy climbs with the tokens spent. This page is
+about how that works, when to use it, and what it costs.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">50 min</span><span class="pill">Tracks 1, 17</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain test-time compute as a scaling axis distinct from model size.</li>
+  <li>Explain how RLVR (previous page) produces reasoning behaviour.</li>
+  <li>Choose reasoning vs. non-reasoning for a task, and control the effort.</li>
+  <li>Use test-time strategies: self-consistency, search, verifiers, budget forcing.</li>
+  <li>Explain the latency/cost trade-offs for production.</li>
+</ul></div>
+
+<h2>The second scaling axis</h2>
+<svg viewBox="0 0 720 150" class="diagram" role="img" aria-label="Two scaling axes">
+  <text class="d-title" x="200" y="30">Scale 1: bigger model + more data</text>
+  <rect class="d-box" x="60" y="45" width="60" height="30" rx="5"/><text class="d-small" x="90" y="65" text-anchor="middle">small</text>
+  <line class="d-arrow" x1="120" y1="60" x2="200" y2="60"/>
+  <rect class="d-box2" x="205" y="40" width="80" height="40" rx="5"/><text class="d-small" x="245" y="60" text-anchor="middle">bigger</text>
+  <line class="d-arrow" x1="285" y1="60" x2="330" y2="60"/>
+  <rect class="d-box3" x="335" y="35" width="95" height="50" rx="5"/><text class="d-small" x="382" y="60" text-anchor="middle">huge</text>
+  <text class="d-title" x="560" y="30">Scale 2: more thinking per answer</text>
+  <rect class="d-box" x="490" y="45" width="55" height="30" rx="5"/><text class="d-small" x="517" y="65" text-anchor="middle">quick</text>
+  <line class="d-arrow" x1="545" y1="60" x2="575" y2="60"/>
+  <rect class="d-box2" x="578" y="40" width="60" height="40" rx="5"/><text class="d-small" x="608" y="60" text-anchor="middle">think</text>
+  <line class="d-arrow" x1="638" y1="60" x2="662" y2="60"/>
+  <rect class="d-box3" x="665" y="35" width="50" height="50" rx="5"/><text class="d-small" x="690" y="60" text-anchor="middle">deep</text>
+</svg>
+<p>Pre-training scale hit diminishing returns; test-time compute opened a new frontier. A model that "thinks" for 30 seconds
+can beat a bigger model that answers instantly &mdash; on the right tasks.</p>
+
+<h2>Where reasoning comes from</h2>
+<p>You saw this on the last page: <b>RLVR</b>. Train a model with reinforcement learning on tasks with <b>checkable answers</b>
+&mdash; maths with a numeric answer, code that must pass tests. Reward correct final answers, and the model discovers that
+long intermediate reasoning raises its reward. Emergent behaviours follow: self-verification ("wait, let me check"),
+backtracking ("that's wrong, try another approach") and exploration of alternatives. Nobody hand-coded those; they fall out
+of the objective.</p>
+
+<h2>Reasoning vs. non-reasoning: pick deliberately</h2>
+<div class="compare">
+  <div class="good"><h4>Reasoning pays off for</h4>
+  <ul><li>Maths, logic, puzzles</li><li>Multi-step code and debugging</li><li>Planning, architecture, hard analysis</li><li>Agent planning steps</li><li>Anything with a verifiable right answer</li></ul></div>
+  <div class="bad"><h4>Wasteful or worse for</h4>
+  <ul><li>Simple lookups, extraction, classification</li><li>Casual chat, drafting, summarising</li><li>Latency-critical interactive features</li><li>Tasks with no checkable answer (it thinks harder but isn't righter)</li></ul></div>
+</div>
+<p>Using a reasoning model to classify tickets burns 10&ndash;100&times; the tokens for no gain. Route by task (L3&middot;07):
+reasoning for hard steps, fast models for the rest.</p>
+
+<h2>Test-time strategies (you can use some yourself)</h2>
+<table>
+  <thead><tr><th>Strategy</th><th>What it is</th><th>You've seen it</th></tr></thead>
+  <tbody>
+    <tr><td><b>Chain-of-thought</b></td><td>"Think step by step" &mdash; elicits reasoning even from non-reasoning models</td><td>L1&middot;03</td></tr>
+    <tr><td><b>Self-consistency</b></td><td>Sample k answers, take the majority &mdash; cheap test-time boost</td><td>L2&middot;01</td></tr>
+    <tr><td><b>Built-in thinking</b></td><td>Reasoning models produce a hidden/visible thinking trace, then an answer</td><td>this page</td></tr>
+    <tr><td><b>Search + verifier</b></td><td>Explore a tree of reasoning paths, score them with a verifier (e.g. "does this proof check?")</td><td>research systems</td></tr>
+    <tr><td><b>Budget forcing</b></td><td>Cap or extend thinking tokens ("wait" tokens to think longer; limit to save cost)</td><td>effort settings</td></tr>
+    <tr><td><b>Reasoning effort</b></td><td>Provider knob: low/medium/high thinking budget per request</td><td>APIs expose it</td></tr>
+  </tbody>
+</table>
+
+<h2>Controlling the effort</h2>
+<p>Most reasoning APIs expose an effort/budget setting. Use it as a cost-and-latency dial:</p>
+<pre data-lang="python" data-title="effort.py: route by difficulty, set effort by task" data-verify="run">
+HARD = {"maths", "debug", "plan", "prove"}
+MEDIUM = {"analyse", "compare", "design"}
+# everything else -> low
+
+
+def route(task_kind: str) -> dict:
+    """Pick model + reasoning effort per task."""
+    if task_kind in HARD:
+        return {"model": "reasoning-model", "effort": "high"}
+    if task_kind in MEDIUM:
+        return {"model": "reasoning-model", "effort": "medium"}
+    return {"model": "fast-model", "effort": "low"}     # don't over-think lookups
+
+
+def estimate_cost(kind: str, out_tokens: int, price_per_1k: float) -> float:
+    """Thinking tokens are billed too — a 'high' effort call can emit thousands."""
+    thinking = {"high": 4000, "medium": 1200, "low": 50}
+    cfg = route(kind)
+    total = thinking[cfg["effort"]] + out_tokens
+    return round(total / 1000 * price_per_1k, 4)
+
+
+if __name__ == "__main__":
+    for kind in ["classify", "analyse", "maths"]:
+        print(kind, "->", route(kind), "cost ~$", estimate_cost(kind, 200, 0.01))
+    # reasoning tokens dwarf the visible answer — that's the trade-off
+</pre>
+<div class="callout warn"><span class="c-title">Thinking tokens are billed</span>
+A "high effort" call can emit thousands of hidden reasoning tokens before the visible answer. They're part of the output
+token count &mdash; monitor them in production (L3&middot;07) or your cost model is way off.</div>
+
+<h2>Does thinking actually help here?</h2>
+<p>Measure it, don't assume. Take 20 hard cases from your golden set (L3&middot;04), run them at low vs. high effort, compare
+accuracy and token cost. Sometimes medium effort is 90% of the gain at 30% of the cost.</p>
+<ul class="checklist">
+  <li>Reasoning helps most when there's a <b>checkable</b> right answer.</li>
+  <li>On open-ended tasks, extra thinking often just produces a longer-sounding answer.</li>
+  <li>Thinking traces aren't guaranteed faithful &mdash; the shown reasoning can be a rationalisation. Don't treat it as an audit log.</li>
+  <li>Latency: deep thinking means TTFT of seconds&ndash;minutes. Don't put it in the interactive path.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Take 5 hard problems. Run them on a standard model vs. a reasoning model (or low vs. high effort). Compare accuracy and tokens.</li>
+  <li>Same problems, self-consistency (5 samples, majority vote) on the standard model. How close does it get to reasoning?</li>
+  <li>Read a reasoning trace: does the model ever say "wait" and correct itself? That's RLVR behaviour showing.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Test-time compute is a second scaling axis: think longer, not just bigger.</li>
+  <li>Reasoning emerges from RL on verifiable answers &mdash; self-checking and backtracking are learned.</li>
+  <li>Use reasoning where there's a checkable answer; it's wasted on lookups and chat.</li>
+  <li>Thinking tokens cost money and latency; route by difficulty and measure the effort dial.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

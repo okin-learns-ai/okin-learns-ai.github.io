@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Training &amp; Post-training: SFT, RLHF, DPO | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 03 &middot; Training &amp; Post-training: SFT, RLHF, DPO</h1>
+<p class="lead">A model that only does next-token prediction is a text completer, not an assistant. Making it helpful, follow
+instructions and refuse harmful requests is a separate phase: <b>post-training</b>. This page covers the pipeline from raw
+pre-training to the aligned model behind the API, and what each stage is actually optimising for.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">60 min</span><span class="pill">Track 1</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Describe the full pipeline: pre-training &rarr; SFT &rarr; preference training (RLHF/DPO) &rarr; reasoning RL.</li>
+  <li>Explain what a "base model" is and why chat models differ from it.</li>
+  <li>Explain RLHF's reward model and why DPO is often simpler.</li>
+  <li>Explain RL with verifiable rewards (RLVR) &mdash; the trick behind reasoning models.</li>
+  <li>Reason about data: quality, dedup, contamination, and why data &gt; model size past a point.</li>
+</ul></div>
+
+<h2>The pipeline at a glance</h2>
+<svg viewBox="0 0 720 120" class="diagram" role="img" aria-label="Training pipeline">
+  <rect class="d-box" x="10" y="35" width="130" height="55" rx="8"/><text class="d-title" x="75" y="58" text-anchor="middle">Pre-train</text><text class="d-small" x="75" y="78" text-anchor="middle">next token, all text</text>
+  <line class="d-arrow" x1="140" y1="62" x2="158" y2="62"/>
+  <rect class="d-box2" x="160" y="35" width="120" height="55" rx="8"/><text class="d-title" x="220" y="58" text-anchor="middle">SFT</text><text class="d-small" x="220" y="78" text-anchor="middle">follow instructions</text>
+  <line class="d-arrow" x1="280" y1="62" x2="298" y2="62"/>
+  <rect class="d-box3" x="300" y="35" width="140" height="55" rx="8"/><text class="d-title" x="370" y="55" text-anchor="middle">Preference</text><text class="d-small" x="370" y="73" text-anchor="middle">RLHF / DPO</text><text class="d-small" x="370" y="86" text-anchor="middle">be helpful, be safe</text>
+  <line class="d-arrow" x1="440" y1="62" x2="458" y2="62"/>
+  <rect class="d-box4" x="460" y="35" width="120" height="55" rx="8"/><text class="d-title" x="520" y="58" text-anchor="middle">RLVR</text><text class="d-small" x="520" y="78" text-anchor="middle">learn to reason</text>
+  <line class="d-arrow" x1="580" y1="62" x2="598" y2="62"/>
+  <rect class="d-box" x="600" y="35" width="110" height="55" rx="8"/><text class="d-title" x="655" y="58" text-anchor="middle">Chat model</text><text class="d-small" x="655" y="78" text-anchor="middle">the API</text>
+</svg>
+
+<h2>Stage 0: pre-training</h2>
+<p>Train on trillions of tokens of text &mdash; the only objective is next-token prediction. This is where almost all the
+compute goes (weeks, thousands of GPUs) and where the model absorbs knowledge, grammar, code and reasoning patterns. The
+result is a <b>base model</b>: great at completing text, terrible at answering questions &mdash; ask it a question and it
+might write another question, because that's what text does.</p>
+<ul>
+  <li><b>Data is the moat.</b> Quality, dedup and filtering matter more than architecture details. Web text, books, code &mdash; cleaned and deduplicated.</li>
+  <li><b>Contamination:</b> if benchmark questions leak into training data, eval scores lie. Labs dedup against test sets.</li>
+  <li><b>Tokenizers are trained too</b> (BPE): a subword vocabulary that balances compression vs. vocab size.</li>
+</ul>
+
+<h2>Stage 1: SFT &mdash; learn to be an assistant</h2>
+<p><b>Supervised fine-tuning</b>: continue training on (instruction, good response) pairs. This is L3&middot;06's SFT, at
+frontier scale. The model learns the <i>format</i> of being an assistant: "when addressed, respond helpfully." Even a few
+thousand to ~100k high-quality examples shift behaviour dramatically &mdash; format is easier to learn than knowledge.</p>
+
+<h2>Stage 2: preference training &mdash; learn to be good</h2>
+<p>SFT teaches format; preference training teaches <i>taste</i>: which of two responses is better? Humans (or a strong model)
+rank pairs of answers, and the model is pushed toward the preferred ones.</p>
+<table>
+  <thead><tr><th></th><th>RLHF (PPO)</th><th>DPO</th></tr></thead>
+  <tbody>
+    <tr><td>Idea</td><td>Train a reward model on human preferences, then optimise the LLM against it with RL</td><td>Skip the reward model; optimise directly on preference pairs</td></tr>
+    <tr><td>Moving parts</td><td>4 models (policy, reward, ref, value) &mdash; complex, unstable</td><td>2 &mdash; simpler, usually the default now</td></tr>
+    <tr><td>Cost / stability</td><td>Expensive, fiddly</td><td>Cheap, stable</td></tr>
+    <tr><td>Ceiling</td><td>Higher (reward model generalises)</td><td>Very good, occasionally below RLHF's peak</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Why preferences, not just more SFT?</span>
+For "good vs. bad" judgements it's easier to <i>rank</i> than to <i>write the ideal answer</i>. "This response is better than
+that one" is cheap to label and captures nuance (tone, hedging, safety) that's hard to specify as target text.</div>
+
+<h2>Stage 3: RLVR &mdash; learn to reason</h2>
+<p>The breakthrough behind "reasoning" models (o1/R1-style, next page). For tasks with a <b>verifiable answer</b> &mdash;
+maths, code that passes tests &mdash; you don't need a reward model: check the answer programmatically and reward the model
+for getting it right. Trained this way, models learn to produce long chains of thought, self-check, and backtrack &mdash;
+emergent behaviours, not hand-coded ones.</p>
+
+<h2>Also in the mix</h2>
+<ul>
+  <li><b>Constitutional / self-critique:</b> the model evaluates its own outputs against written principles, generating preference data without humans on every item.</li>
+  <li><b>Safety training:</b> refusal behaviour is trained in preference data too &mdash; which is why "just remove the safety fine-tune" on an open model produces something very different.</li>
+  <li><b>Tool-use training:</b> modern models are also trained to emit structured tool calls &mdash; that behaviour (L2&middot;04) is learned, not magic.</li>
+</ul>
+
+<h2>The mental model to keep</h2>
+<div class="callout note"><span class="c-title">Base model vs. chat model</span>
+The base model is a text-completion engine that absorbed the internet. Post-training sculpts it into an assistant: SFT gives
+it the assistant <i>format</i>, preference training gives it <i>taste</i>, RLVR gives it <i>reasoning</i>. When a chat model
+"refuses", that's learned behaviour from stage 2&ndash;3 &mdash; and it explains jailbreaks: they're ways of slipping the input
+back into territory where the base-model behaviour shows through.</div>
+
+<h2>Why you should care (even as a user)</h2>
+<ul class="checklist">
+  <li><b>Pick base vs. instruct models correctly</b> for local use and fine-tuning (L2&middot;11, L3&middot;06).</li>
+  <li><b>Understand refusals and jailbreaks</b> as post-training artefacts &mdash; it makes L3&middot;08 security concrete.</li>
+  <li><b>Read a model card</b> and know what "SFT + DPO + RLVR" actually means.</li>
+  <li><b>Reason about evals:</b> a model that scored 95% might have seen the test data &mdash; contamination is real.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Download a base model and its instruct-tuned sibling (Ollama or LM Studio). Ask both "What's the capital of France?" &mdash; see the base model ramble vs. the instruct model answer.</li>
+  <li>Read a model card (any open-weight model) and find: pre-training size, post-training method, evals, licence.</li>
+  <li>Write 5 preference pairs yourself (two answers, pick the better). Feel how much easier ranking is than writing the ideal answer.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Pre-training makes a text completer; post-training makes an assistant.</li>
+  <li>SFT = format, preferences (RLHF/DPO) = taste/safety, RLVR = reasoning via verifiable rewards.</li>
+  <li>DPO is simpler than RLHF and the usual default; RLVR is what powers reasoning models.</li>
+  <li>Data quality, dedup and contamination decide more than the training recipe.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

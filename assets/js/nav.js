@@ -7,8 +7,8 @@ window.SITE = {
   subtitle: "Beginner \u2192 Expert",
   dedication: "For My Wife Okin",
   author: "Sanat",
-  version: "Levels 1\u20133 complete",
-  updated: "2026-10-09"
+  version: "Levels 1\u20134 complete",
+  updated: "2026-10-11"
 };
 
 window.NAV = [
@@ -66,12 +66,16 @@ window.NAV = [
     { n: "11", title: "Level 3 Checkpoint Quiz", href: "l3/11-checkpoint.html" }
   ]},
   { group: "Level 4 \u00b7 Expert", level: 4, items: [
-    { title: "Transformer Internals & the Math", href: "roadmap.html#l4", soon: true },
-    { title: "Training & Post-training (SFT, RLHF, DPO)", href: "roadmap.html#l4", soon: true },
-    { title: "Inference Optimization & Serving", href: "roadmap.html#l4", soon: true },
-    { title: "Reasoning Models & Test-time Compute", href: "roadmap.html#l4", soon: true },
-    { title: "Designing AI-Native Products & Platforms", href: "roadmap.html#l4", soon: true },
-    { title: "Governance, Regulation & Responsible AI", href: "roadmap.html#l4", soon: true }
+    { n: "01", title: "The Maths You Actually Need", href: "l4/01-the-maths.html" },
+    { n: "02", title: "Transformer Internals: Attention to GPT", href: "l4/02-transformer-internals.html" },
+    { n: "03", title: "Training & Post-training (SFT, RLHF, DPO)", href: "l4/03-training-and-post-training.html" },
+    { n: "04", title: "Inference Optimisation & Serving", href: "l4/04-inference-optimisation.html" },
+    { n: "05", title: "Reasoning Models & Test-time Compute", href: "l4/05-reasoning-models.html" },
+    { n: "06", title: "AI-Native Architecture & Build vs Buy", href: "l4/06-ai-native-architecture.html" },
+    { n: "07", title: "Governance, Regulation & Responsible AI", href: "l4/07-governance.html" },
+    { n: "08", title: "Level 4 Labs", href: "l4/08-labs.html" },
+    { n: "09", title: "Capstone: Train & Serve a Tiny GPT", href: "l4/09-capstone.html" },
+    { n: "10", title: "Level 4 Checkpoint Quiz", href: "l4/10-checkpoint.html" }
   ]},
   { group: "Level 5 \u00b7 Master & Specialist", level: 5, items: [
     { title: "Reading & Reproducing Research Papers", href: "roadmap.html#l5", soon: true },

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>The Maths You Actually Need | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L4 &middot; 01 &middot; The Maths You Actually Need</h1>
+<p class="lead">Levels 1&ndash;3 treated the model as an API. Level 4 opens it. You don't need a maths degree &mdash; you need six
+ideas, each of which fits in a few lines of code. This page implements all of them in plain Python: vectors, dot products,
+matrices, softmax, cross-entropy and gradient descent. These exact pieces reappear in the next page inside a transformer.</p>
+<div class="meta-row"><span class="pill level">Level 4</span><span class="pill time">60 min</span><span class="pill">Track 1</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Compute dot products, matrix multiplies and cosine similarity by hand and in code.</li>
+  <li>Explain softmax and why it uses exponentials.</li>
+  <li>Explain cross-entropy loss as "how surprised was the model".</li>
+  <li>Walk through one step of gradient descent on a real example.</li>
+  <li>Read <code>n &times; d</code> shapes and predict output shapes.</li>
+</ul></div>
+
+<h2>Vectors and the dot product</h2>
+<p>A <b>vector</b> is a list of numbers. In ML it usually represents "a point in meaning-space" (embeddings, L2&middot;05) or
+"a row of activations" inside the model. The <b>dot product</b> of two vectors multiplies them element-wise and sums &mdash;
+it measures how much they point the same way:</p>
+<pre data-lang="python" data-title="maths.py: dot product, matrix multiply, cosine" data-verify="run">
+import math
+
+
+def dot(a: list[float], b: list[float]) -> float:
+    return sum(x * y for x, y in zip(a, b))
+
+
+def matmul(A: list[list[float]], B: list[list[float]]) -> list[list[float]]:
+    """(m x n) @ (n x p) -> (m x p). Row i of A dotted with column j of B."""
+    B_cols = list(zip(*B))                      # transpose: columns of B
+    return [[dot(row, col) for col in B_cols] for row in A]
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    return dot(a, b) / (math.sqrt(dot(a, a)) * math.sqrt(dot(b, b)))
+
+
+if __name__ == "__main__":
+    print(dot([1, 2, 3], [4, 5, 6]))                    # 32.0
+    A = [[1, 2], [3, 4]]                                # 2x2
+    B = [[5, 6], [7, 8]]                                # 2x2
+    print(matmul(A, B))                                 # [[19, 22], [43, 50]]
+    print(round(cosine([1, 0], [1, 1]), 3))             # 0.707
+    assert matmul(A, B) == [[19.0, 22.0], [43.0, 50.0]]
+</pre>
+<div class="callout note"><span class="c-title">Shape discipline</span>
+The single most useful habit in ML code: <b>track tensor shapes</b>. <code>(m&times;n) @ (n&times;p) &rarr; (m&times;p)</code>.
+A model is a pipeline of these. When a shape is wrong, nothing works &mdash; when you can predict shapes, you can read
+architecture diagrams.</div>
+
+<h2>Softmax: scores into probabilities</h2>
+<p>A model outputs raw scores (<b>logits</b>) &mdash; arbitrary numbers like <code>[2.1, -0.5, 0.9]</code>. <b>Softmax</b>
+squashes them into a probability distribution: everything positive, summing to 1:</p>
+<pre data-lang="python" data-title="softmax.py" data-verify="run">
+import math
+
+
+def softmax(logits: list[float]) -> list[float]:
+    m = max(logits)                    # subtract max for numerical stability
+    exps = [math.exp(x - m) for x in logits]
+    total = sum(exps)
+    return [e / total for e in exps]
+
+
+if __name__ == "__main__":
+    p = softmax([2.1, -0.5, 0.9])
+    print([round(x, 3) for x in p], "sum =", round(sum(p), 6))
+    # -> [0.645, 0.048, 0.307]  sum = 1.0
+    assert abs(sum(p) - 1.0) &lt; 1e-9
+</pre>
+<p>Why exponentials? They make scores positive <i>and</i> amplify differences &mdash; the highest logit dominates. Next page:
+this exact function is what picks the next token, and what attention uses to weight values.</p>
+
+<h2>Cross-entropy: how surprised was the model?</h2>
+<p>Training needs a number for "how wrong was that prediction". If the model put probability <code>p</code> on the correct
+token, the <b>cross-entropy loss</b> is <code>-log(p)</code>:</p>
+<ul>
+  <li><code>p = 1.0</code> (certain and right) &rarr; loss = 0</li>
+  <li><code>p = 0.5</code> &rarr; loss &asymp; 0.69</li>
+  <li><code>p = 0.01</code> (confident and wrong) &rarr; loss = 4.6 &mdash; heavily punished</li>
+</ul>
+<pre data-lang="python" data-title="cross_entropy.py" data-verify="run">
+import math
+
+
+def cross_entropy(probs: list[float], correct: int) -> float:
+    return -math.log(max(probs[correct], 1e-12))
+
+
+if __name__ == "__main__":
+    for p in [1.0, 0.9, 0.5, 0.1, 0.01]:
+        print(f"p={p:&lt;5} loss={round(-math.log(p), 3)}")
+    # 0.0, 0.105, 0.693, 2.303, 4.605
+</pre>
+<p>Training sums this over billions of tokens. "Perplexity" you'll see in papers is just <code>e^(average loss)</code> &mdash;
+"on average, the model was choosing between this many equally likely options".</p>
+
+<h2>Gradient descent: how learning actually happens</h2>
+<p>A model is a giant function <code>f(weights, input) &rarr; logits</code>. Training: compute the loss, find each weight's
+<b>gradient</b> (how much it contributed to the loss), and nudge every weight a tiny step downhill. Repeat billions of times.</p>
+<pre data-lang="python" data-title="gradient_descent.py: fit y = w*x by gradient descent" data-verify="run">
+def loss_and_grad(w: float, data: list[tuple[float, float]]) -> tuple[float, float]:
+    """Mean squared error for y = w*x, plus d(loss)/dw."""
+    n = len(data)
+    loss = sum((w * x - y) ** 2 for x, y in data) / n
+    grad = sum(2 * (w * x - y) * x for x, y in data) / n
+    return loss, grad
+
+
+if __name__ == "__main__":
+    data = [(1, 2), (2, 4), (3, 6), (4, 8)]   # true w = 2
+    w, lr = 0.0, 0.05
+    for step in range(50):
+        loss, g = loss_and_grad(w, data)
+        w -= lr * g                          # step downhill
+    print(f"learned w = {w:.3f}  loss = {loss:.6f}")   # w -> 2.0
+    assert abs(w - 2.0) &lt; 0.01
+</pre>
+<p>That's the whole algorithm. A real model has billions of <code>w</code>s and computes all gradients at once with
+<b>backpropagation</b> &mdash; the chain rule applied layer by layer &mdash; but the idea is identical: measure the error,
+nudge every knob a little.</p>
+
+<h2>Putting it together: a 20-line language model</h2>
+<pre data-lang="python" data-title="tiny_lm.py: bigram model as a matrix + softmax" data-verify="run">
+import math
+import random
+
+
+def softmax(logits):
+    m = max(logits)
+    e = [math.exp(x - m) for x in logits]
+    s = sum(e)
+    return [v / s for v in e]
+
+
+# A tiny bigram "language model": P(next | current) is one lookup + softmax.
+# Real LLMs compute these logits with a transformer instead of a table.
+VOCAB = ["cat", "dog", "sat", "ran"]
+LOGITS = {                       # learned "weights" for next-token prediction
+    "cat": [0.1, 0.1, 2.0, 0.3],
+    "dog": [0.1, 0.1, 0.4, 2.0],
+    "sat": [2.0, 1.8, 0.0, 0.0],
+    "ran": [1.9, 2.0, 0.0, 0.0],
+}
+
+
+def sample_next(word: str, rng) -> str:
+    probs = softmax(LOGITS[word])
+    return rng.choices(VOCAB, weights=probs)[0]
+
+
+if __name__ == "__main__":
+    rng = random.Random(42)
+    word = "cat"
+    out = [word]
+    for _ in range(4):
+        word = sample_next(word, rng)
+        out.append(word)
+    print(" ".join(out))         # e.g. "cat sat dog ran dog"
+    assert len(out) == 5
+</pre>
+<p>Every concept on this page appears in it: a weight table (matrices), softmax, sampling, cross-entropy lurking as "how good
+are these weights". The transformer just replaces the lookup table with a very good way to compute the logits.</p>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Run <code>gradient_descent.py</code>, then change the data to a different slope. Does <code>w</code> still converge?</li>
+  <li>In <code>softmax.py</code>, remove the <code>- m</code> and feed logits <code>[1000, 1001]</code>. What happens? (Overflow &mdash; that's why the max-subtraction exists.)</li>
+  <li>Extend <code>tiny_lm.py</code>: count how often "sat" follows "cat" over 1000 samples. Compare to the softmax probabilities.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Six ideas cover ~90% of the maths: vectors, dot product, matmul, softmax, cross-entropy, gradient descent.</li>
+  <li>Softmax turns scores into probabilities; cross-entropy punishes confident wrongness.</li>
+  <li>Gradient descent = measure error, nudge every weight downhill, repeat a lot.</li>
+  <li>Track shapes: <code>(m&times;n) @ (n&times;p) &rarr; (m&times;p)</code> is how you read architecture.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
