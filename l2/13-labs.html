@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 2 Labs | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 13 &middot; Level 2 Labs</h1>
+<p class="lead">Twelve hands-on labs, one or more per Level 2 page. Each has a goal, steps and a clear success criterion. Together
+they build the skills and the pieces you need for the capstone. Expect 10&ndash;15 hours in total.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">10&ndash;15 h total</span><span class="pill">Scala 3 &amp; Python</span></div>
+
+<h2>Setup</h2>
+<ul class="checklist">
+  <li>Scala via Coursier (<code>cs setup</code>): <code>scala-cli</code>, <code>sbt</code>, JDK 21.</li>
+  <li>Python 3.12+ with <code>uv</code>: <code>uv add httpx pydantic pytest hypothesis</code>.</li>
+  <li>A local model runner (page 11): Ollama with a small chat model and <code>nomic-embed-text</code>, or LM Studio.</li>
+  <li>Optional: an approved hosted model via your company gateway (page 03).</li>
+  <li>A git repo <code>ai-labs-l2/</code>. Commit after every lab.</li>
+</ul>
+
+<table>
+  <thead><tr><th>#</th><th>Lab</th><th>Page</th><th>Time</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Ticket triage chain with golden tests</td><td>01</td><td>60 min</td></tr>
+    <tr><td>2</td><td>Schema-enforced extraction with repair loop</td><td>02</td><td>60 min</td></tr>
+    <tr><td>3</td><td>Harden the LLM client</td><td>03</td><td>45 min</td></tr>
+    <tr><td>4</td><td>Add tools to the Store Assistant</td><td>04</td><td>60 min</td></tr>
+    <tr><td>5</td><td>Measure semantic search (hit@3)</td><td>05</td><td>45 min</td></tr>
+    <tr><td>6</td><td>Policy RAG with abstention</td><td>06</td><td>60 min</td></tr>
+    <tr><td>7</td><td>Spec &rarr; plan &rarr; tests &rarr; agent</td><td>07</td><td>90 min</td></tr>
+    <tr><td>8</td><td>A skill that passes its trigger set</td><td>08</td><td>60 min</td></tr>
+    <tr><td>9</td><td>Metals MCP + one external server</td><td>09</td><td>45 min</td></tr>
+    <tr><td>10</td><td>Kill the mutants</td><td>10</td><td>60 min</td></tr>
+    <tr><td>11</td><td>Local model bake-off</td><td>11</td><td>45 min</td></tr>
+    <tr><td>12</td><td>Text-to-SQL with guard and evaluation</td><td>12</td><td>60 min</td></tr>
+  </tbody>
+</table>
+
+<h2>Lab 1 &middot; Ticket triage chain with golden tests</h2>
+<ol>
+  <li>Write 30 realistic support tickets (pickup, returns, payment, product, other), with 5 deliberately ambiguous.</li>
+  <li>Build the chain from page 01: classify (label only) &rarr; count in code &rarr; summarise the top issue.</li>
+  <li>Store the classify prompt in <code>prompts/classify.v1.md</code>. Write <code>golden.jsonl</code> with expected labels.</li>
+  <li>Add self-consistency (5 votes). Route agreement below 0.6 to "needs human".</li>
+</ol>
+<p><b>Success:</b> golden accuracy &ge; 90% on the clear tickets, and the ambiguous ones are flagged for a human.</p>
+
+<h2>Lab 2 &middot; Schema-enforced extraction with repair loop</h2>
+<ol>
+  <li>Use <code>ReturnExtraction.scala</code> or <code>return_extraction.py</code> (page 02) with a real model and <code>response_format</code>.</li>
+  <li>Write 10 messy customer emails: missing order ID, two items, an unknown product, a non-English sentence.</li>
+  <li>Log how many needed a retry and which validation errors occurred.</li>
+</ol>
+<p><b>Success:</b> no invented order IDs (null when missing), unknown SKUs rejected, and every result either valid or escalated.</p>
+
+<h2>Lab 3 &middot; Harden the LLM client</h2>
+<ol>
+  <li>Run <code>LlmClient.scala</code> (page 03) against a local model.</li>
+  <li>Stop the server mid-run, then use a wrong model name, then set <code>max_tokens</code> to 5. Observe the retries, the non-retried 404, and the <code>finish_reason=length</code> warning.</li>
+  <li>Add a concurrency limit (at most 4 in-flight calls) and a total-deadline parameter.</li>
+</ol>
+<p><b>Success:</b> each failure type produces the correct behaviour and a clear log line, with no secrets logged.</p>
+
+<h2>Lab 4 &middot; Add tools to the Store Assistant</h2>
+<ol>
+  <li>Extend <code>StoreAssistant.scala</code> (page 04) with <code>get_product_info(sku)</code> and <code>propose_transfer(sku, from, to, qty)</code>. The latter only returns a proposal.</li>
+  <li>Validate arguments in code: known SKUs and stores, quantity 1&ndash;10.</li>
+  <li>Run <code>--live</code> with a local model. Ask a multi-step question that needs two tools.</li>
+</ol>
+<p><b>Success:</b> correct tool sequence, invalid arguments return errors the model explains, and no transfer is "performed".</p>
+
+<h2>Lab 5 &middot; Measure semantic search</h2>
+<ol>
+  <li>Grow the catalogue in <code>ProductSearch.scala</code> to 30 products.</li>
+  <li>Write 20 queries with the expected SKU. Compute hit@1 and hit@3 for the toy embedder, a real embedder, and hybrid (RRF).</li>
+</ol>
+<p><b>Success:</b> a small results table in your notes showing which approach wins and why.</p>
+
+<h2>Lab 6 &middot; Policy RAG with abstention</h2>
+<ol>
+  <li>Write 3 short policy documents (returns, pickup, price matching) with headings.</li>
+  <li>Use <code>PolicyRag.scala</code> with real embeddings and a real model. Check citations in code.</li>
+  <li>Golden set: 15 answerable and 5 unanswerable questions. Measure hit@3, citation validity and abstention.</li>
+</ol>
+<p><b>Success:</b> all 5 unanswerable questions abstain, and no answer cites a non-existent source.</p>
+
+<h2>Lab 7 &middot; Spec &rarr; plan &rarr; tests &rarr; agent</h2>
+<ol>
+  <li>Write a spec (page 07 template) for a small feature in a sample Scala service, e.g. "orders held over 7 days are cancelled".</li>
+  <li>Get a plan, edit it, write or approve tests first, and commit them.</li>
+  <li>Let the agent implement with "don't modify tests". Do the break-it-three-ways check.</li>
+</ol>
+<p><b>Success:</b> all tests green, test files unchanged in the implementation commit, and all 3 deliberate bugs caught.</p>
+
+<h2>Lab 8 &middot; A skill that passes its trigger set</h2>
+<ol>
+  <li>Build <code>scala-munit-suite</code> (page 08) with <code>check_suite.py</code>.</li>
+  <li>Write 12 trigger prompts (8 should trigger, 4 near-misses). Run each in a fresh session.</li>
+  <li>Iterate on the description until at least 11/12 behave correctly.</li>
+</ol>
+
+<h2>Lab 9 &middot; Metals MCP + one external server</h2>
+<ol>
+  <li>Enable Metals MCP. Ask the agent to inspect a type and compile a module through the tools.</li>
+  <li>Add one external server (e.g. Playwright MCP, pinned version) via <code>.vscode/mcp.json</code>, with any secret supplied through <code>inputs</code>.</li>
+  <li>Run the trust checklist for that server and note the result.</li>
+</ol>
+
+<h2>Lab 10 &middot; Kill the mutants</h2>
+<ol>
+  <li>Run the ScalaCheck suite from page 10. Change rounding to <code>DOWN</code>. Does a property fail? If not, add one that does.</li>
+  <li>Run Stryker4s (Scala) or mutmut (Python) on a small module, or do a manual mutation test with your agent.</li>
+  <li>Ask AI to write tests that kill the survivors, deriving expectations from the spec.</li>
+</ol>
+<p><b>Success:</b> mutation score improves, and you can explain what each new test protects.</p>
+
+<h2>Lab 11 &middot; Local model bake-off</h2>
+<ol>
+  <li>Install two local models of different sizes (page 11).</li>
+  <li>Run <code>bench.py</code>, then run labs 1, 2 and 4 against each.</li>
+  <li>Record speed, pass rates and tool-calling reliability.</li>
+</ol>
+
+<h2>Lab 12 &middot; Text-to-SQL with guard and evaluation</h2>
+<ol>
+  <li>Extend <code>sql_eval.py</code> (page 12) with 10 golden questions on the sample schema.</li>
+  <li>Generate SQL with a model using the strong prompt (schema + semantics + assumptions).</li>
+  <li>Run every candidate through <code>SqlGuard</code> logic (port it to Python or call the Scala version), then evaluate.</li>
+</ol>
+<p><b>Success:</b> execution accuracy reported, and every failure explained (wrong filter, join, definition, or a guard rejection).</p>
+
+<p>When you finish, go to the <a href="14-capstone-store-assistant.html">capstone</a>. Most of its pieces come from these labs.</p>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

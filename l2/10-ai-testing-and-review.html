@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI-Assisted Testing &amp; Code Review | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 10 &middot; AI-Assisted Testing &amp; Code Review</h1>
+<p class="lead">AI writes tests in seconds, but many of them prove nothing. This page teaches you to get <b>strong</b> tests
+from AI: property-based tests, mutation testing to measure test strength, realistic test data, and a review process where
+AI catches issues without becoming a rubber stamp.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">55 min</span><span class="pill">Tracks 5, 12</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Spot weak AI-generated tests and ask for better ones.</li>
+  <li>Write property-based tests with ScalaCheck (via MUnit) and Hypothesis, with AI's help.</li>
+  <li>Use mutation testing to measure whether tests actually catch bugs.</li>
+  <li>Run an effective AI-assisted code review, locally and in CI.</li>
+</ul></div>
+
+<h2>Why AI tests are often weak</h2>
+<table>
+  <thead><tr><th>Weak pattern</th><th>Example</th><th>Ask instead</th></tr></thead>
+  <tbody>
+    <tr><td><b>Mirror tests</b></td><td>Re-implements the function's formula in the assertion</td><td>"Use hand-computed expected values"</td></tr>
+    <tr><td><b>Happy path only</b></td><td>One normal input, no edges</td><td>"Cover empty, boundary, invalid, large and unicode inputs"</td></tr>
+    <tr><td><b>Snapshot of current behaviour</b></td><td>Asserts whatever the (possibly buggy) code returns</td><td>"Derive expectations from the spec, not from running the code"</td></tr>
+    <tr><td><b>Over-mocking</b></td><td>Mocks the thing under test or every collaborator</td><td>"Use real pure functions; fake only I/O boundaries"</td></tr>
+    <tr><td><b>Assertion-free</b></td><td>"Doesn't throw" is the only check</td><td>"Every test asserts a concrete outcome"</td></tr>
+  </tbody>
+</table>
+<div class="callout tip"><span class="c-title">The best test prompt includes the spec</span>
+Give the AI the <em>requirements</em> (spec, acceptance criteria, policy) along with the code, and ask it to test the
+requirements. Tests derived from code alone tend to encode its bugs.</div>
+
+<h2>Property-based testing</h2>
+<p>Instead of a few examples, you state <b>properties</b> that must hold for <em>all</em> inputs, and a library generates hundreds of
+random cases, shrinking any failure to a minimal example. AI is very good at proposing properties. You judge which are true.</p>
+<table>
+  <thead><tr><th>Property type</th><th>Retail example</th></tr></thead>
+  <tbody>
+    <tr><td>Invariant</td><td>A discounted price is never negative and never above the original</td></tr>
+    <tr><td>Round-trip</td><td><code>decode(encode(order)) == order</code></td></tr>
+    <tr><td>Idempotence</td><td>Applying the same refund twice leaves the balance as after once</td></tr>
+    <tr><td>Commutativity / order-independence</td><td>Basket total doesn't depend on item order</td></tr>
+    <tr><td>Oracle</td><td>A fast stock calculation equals a slow, obviously-correct one</td></tr>
+  </tbody>
+</table>
+<pre data-lang="text" data-title="Prompt">
+Here is `applyDiscount(priceCents: Long, percent: Int): Either[String, Long]` and its spec:
+percent must be 0..100; result is rounded half-up to the nearest cent; never negative.
+Propose 5 properties that should hold for all valid inputs and 2 for invalid inputs.
+Then write them with munit-scalacheck. Don't restate the implementation's formula in the properties.
+</pre>
+<pre data-lang="scala" data-title="Discount.test.scala  (run: scala-cli test .)" data-verify="discount">
+//> using scala 3
+//> using test.dep org.scalameta::munit-scalacheck:1.2.0
+import munit.ScalaCheckSuite
+import org.scalacheck.Prop.forAll
+import org.scalacheck.Gen
+
+class DiscountSuite extends ScalaCheckSuite:
+  val prices   = Gen.chooseNum(0L, 10000000L)        // up to 100,000.00
+  val percents = Gen.chooseNum(0, 100)
+
+  property("result is between 0 and the original price"):
+    forAll(prices, percents) { (p, pct) =>
+      Discount.apply(p, pct).exists(r => r >= 0 && r &lt;= p)
+    }
+
+  property("0% changes nothing, 100% makes it free"):
+    forAll(prices) { p =>
+      Discount.apply(p, 0) == Right(p) && Discount.apply(p, 100) == Right(0L)
+    }
+
+  property("a bigger discount never gives a higher price"):
+    forAll(prices, percents, percents) { (p, a, b) =>
+      val (lo, hi) = (a min b, a max b)
+      (for x &lt;- Discount.apply(p, lo); y &lt;- Discount.apply(p, hi) yield y &lt;= x).getOrElse(false)
+    }
+
+  property("invalid percentages are rejected"):
+    forAll(prices, Gen.oneOf(Gen.chooseNum(-1000, -1), Gen.chooseNum(101, 1000))) { (p, bad) =>
+      Discount.apply(p, bad).isLeft
+    }
+</pre>
+<pre data-lang="scala" data-title="Discount.scala" data-verify="discount">
+//> using scala 3
+object Discount:
+  def apply(priceCents: Long, percent: Int): Either[String, Long] =
+    if percent &lt; 0 || percent > 100 then Left(s"percent must be 0..100, got $percent")
+    else Right(priceCents - (BigDecimal(priceCents) * percent / 100).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong)
+</pre>
+<pre data-lang="python" data-title="test_discount.py  (uv add --dev pytest hypothesis)">
+from decimal import Decimal, ROUND_HALF_UP
+
+import pytest
+from hypothesis import given, strategies as st
+
+
+def apply_discount(price_cents: int, percent: int) -> int:
+    if not 0 &lt;= percent &lt;= 100:
+        raise ValueError("percent must be 0..100")
+    off = (Decimal(price_cents) * percent / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+    return price_cents - int(off)
+
+
+prices = st.integers(min_value=0, max_value=10_000_000)
+percents = st.integers(min_value=0, max_value=100)
+
+
+@given(prices, percents)
+def test_bounded(p: int, pct: int) -> None:
+    assert 0 &lt;= apply_discount(p, pct) &lt;= p
+
+
+@given(prices, percents, percents)
+def test_monotonic(p: int, a: int, b: int) -> None:
+    lo, hi = sorted((a, b))
+    assert apply_discount(p, hi) &lt;= apply_discount(p, lo)
+
+
+@given(prices, st.one_of(st.integers(max_value=-1), st.integers(min_value=101)))
+def test_rejects_invalid(p: int, bad: int) -> None:
+    with pytest.raises(ValueError):
+        apply_discount(p, bad)
+</pre>
+
+<h2>Mutation testing: are the tests any good?</h2>
+<p><b>Mutation testing</b> makes small deliberate bugs ("mutants") in your code, such as <code>&lt;</code> &rarr; <code>&lt;=</code>,
+<code>+</code> &rarr; <code>-</code>, or removing a condition, and runs your tests against each one. If the tests still pass, the
+mutant <em>survived</em>: you found a gap. The <b>mutation score</b> (killed / total) is a far better quality signal than line coverage.</p>
+<figure class="diagram">
+<svg viewBox="0 0 720 170" width="720" role="img" aria-label="Mutation testing flow">
+  <defs><marker id="m10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="55" width="130" height="56" rx="10"/><text class="d-text" x="75" y="88" text-anchor="middle">Your code</text>
+  <rect class="d-box2" x="180" y="55" width="150" height="56" rx="10"/><text class="d-text" x="255" y="80" text-anchor="middle">Mutants</text><text class="d-small" x="255" y="98" text-anchor="middle">&lt; &#8594; &lt;=, + &#8594; -, &#8230;</text>
+  <rect class="d-box3" x="370" y="55" width="130" height="56" rx="10"/><text class="d-text" x="435" y="88" text-anchor="middle">Run tests</text>
+  <rect class="d-box3" x="540" y="15" width="170" height="50" rx="10"/><text class="d-text" x="625" y="45" text-anchor="middle">Tests fail &#8594; killed &#10003;</text>
+  <rect class="d-box4" x="540" y="100" width="170" height="50" rx="10"/><text class="d-text" x="625" y="130" text-anchor="middle">Tests pass &#8594; survived &#9888;</text>
+  <path class="d-line" d="M140 83 H176" marker-end="url(#m10)"/><path class="d-line" d="M330 83 H366" marker-end="url(#m10)"/>
+  <path class="d-line" d="M500 75 L536 45" marker-end="url(#m10)"/><path class="d-line" d="M500 92 L536 122" marker-end="url(#m10)"/>
+</svg>
+</figure>
+<table>
+  <thead><tr><th>Language</th><th>Tool</th><th>Typical use</th></tr></thead>
+  <tbody>
+    <tr><td>Scala</td><td><b>Stryker4s</b> (sbt plugin)</td><td><code>sbt stryker</code> on a module; HTML report of survivors</td></tr>
+    <tr><td>Python</td><td><b>mutmut</b>, cosmic-ray</td><td><code>mutmut run</code> then <code>mutmut results</code></td></tr>
+  </tbody>
+</table>
+<p><b>AI's role:</b> paste the surviving mutants and ask "write the minimal tests that kill these mutants, deriving expectations
+from the spec". This is one of the highest-value uses of AI in testing. Mutation runs can be slow, so run them per module or nightly.</p>
+<div class="callout note"><span class="c-title">No tool? Do it by hand</span>
+Ask the agent: "Introduce 5 plausible bugs into <code>Discount.scala</code>, one at a time, run the tests after each, report which
+survived, then revert." It is a quick, manual mutation test. Always confirm the code is restored (<code>git diff</code>).</div>
+
+<h2>Test data and fixtures</h2>
+<ul>
+  <li><b>Realistic but fake:</b> "Generate 20 realistic orders as JSON: mixed SKUs, some pickups, some returns, edge cases (zero-price items, max quantity, unicode names)."</li>
+  <li><b>Never real customer data</b> in prompts or fixtures. Ask for synthetic data that matches the schema.</li>
+  <li><b>Generators over fixtures</b>: ask the AI to write ScalaCheck <code>Gen</code>s or Hypothesis strategies for your domain types, then reuse them everywhere.</li>
+  <li><b>Flaky tests:</b> paste the test, the failure output from several runs, and the code. Ask for causes ranked by likelihood (time, ordering, shared state, concurrency) and how to make it deterministic.</li>
+</ul>
+
+<h2>AI-assisted code review</h2>
+<h3>Locally, before you open the PR</h3>
+<ol class="steps">
+  <li><b>Self-review with a fresh reviewer agent</b> (L2 page 08) on <code>git diff main</code>.</li>
+  <li><b>Targeted passes</b> instead of one generic review: security, concurrency, error handling, performance, API compatibility. Each is a separate prompt with a checklist.</li>
+  <li><b>Fix or consciously dismiss</b> each finding. Note dismissals in the PR description.</li>
+</ol>
+<pre data-lang="text" data-title="Targeted review prompt: concurrency (Scala / Cats Effect)">
+Review this diff ONLY for concurrency and resource-safety issues in Cats Effect code:
+blocking calls on the compute pool, missing `IO.blocking`, unbounded parallelism (`parTraverse` on
+large lists), leaked resources (not using `Resource`), shared mutable state, race conditions on Ref,
+missing timeouts on external calls. For each finding: file:line, why it matters, a concrete fix.
+If you find nothing, say so. Do not comment on style.
+</pre>
+<h3>In CI</h3>
+<ul>
+  <li>Many platforms offer AI review bots that comment on PRs. Treat their comments as <b>suggestions from a junior reviewer</b>: often useful, sometimes wrong, never a substitute for an approving human.</li>
+  <li>Put your team's review checklist in the bot's instructions (or the repo's AGENTS.md / review rules) so it reviews against <em>your</em> standards.</li>
+  <li>Measure: track how many bot comments lead to changes. Tune or switch off noisy categories.</li>
+</ul>
+<div class="callout warn"><span class="c-title">Keep humans accountable</span>
+Never let "the AI reviewed it" replace a human approval, especially for security, money, data migrations and public APIs.
+Automation bias (L1 page 14) is strongest in reviews.</div>
+
+<div class="callout tip"><span class="c-title">Try it (40 min)</span>
+<ol>
+  <li>Run the ScalaCheck suite (<code>scala-cli test .</code> with both files). Then break the rounding (use <code>DOWN</code>). Does any property catch it? Add one that does.</li>
+  <li>Run the Hypothesis tests. Ask AI for one more property and check whether it is actually true.</li>
+  <li>Do a manual mutation test with your agent on one real class at work-like code. Write tests for the survivors.</li>
+  <li>Run a targeted concurrency or security review on a recent diff.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Give AI the spec, not just the code, or tests will encode bugs.</li>
+  <li>Property-based tests (ScalaCheck, Hypothesis) catch the edge cases AI and humans miss.</li>
+  <li>Mutation testing measures test strength. Feed survivors back to AI to write killer tests.</li>
+  <li>Review with targeted checklists and fresh-context agents. Humans stay accountable.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

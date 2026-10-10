@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>AI for Data Engineering (Spark/Scala) | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 12 &middot; AI for Data Engineering (Spark/Scala)</h1>
+<p class="lead">Data work is full of tasks AI does well: writing SQL and Spark code, explaining query plans, generating
+data-quality checks, documenting tables. It is also full of ways to be confidently wrong, such as a missing filter or a
+double-counting join. This page shows how to use AI for data engineering with <b>validation built in</b>.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">55 min</span><span class="pill">Track 16 &middot; Data &amp; analytics</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Prompt for correct SQL and Spark code by giving schema, semantics and examples.</li>
+  <li>Validate AI-generated SQL: guard rails, sample checks and golden-question evaluation.</li>
+  <li>Use AI to read Spark physical plans and fix performance problems.</li>
+  <li>Generate data-quality checks and use LLMs inside pipelines responsibly.</li>
+</ul></div>
+
+<h2>Context is everything: schema + semantics</h2>
+<p>The model can't see your warehouse. Give it the <b>schema</b>, the <b>meaning</b> of columns, and the <b>business definitions</b>.
+Most wrong SQL comes from ambiguous definitions, not syntax.</p>
+<pre data-lang="text" data-title="A strong text-to-SQL prompt">
+Dialect: Spark SQL 3.5. Tables:
+  orders(order_id STRING, customer_id STRING, store_id STRING, status STRING, created_at TIMESTAMP,
+         ready_at TIMESTAMP, picked_up_at TIMESTAMP, total_cents BIGINT)
+  stores(store_id STRING, name STRING, region STRING)
+Semantics:
+  - status in ('PLACED','READY_FOR_PICKUP','PICKED_UP','CANCELLED','REFUNDED')
+  - A "no-show" is an order that reached READY_FOR_PICKUP and was CANCELLED without picked_up_at.
+  - Times are UTC; report by store local date is NOT required.
+  - Exclude test stores: store_id starting with 'TEST-'.
+Question: no-show rate per region for the last 30 days, highest first.
+Return: the SQL, then a list of assumptions you made.
+</pre>
+<div class="callout tip"><span class="c-title">Ask for assumptions every time</span>
+"List your assumptions" surfaces the hidden decisions (time zones, refunds, test data, duplicates). Those are exactly the
+places where generated SQL is quietly wrong.</div>
+
+<h2>Validating generated SQL</h2>
+<table>
+  <thead><tr><th>Layer</th><th>What it catches</th></tr></thead>
+  <tbody>
+    <tr><td><b>1. Read-only credentials</b></td><td>Any destructive statement. This is the real security boundary.</td></tr>
+    <tr><td><b>2. Static guard</b> (code below)</td><td>Non-SELECT statements, unknown tables, missing LIMIT for ad-hoc queries</td></tr>
+    <tr><td><b>3. EXPLAIN / dry run</b></td><td>Syntax errors, full scans, cartesian joins, huge cost estimates</td></tr>
+    <tr><td><b>4. Sanity checks on results</b></td><td>Row counts vs known totals, no duplicate keys, sums that reconcile</td></tr>
+    <tr><td><b>5. Golden questions</b></td><td>Systematic accuracy: does it match reference answers? (Python below)</td></tr>
+  </tbody>
+</table>
+<pre data-lang="scala" data-title="SqlGuard.scala: a defence-in-depth check for AI-written ad-hoc SQL">
+//> using scala 3
+
+/** A lightweight guard, NOT a SQL parser. Always also use a read-only database user. */
+object SqlGuard:
+  private val Forbidden = Set("INSERT", "UPDATE", "DELETE", "MERGE", "DROP", "ALTER", "TRUNCATE",
+                              "CREATE", "GRANT", "REVOKE", "CALL", "COPY", "EXEC")
+  private val TableRef  = """(?i)\b(?:FROM|JOIN)\s+([A-Za-z_][\w.]*)""".r
+  private val CteName   = """(?i)\b([A-Za-z_]\w*)\s+AS\s*\(""".r
+
+  def check(sql: String, allowedTables: Set[String], maxRows: Int = 1000): Either[List[String], String] =
+    val stripped = sql.replaceAll("(?s)/\\*.*?\\*/", " ").replaceAll("--[^\\n]*", " ").trim.stripSuffix(";").trim
+    val upper    = stripped.toUpperCase
+    val words    = upper.split("\\W+").toSet
+    val ctes     = CteName.findAllMatchIn(stripped).map(_.group(1).toLowerCase).toSet
+    val tables   = TableRef.findAllMatchIn(stripped).map(_.group(1).toLowerCase).toSet -- ctes
+    val errors =
+      Option.when(!(upper.startsWith("SELECT") || upper.startsWith("WITH")))("only SELECT/WITH queries are allowed").toList ++
+      Option.when(stripped.contains(";"))("multiple statements are not allowed").toList ++
+      (words intersect Forbidden).toList.sorted.map(k => s"forbidden keyword: $k") ++
+      (tables -- allowedTables.map(_.toLowerCase)).toList.sorted.map(t => s"unknown table: $t")
+    if errors.nonEmpty then Left(errors)
+    else if """(?i)\bLIMIT\s+\d+\s*$""".r.findFirstIn(stripped).isDefined then Right(stripped)
+    else Right(s"$stripped\nLIMIT $maxRows")
+
+@main def sqlGuardDemo(): Unit =
+  val allowed = Set("orders", "stores")
+  List(
+    """SELECT s.region, COUNT(*) AS n FROM orders o JOIN stores s ON o.store_id = s.store_id GROUP BY s.region""",
+    """WITH recent AS (SELECT * FROM orders WHERE created_at > current_date - 30) SELECT COUNT(*) FROM recent LIMIT 1""",
+    """DELETE FROM orders WHERE status = 'CANCELLED'""",
+    """SELECT * FROM customers_pii; DROP TABLE orders"""
+  ).foreach { q =>
+    println(s"\n$q\n  -> ${SqlGuard.check(q, allowed).fold(e => "REJECTED: " + e.mkString(", "), ok => "OK:\n" + ok)}")
+  }
+</pre>
+
+<h3>Evaluate text-to-SQL with golden questions</h3>
+<p>Compare <b>results</b>, not SQL text: two different queries can both be right. This harness uses an in-memory SQLite database
+so it runs anywhere. In practice, run it against a small, fixed snapshot of your warehouse.</p>
+<pre data-lang="python" data-title="sql_eval.py: execution-accuracy evaluation" data-verify="run">
+import sqlite3
+
+SCHEMA = """
+CREATE TABLE stores(store_id TEXT PRIMARY KEY, name TEXT, region TEXT);
+CREATE TABLE orders(order_id TEXT PRIMARY KEY, store_id TEXT, status TEXT, total_cents INTEGER);
+INSERT INTO stores VALUES ('RIV','Riverside','North'),('CEN','Central','North'),('AIR','Airport','South'),('TEST-1','Test','North');
+INSERT INTO orders VALUES
+ ('o1','RIV','PICKED_UP',12000),('o2','RIV','CANCELLED',5000),('o3','CEN','PICKED_UP',8000),
+ ('o4','AIR','PICKED_UP',30000),('o5','AIR','REFUNDED',30000),('o6','TEST-1','PICKED_UP',999999);
+"""
+
+GOLDEN = [  # (question, reference SQL written and reviewed by a human)
+    ("Revenue from picked-up orders per region, excluding test stores",
+     "SELECT s.region, SUM(o.total_cents) FROM orders o JOIN stores s USING(store_id) "
+     "WHERE o.status='PICKED_UP' AND s.store_id NOT LIKE 'TEST-%' GROUP BY s.region"),
+    ("Number of cancelled orders",
+     "SELECT COUNT(*) FROM orders WHERE status='CANCELLED'"),
+]
+
+# What a model produced (paste real model output here). The first one forgot to exclude test stores.
+CANDIDATES = [
+    "SELECT s.region, SUM(o.total_cents) FROM orders o JOIN stores s ON o.store_id=s.store_id "
+    "WHERE o.status='PICKED_UP' GROUP BY s.region",
+    "SELECT COUNT(order_id) FROM orders WHERE status = 'CANCELLED'",
+]
+
+
+def rows(db: sqlite3.Connection, sql: str) -> list[tuple]:
+    return sorted(db.execute(sql).fetchall())
+
+
+def main() -> None:
+    db = sqlite3.connect(":memory:")
+    db.executescript(SCHEMA)
+    correct = 0
+    for (question, ref), cand in zip(GOLDEN, CANDIDATES):
+        try:
+            ok = rows(db, cand) == rows(db, ref)
+        except sqlite3.Error as e:
+            ok, question = False, f"{question} (error: {e})"
+        correct += ok
+        print(f"{'PASS' if ok else 'FAIL'}  {question}")
+        if not ok:
+            print(f"      expected {rows(db, ref)}\n      got      {rows(db, cand)}")
+    print(f"\nexecution accuracy: {correct}/{len(GOLDEN)}")
+
+
+if __name__ == "__main__":
+    main()
+</pre>
+
+<h2>Spark with AI</h2>
+<h3>Writing Spark code</h3>
+<ul>
+  <li>State <b>Spark version and language</b>. Spark 3.5 and 4.x publish Scala 2.13 artefacts. Scala 3 projects can use them through the 2.13 compatibility mode with the <b>DataFrame API</b>. Typed <code>Dataset[T]</code> encoders rely on Scala 2 reflection, so check community libraries if you need them in Scala 3.</li>
+  <li>Ask for <b>built-in functions only</b> (<code>org.apache.spark.sql.functions</code>) and no UDFs unless necessary. Built-ins are optimised and visible to the planner.</li>
+  <li>Ask for a <b>small local test</b> with a tiny DataFrame for every transformation.</li>
+</ul>
+<pre data-lang="scala" data-title="NoShowRate.scala: Spark DataFrame API (example; needs a Spark dependency)" data-verify="skip">
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.*
+
+object NoShowRate:
+  /** No-show = reached READY_FOR_PICKUP, then CANCELLED without pickup. Test stores excluded. */
+  def compute(orders: DataFrame, stores: DataFrame): DataFrame =
+    orders
+      .filter(col("ready_at").isNotNull && !col("store_id").startsWith("TEST-"))
+      .withColumn("no_show", (col("status") === "CANCELLED" && col("picked_up_at").isNull).cast("int"))
+      .join(broadcast(stores.select("store_id", "region")), Seq("store_id"))
+      .groupBy("region")
+      .agg(count(lit(1)).as("ready_orders"), sum("no_show").as("no_shows"))
+      .withColumn("no_show_rate", round(col("no_shows") / col("ready_orders"), 4))
+      .orderBy(desc("no_show_rate"))
+</pre>
+<h3>Let AI read the plan</h3>
+<p>Physical plans are long and cryptic, and models are good at reading them. Paste the output of
+<code>df.explain("formatted")</code> (plus data sizes) and ask:</p>
+<pre data-lang="text">
+Here is a Spark physical plan and approximate table sizes (orders 2B rows, stores 900 rows).
+1) Explain in plain words what Spark does, step by step.
+2) Identify expensive operations (shuffles, sort-merge joins, skew, full scans, missing pruning).
+3) Suggest concrete changes (broadcast hints, partition filters, column pruning, AQE settings), with expected impact.
+</pre>
+<table>
+  <thead><tr><th>Common finding</th><th>Typical fix</th></tr></thead>
+  <tbody>
+    <tr><td>SortMergeJoin with a tiny dimension table</td><td><code>broadcast(stores)</code></td></tr>
+    <tr><td>No partition filter on a date-partitioned table</td><td>Filter on the partition column early</td></tr>
+    <tr><td>Skewed key (one huge store)</td><td>Enable AQE skew-join handling, or salt the key</td></tr>
+    <tr><td>Python/Scala UDF in a hot path</td><td>Replace with built-in functions</td></tr>
+    <tr><td><code>collect()</code> on large data</td><td>Aggregate in Spark, write results to a table</td></tr>
+  </tbody>
+</table>
+
+<h2>Data-quality checks</h2>
+<p>Give the AI a schema and a sample (synthetic or anonymised), and ask it to propose checks. Review them, because the AI doesn't
+know which anomalies are normal for your business.</p>
+<pre data-lang="text">
+For the orders table (schema + 20 sample rows below), propose data-quality checks grouped as:
+completeness (nulls), validity (allowed values, ranges), uniqueness (keys), consistency
+(picked_up_at >= ready_at; PICKED_UP implies picked_up_at not null), freshness (max(created_at) within 2h).
+Write each as a SQL query that returns violating rows, plus a severity (block / warn).
+</pre>
+
+<h2>LLMs inside pipelines</h2>
+<p>Sometimes the pipeline itself calls a model, for example to classify support tickets or extract attributes from product descriptions.</p>
+<ul class="checklist">
+  <li><b>Small model + structured output</b> (page 02) for classification and extraction at volume.</li>
+  <li><b>Batch and cache:</b> use provider batch APIs or local models, and cache by input hash so re-runs don't re-pay.</li>
+  <li><b>Idempotent and versioned:</b> store model + prompt version with each result, so you can re-process when they change.</li>
+  <li><b>Quality gates:</b> sample outputs for human review. Track the label distribution and alert on drift.</li>
+  <li><b>Cost estimate first:</b> rows &times; average tokens &times; price. A 10-million-row backfill can be expensive.</li>
+  <li><b>Privacy:</b> minimise and redact personal data before sending it to any model.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (40 min)</span>
+<ol>
+  <li>Run <code>SqlGuard.scala</code>. Add a test case that tries to sneak in a forbidden keyword inside a CTE.</li>
+  <li>Run <code>sql_eval.py</code>, then ask a model (with the schema and semantics) to answer the two golden questions. Paste its SQL into <code>CANDIDATES</code> and evaluate.</li>
+  <li>Take a real (or sample) Spark plan and ask AI to explain it using the prompt above. Verify one suggestion by re-running <code>explain</code>.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Give schema, semantics and business definitions, and always ask for assumptions.</li>
+  <li>Layered validation: read-only credentials, static guard, EXPLAIN, result sanity checks, golden questions.</li>
+  <li>Evaluate text-to-SQL by comparing results, not SQL text.</li>
+  <li>For Spark: built-in functions, small local tests, and let AI read <code>explain("formatted")</code>.</li>
+  <li>LLMs in pipelines need structured output, batching, caching, versioning, cost estimates and privacy controls.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

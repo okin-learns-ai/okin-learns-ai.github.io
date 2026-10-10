@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Capstone: Store Assistant | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 14 &middot; Capstone: the Store Assistant</h1>
+<p class="lead">Put Level 2 together into one working application: an assistant for retail store staff that answers
+<b>order and stock questions with tools</b>, <b>policy questions with RAG</b>, and <b>"what should I recommend?" questions with
+semantic search</b>, with grounding, guardrails, tests and an evaluation set. A complete runnable Scala 3 starter is included.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">6&ndash;10 h project</span><span class="pill">All Level 2 tracks</span></div>
+
+<div class="objectives"><h3>By the end of this capstone you will have</h3>
+<ul>
+  <li>A routed assistant combining tool calling, RAG and semantic search.</li>
+  <li>Answers grounded in facts from tools and documents, with sources.</li>
+  <li>Guardrails: bounded loops, validated inputs, no invented numbers, a fallback when AI is unavailable.</li>
+  <li>Unit tests plus a golden evaluation set you can re-run on every change.</li>
+</ul></div>
+
+<h2>Architecture</h2>
+<figure class="diagram">
+<svg viewBox="0 0 760 320" width="760" role="img" aria-label="Store Assistant architecture">
+  <defs><marker id="c14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-arrow"/></marker></defs>
+  <rect class="d-box"  x="10"  y="135" width="110" height="50" rx="10"/><text class="d-text" x="65" y="165" text-anchor="middle">Staff question</text>
+  <rect class="d-box2" x="150" y="125" width="120" height="70" rx="10"/><text class="d-title" x="210" y="152" text-anchor="middle">Router</text><text class="d-small" x="210" y="172" text-anchor="middle">intent + entities</text>
+  <rect class="d-box3" x="320" y="20"  width="180" height="60" rx="10"/><text class="d-text" x="410" y="45" text-anchor="middle">Tools (page 04)</text><text class="d-small" x="410" y="64" text-anchor="middle">orders, stock</text>
+  <rect class="d-box3" x="320" y="130" width="180" height="60" rx="10"/><text class="d-text" x="410" y="155" text-anchor="middle">RAG (page 06)</text><text class="d-small" x="410" y="174" text-anchor="middle">store policies</text>
+  <rect class="d-box3" x="320" y="240" width="180" height="60" rx="10"/><text class="d-text" x="410" y="265" text-anchor="middle">Search (page 05)</text><text class="d-small" x="410" y="284" text-anchor="middle">product catalogue</text>
+  <rect class="d-box4" x="540" y="120" width="100" height="80" rx="10"/><text class="d-title" x="590" y="152" text-anchor="middle">Grounded</text><text class="d-small" x="590" y="170" text-anchor="middle">facts + sources</text>
+  <rect class="d-box2" x="660" y="120" width="90" height="80" rx="10"/><text class="d-title" x="705" y="152" text-anchor="middle">Answer</text><text class="d-small" x="705" y="170" text-anchor="middle">LLM or template</text>
+  <path class="d-line" d="M120 160 H146" marker-end="url(#c14)"/>
+  <path class="d-line" d="M270 145 L316 55" marker-end="url(#c14)"/><path class="d-line" d="M270 160 H316" marker-end="url(#c14)"/><path class="d-line" d="M270 175 L316 265" marker-end="url(#c14)"/>
+  <path class="d-line" d="M500 50 L536 140" marker-end="url(#c14)"/><path class="d-line" d="M500 160 H536" marker-end="url(#c14)"/><path class="d-line" d="M500 270 L536 180" marker-end="url(#c14)"/>
+  <path class="d-line" d="M640 160 H656" marker-end="url(#c14)"/>
+</svg>
+<figcaption>The model only phrases the answer from the grounded facts. Numbers, statuses and policy text always come from tools and documents.</figcaption>
+</figure>
+
+<h2>Milestones</h2>
+<ol class="steps">
+  <li><b>Run the starter</b> below offline. Read every part and map it to Level 2 pages.</li>
+  <li><b>Tests:</b> MUnit tests for the router, each fact gatherer, and the guard that rejects unknown order IDs.</li>
+  <li><b>Golden set:</b> 25 questions (orders, stock, policy, recommendations, unanswerable) with expected intent and key facts. Write a runner that prints accuracy.</li>
+  <li><b>Live mode:</b> run with <code>--live</code> against a local model (page 11) or an approved hosted model (page 03). Compare the answers with the template answers.</li>
+  <li><b>Upgrade retrieval:</b> replace the toy embedder with real embeddings (page 05). Re-run the golden set.</li>
+  <li><b>LLM router (stretch):</b> replace the keyword router with structured-output classification (page 02), keeping the keyword router as a fallback. Compare accuracy on the golden set.</li>
+  <li><b>Tool loop (stretch):</b> for multi-step questions ("is it in stock anywhere near Central?"), use the agent loop from page 04.</li>
+  <li><b>Review:</b> run a reviewer agent and a security pass (prompt injection via policy docs, data exposure). Fix the findings.</li>
+  <li><b>Write it up:</b> README with architecture, how to run, golden-set results, and known limitations.</li>
+</ol>
+
+<h2>The starter (Scala 3, runs offline)</h2>
+<pre data-lang="scala" data-title="StoreAssistantApp.scala  (offline: scala-cli StoreAssistantApp.scala | live: ... -- --live)">
+//> using scala 3
+//> using dep io.circe::circe-core:0.14.15
+//> using dep io.circe::circe-parser:0.14.15
+import io.circe.Json
+import io.circe.parser.parse
+import io.circe.syntax.*
+import java.net.URI
+import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+
+// ===================== Data (replace with real services) =====================
+final case class Product(sku: String, name: String, description: String)
+final case class Order(id: String, status: String, storeId: String, detail: String)
+final case class PolicyChunk(section: String, text: String)
+
+val Stores = List("RIVERSIDE", "CENTRAL", "AIRPORT")
+val Products = Vector(
+  Product("HEADPHONES", "Over-ear headphones", "noise cancelling headphones for flights and long travel"),
+  Product("EARBUDS",    "Sport earbuds",       "wireless earbuds for running jogging and gym, sweat resistant"),
+  Product("CHARGER",    "Car charger",         "usb-c car adapter for charging phones while driving in the car"),
+  Product("CASE",       "Rugged case",         "phone case with drop protection for when you drop your phone")
+)
+val Stock: Map[(String, String), Int] =
+  Map(("HEADPHONES", "RIVERSIDE") -> 3, ("EARBUDS", "CENTRAL") -> 6, ("CHARGER", "CENTRAL") -> 12).withDefaultValue(0)
+val Orders = Map(
+  "ORD-482913" -> Order("ORD-482913", "READY_FOR_PICKUP", "RIVERSIDE", "shelf B4"),
+  "ORD-500122" -> Order("ORD-500122", "IN_TRANSIT", "CENTRAL", "estimated ready 2026-10-10")
+)
+val Policies = Vector(
+  PolicyChunk("Returns > Standard",      "Most items can be returned within 14 days with a receipt or order ID."),
+  PolicyChunk("Returns > Opened audio",  "Opened headphones and earbuds can be returned within 14 days only if defective."),
+  PolicyChunk("Pickup > Holding period", "Pickup orders are held for 7 days, then cancelled and refunded."),
+  PolicyChunk("Pickup > Identification", "Customers must show the order confirmation and a photo ID matching the order name.")
+)
+
+// ===================== Retrieval (toy embedder; use real embeddings from page 05) =====================
+type Vec = Array[Double]
+def embed(text: String): Vec =
+  val v = new Array[Double](512)
+  text.toLowerCase.split("\\W+").filter(_.length > 2).foreach(w => v(math.floorMod(w.hashCode, 512)) += 1)
+  val n = math.sqrt(v.map(x => x * x).sum)
+  if n == 0 then v else v.map(_ / n)
+
+def topK[A](query: String, items: Vector[A], text: A => String, k: Int): Vector[(A, Double)] =
+  val q = embed(query)
+  items.map(a => a -> embed(text(a)).zip(q).map(_ * _).sum).filter(_._2 > 0).sortBy(-_._2).take(k)
+
+// ===================== Router =====================
+enum Intent:
+  case OrderStatus(orderId: String)
+  case StockCheck(sku: Option[String], store: Option[String])
+  case PolicyQuestion
+  case Recommend
+  case Unknown
+
+private val OrderIdRe = """ORD-\d{6}""".r
+private def has(q: String, words: String*): Boolean = words.exists(w => s" $q ".contains(s" $w "))
+
+def route(question: String): Intent =
+  val q = question.toLowerCase.replaceAll("[^a-z0-9 -]", " ")
+  val orderId = OrderIdRe.findFirstIn(question.toUpperCase)
+  if orderId.isDefined && !has(q, "return", "refund") then Intent.OrderStatus(orderId.get)
+  else if has(q, "stock", "available", "have") then
+    Intent.StockCheck(Products.map(_.sku).find(s => q.contains(s.toLowerCase)), Stores.find(s => q.contains(s.toLowerCase)))
+  else if has(q, "return", "refund", "policy", "hold", "held", "id", "identification") then Intent.PolicyQuestion
+  else if has(q, "recommend", "suggest", "need", "looking", "want") then Intent.Recommend
+  else Intent.Unknown
+
+// ===================== Grounding =====================
+final case class Grounded(intent: Intent, facts: List[String], sources: List[String])
+
+def gather(question: String): Grounded = route(question) match
+  case i @ Intent.OrderStatus(id) => Orders.get(id) match
+    case Some(o) => Grounded(i, List(s"Order ${o.id} is ${o.status} at ${o.storeId} (${o.detail})."), List("order-system"))
+    case None    => Grounded(i, List(s"No order $id was found. Check the ID with the customer."), List("order-system"))
+  case i @ Intent.StockCheck(Some(sku), store) =>
+    val wanted = store.toList.map(s => s"$sku at $s: ${Stock((sku, s))} in stock.")
+    val others = Stores.filter(s => !store.contains(s) && Stock((sku, s)) > 0).map(s => s"$s has ${Stock((sku, s))}.")
+    val facts  = wanted ++ (if others.isEmpty then List(s"No other store has $sku.") else List(s"Other stores: ${others.mkString(" ")}"))
+    Grounded(i, facts, List("inventory"))
+  case i @ Intent.StockCheck(None, _) =>
+    Grounded(i, List(s"Which product? Known SKUs: ${Products.map(_.sku).mkString(", ")}."), Nil)
+  case i @ Intent.PolicyQuestion =>
+    val hits = topK(question, Policies, c => s"${c.section} ${c.text}", 2)
+    Grounded(i, hits.toList.zipWithIndex.map { case ((c, _), n) => s"[${n + 1}] ${c.text}" }, hits.toList.map(_._1.section))
+  case i @ Intent.Recommend =>
+    val hits = topK(question, Products, p => s"${p.name} ${p.description}", 2)
+    Grounded(i, hits.toList.map((p, _) => s"${p.name} (${p.sku}): ${p.description}."), hits.toList.map(_._1.sku))
+  case Intent.Unknown => Grounded(Intent.Unknown, Nil, Nil)
+
+// ===================== Answer generation =====================
+type Generator = (String, Grounded) => String
+
+val templateGenerator: Generator = (_, g) =>
+  if g.facts.isEmpty then "I can help with order status, stock, store policies and product suggestions."
+  else g.facts.mkString(" ")
+
+def llmGenerator(base: String, model: String, key: Option[String]): Generator = (question, g) =>
+  if g.facts.isEmpty then templateGenerator(question, g)
+  else
+    val system = "You help retail store staff. Answer ONLY from the facts given. Keep [n] citations. " +
+      "Never invent numbers, statuses or policies. Max 3 sentences."
+    val user = s"Facts:\n${g.facts.mkString("\n")}\n\nQuestion: $question"
+    val body = Json.obj("model" -> model.asJson, "temperature" -> 0.asJson,
+      "messages" -> Json.arr(Json.obj("role" -> "system".asJson, "content" -> system.asJson),
+                             Json.obj("role" -> "user".asJson, "content" -> user.asJson))).noSpaces
+    val b = HttpRequest.newBuilder(URI.create(s"$base/chat/completions"))
+      .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body))
+    key.foreach(k => b.header("Authorization", s"Bearer $k"))
+    scala.util.Try(HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.ofString())).toOption
+      .filter(_.statusCode() == 200)
+      .flatMap(r => parse(r.body()).toOption)
+      .flatMap(_.hcursor.downField("choices").downN(0).downField("message").get[String]("content").toOption)
+      .getOrElse(templateGenerator(question, g) + "  (AI unavailable: showing raw facts)")
+
+// ===================== App =====================
+@main def storeAssistantApp(args: String*): Unit =
+  val generate =
+    if args.contains("--live") then llmGenerator(sys.env.getOrElse("LLM_BASE_URL", "http://localhost:11434/v1"),
+      sys.env.getOrElse("LLM_MODEL", "llama3.2"), sys.env.get("LLM_API_KEY"))
+    else templateGenerator
+  val questions = args.filterNot(_ == "--live").toList match
+    case Nil => List(
+      "Is order ORD-482913 ready?",
+      "Do we have earbuds in stock at Riverside?",
+      "Can a customer return opened earbuds they just don't like?",
+      "Customer is looking for something to charge the phone while driving",
+      "How long do we hold pickup orders?",
+      "Where is order ORD-999999?",
+      "What's the weather tomorrow?"
+    )
+    case qs => qs
+  questions.foreach { q =>
+    val g = gather(q)
+    println(s"\nQ: $q\n   intent : ${g.intent}\n   sources: ${if g.sources.isEmpty then "-" else g.sources.mkString(", ")}\n   A: ${generate(q, g)}")
+  }
+</pre>
+<p>Expected offline behaviour: order status from the order system, stock with alternatives (Riverside has no earbuds, but
+Central has 6), the "opened audio" policy for the returns question, the car charger as the top recommendation, a clear
+"not found" for an unknown order, and a polite scope message for the weather.</p>
+
+<h2>Golden evaluation set</h2>
+<pre data-lang="text" data-title="golden.tsv (excerpt): question, expected intent, must-contain">
+Is order ORD-482913 ready?                         OrderStatus     READY_FOR_PICKUP
+Do we have earbuds in stock at Riverside?         StockCheck      CENTRAL has 6
+Can they return opened earbuds they don't like?   PolicyQuestion  only if defective
+Something to charge the phone in the car          Recommend       CHARGER
+Where is order ORD-999999?                        OrderStatus     No order
+What's the weather tomorrow?                      Unknown         order status, stock
+</pre>
+<p>Write a small runner (Scala or Python) that loads the file, calls <code>gather</code> + the generator, and reports intent accuracy and
+must-contain pass rate. Keep it in CI so every change to prompts, models or retrieval is measured.</p>
+
+<h2>Quality and safety checklist</h2>
+<ul class="checklist">
+  <li>Numbers, statuses and policy text come only from tools and documents. The model only phrases them.</li>
+  <li>Unknown IDs and products produce clear "not found" answers, never guesses.</li>
+  <li>Live mode falls back to raw facts if the model is unavailable.</li>
+  <li>Policy documents are treated as data (delimited), and write actions don't exist yet. If you add them, use confirm-first.</li>
+  <li>No customer personal data in logs or prompts beyond what the answer needs.</li>
+  <li>Golden set results recorded in the README with model and prompt versions.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Python track</span>
+Prefer Python? Port the starter using pieces you already have: <code>store_assistant.py</code> (page 04), <code>product_search.py</code>
+(page 05) and <code>policy_rag.py</code> (page 06). The architecture is identical.</div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Real assistants route requests to the right capability: tools, RAG or search.</li>
+  <li>Ground first, generate second. The model phrases facts and never invents them.</li>
+  <li>Keep a deterministic fallback and a golden set, and measure every change.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

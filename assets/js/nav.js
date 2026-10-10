@@ -7,7 +7,7 @@ window.SITE = {
   subtitle: "Beginner \u2192 Expert",
   dedication: "For My Wife Okin",
   author: "Sanat",
-  version: "Phase 2 \u00b7 Level 2 in progress",
+  version: "Levels 1\u20132 complete",
   updated: "2026-10-08"
 };
 
@@ -45,12 +45,12 @@ window.NAV = [
     { n: "07", title: "Agentic Coding Workflows in Depth", href: "l2/07-agentic-coding-in-depth.html" },
     { n: "08", title: "Writing Great Skills & Custom Agents", href: "l2/08-skills-and-custom-agents.html" },
     { n: "09", title: "Using & Configuring MCP Servers", href: "l2/09-configuring-mcp-servers.html" },
-    { title: "AI-Assisted Testing & Code Review", href: "roadmap.html#l2", soon: true },
-    { title: "Local Models: Ollama, LM Studio, MLX", href: "roadmap.html#l2", soon: true },
-    { title: "AI for Data Engineering (Spark/Scala)", href: "roadmap.html#l2", soon: true },
-    { title: "Level 2 Labs", href: "roadmap.html#l2", soon: true },
-    { title: "Capstone: Store Assistant", href: "roadmap.html#l2", soon: true },
-    { title: "Level 2 Checkpoint Quiz", href: "roadmap.html#l2", soon: true }
+    { n: "10", title: "AI-Assisted Testing & Code Review", href: "l2/10-ai-testing-and-review.html" },
+    { n: "11", title: "Local Models: Ollama, LM Studio, MLX", href: "l2/11-local-models.html" },
+    { n: "12", title: "AI for Data Engineering (Spark/Scala)", href: "l2/12-ai-for-data-engineering.html" },
+    { n: "13", title: "Level 2 Labs", href: "l2/13-labs.html" },
+    { n: "14", title: "Capstone: Store Assistant", href: "l2/14-capstone-store-assistant.html" },
+    { n: "15", title: "Level 2 Checkpoint Quiz", href: "l2/15-checkpoint.html" }
   ]},
   { group: "Level 3 \u00b7 Advanced", level: 3, items: [
     { title: "Building MCP Servers (Python & Scala/JVM)", href: "roadmap.html#l3", soon: true },

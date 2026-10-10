@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Local Models: Ollama, LM Studio, MLX | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 11 &middot; Local Models: Ollama, LM Studio, MLX</h1>
+<p class="lead">Running models on your own machine gives you privacy, offline use, zero per-token cost and a much better
+feel for how models behave. This page covers choosing a model that fits your hardware, quantisation, the main local runners
+(including MLX on Apple silicon), and when local is the right call.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">45 min</span><span class="pill">Tracks 13, 18</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Estimate whether a model fits in your machine's memory.</li>
+  <li>Explain quantisation and pick a sensible format (GGUF, MLX 4-bit).</li>
+  <li>Run models with Ollama, LM Studio, llama.cpp and MLX, and call them through the same API.</li>
+  <li>Benchmark speed and quality, and decide local vs hosted per task.</li>
+</ul></div>
+
+<h2>When local makes sense</h2>
+<div class="compare">
+  <div class="good"><h4>Good fit</h4>
+  <ul><li>Sensitive data that must not leave the machine (where policy allows local AI)</li><li>Offline work, travel</li><li>High-volume simple tasks: classification, extraction, embeddings</li><li>Learning and experimenting freely</li><li>Prototyping before choosing a hosted model</li></ul></div>
+  <div class="bad"><h4>Poor fit</h4>
+  <ul><li>Hard reasoning, large refactors, long agentic tasks: frontier hosted models are much stronger</li><li>Very long contexts on modest hardware</li><li>Team-wide production serving (needs proper GPU infrastructure, Level 4)</li></ul></div>
+</div>
+
+<h2>Will it fit? A memory rule of thumb</h2>
+<pre data-lang="text">memory needed &#8776; parameters &times; (bits per weight / 8)  +  20&ndash;30% overhead (context / KV cache, runtime)</pre>
+<table>
+  <thead><tr><th>Model size</th><th>16-bit</th><th>8-bit</th><th>4-bit</th><th>Runs comfortably on</th></tr></thead>
+  <tbody>
+    <tr><td>1&ndash;4 B</td><td>2&ndash;8 GB</td><td>1&ndash;4 GB</td><td>~1&ndash;3 GB</td><td>Almost any modern laptop</td></tr>
+    <tr><td>7&ndash;9 B</td><td>~16 GB</td><td>~8&ndash;9 GB</td><td>~5&ndash;6 GB</td><td>16 GB laptop (Apple silicon or a decent GPU)</td></tr>
+    <tr><td>12&ndash;14 B</td><td>~28 GB</td><td>~15 GB</td><td>~8&ndash;10 GB</td><td>24&ndash;32 GB unified memory or a 12&ndash;16 GB GPU</td></tr>
+    <tr><td>30&ndash;35 B</td><td>~70 GB</td><td>~35 GB</td><td>~20 GB</td><td>36&ndash;64 GB Mac or a 24 GB GPU</td></tr>
+    <tr><td>70 B+</td><td>140 GB+</td><td>~75 GB</td><td>~40 GB+</td><td>64&ndash;128 GB Mac or multi-GPU workstation</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">Why Macs are popular for local AI</span>
+Apple silicon uses <b>unified memory</b> shared by CPU and GPU, so a Mac with 32&ndash;128 GB can hold models that would need
+expensive GPUs on a PC. Memory bandwidth largely determines generation speed. Mixture-of-Experts models activate only part of
+their weights per token, so they can run faster than their total size suggests (but still need the memory to hold all weights).</div>
+
+<h2>Quantisation</h2>
+<p><b>Quantisation</b> stores weights with fewer bits (for example 4 instead of 16). Models become 3&ndash;4&times; smaller and faster,
+with a modest quality loss that is usually acceptable at 4&ndash;8 bits.</p>
+<table>
+  <thead><tr><th>Format</th><th>Used by</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><b>GGUF</b> (e.g. <code>Q4_K_M</code>, <code>Q5_K_M</code>, <code>Q8_0</code>)</td><td>llama.cpp, Ollama, LM Studio</td><td><code>Q4_K_M</code> is a common balance. Q5/Q6 is better quality, Q8 is near-original.</td></tr>
+    <tr><td><b>MLX</b> (4-bit, 8-bit)</td><td>MLX / mlx-lm on Apple silicon</td><td>Optimised for Macs; many ready-made conversions are published by the community</td></tr>
+    <tr><td>GPU formats (AWQ, GPTQ, FP8&hellip;)</td><td>GPU servers (vLLM etc.)</td><td>Level 4</td></tr>
+  </tbody>
+</table>
+<p>Rule: prefer a <b>bigger model at 4-bit</b> over a smaller model at 16-bit for the same memory, then test on your own tasks.</p>
+
+<h2>The local runners</h2>
+<h3>Ollama: simplest CLI + server</h3>
+<pre data-lang="bash">
+ollama pull llama3.2              # small, fast general model
+ollama run llama3.2 "Summarise our 14-day return policy in one line: ..."
+ollama pull nomic-embed-text      # embeddings for page 05
+ollama list                       # installed models
+# OpenAI-compatible API at http://localhost:11434/v1
+</pre>
+<h3>LM Studio: desktop app</h3>
+<p>Browse, download and chat with models in a GUI. It shows whether a model fits your memory. Start its <b>local server</b> to get an
+OpenAI-compatible endpoint (by default on <code>http://localhost:1234/v1</code>). Good for comparing models side by side.</p>
+<h3>llama.cpp: the engine</h3>
+<pre data-lang="bash">
+llama-server -m ./models/some-model-Q4_K_M.gguf --port 8080
+# OpenAI-compatible API at http://localhost:8080/v1
+</pre>
+<h3>MLX on Apple silicon</h3>
+<pre data-lang="bash">
+uv tool install mlx-lm            # or: pip install mlx-lm
+mlx_lm.generate --model mlx-community/&lt;model>-4bit --prompt "Explain opaque types in Scala 3"
+mlx_lm.server   --model mlx-community/&lt;model>-4bit --port 8081   # OpenAI-compatible server
+</pre>
+<p>MLX also supports fine-tuning (LoRA) on a Mac, which is covered in Level 3.</p>
+
+<h2>One client, any runner</h2>
+<p>Because all of these speak the OpenAI-compatible API, the clients from pages 03&ndash;06 work unchanged. Just set the base URL:</p>
+<table>
+  <thead><tr><th>Runner</th><th><code>LLM_BASE_URL</code></th></tr></thead>
+  <tbody>
+    <tr><td>Ollama</td><td><code>http://localhost:11434/v1</code></td></tr>
+    <tr><td>LM Studio</td><td><code>http://localhost:1234/v1</code></td></tr>
+    <tr><td>llama.cpp server</td><td><code>http://localhost:8080/v1</code> (or the port you chose)</td></tr>
+    <tr><td>mlx_lm.server</td><td><code>http://localhost:8081/v1</code> (the port you chose)</td></tr>
+  </tbody>
+</table>
+
+<h2>Benchmark on your own tasks</h2>
+<pre data-lang="python" data-title="bench.py: speed and a quality spot-check  (uv add httpx)">
+import json
+import os
+import time
+
+import httpx
+
+BASE = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
+MODEL = os.environ.get("LLM_MODEL", "llama3.2")
+
+TASKS = [  # (prompt, check) - checks are deliberately simple; use golden sets for real evals
+    ("Classify as PICKUP, RETURN, PAYMENT or OTHER. Label only: 'My card was charged twice'", lambda a: "PAYMENT" in a.upper()),
+    ("What is 17% of 2,400? Number only.", lambda a: "408" in a),
+    ("Return only JSON {\"sku\":string,\"qty\":int} for: two chargers, sku CHARGER", lambda a: '"qty": 2' in a or '"qty":2' in a),
+]
+
+
+def run(prompt: str) -> tuple[str, float, float, int]:
+    start, first, chunks, text = time.perf_counter(), None, 0, []
+    with httpx.stream("POST", f"{BASE}/chat/completions", timeout=120,
+                      json={"model": MODEL, "stream": True, "temperature": 0,
+                            "messages": [{"role": "user", "content": prompt}]}) as r:
+        r.raise_for_status()
+        for line in r.iter_lines():
+            if not line.startswith("data: ") or line.endswith("[DONE]"):
+                continue
+            delta = json.loads(line[6:])["choices"][0].get("delta", {}).get("content")
+            if delta:
+                first = first or time.perf_counter()
+                chunks += 1
+                text.append(delta)
+    end = time.perf_counter()
+    return "".join(text), (first or end) - start, end - start, chunks
+
+
+if __name__ == "__main__":
+    passed = 0
+    for prompt, check in TASKS:
+        answer, ttft, total, chunks = run(prompt)
+        ok = check(answer)
+        passed += ok
+        rate = chunks / max(total - ttft, 1e-6)
+        print(f"{'PASS' if ok else 'FAIL'}  first-token {ttft:.2f}s  ~{rate:.0f} chunks/s  {answer.strip()[:60]!r}")
+    print(f"\n{MODEL}: {passed}/{len(TASKS)} passed")
+</pre>
+<p>Run it for 2&ndash;3 candidate models and keep the results in your learning log. You will quickly build intuition for which sizes
+handle which tasks.</p>
+
+<h2>Practical tips</h2>
+<ul class="checklist">
+  <li><b>Use instruction-tuned models</b> ("instruct" or "chat" variants) for chat and tools, not base models.</li>
+  <li><b>Context length costs memory.</b> Increase it only when needed (most runners have a setting).</li>
+  <li><b>Tool calling and JSON quality vary</b> a lot between local models. Test with your real tools and schemas (pages 02 and 04).</li>
+  <li><b>Check licences</b> of open-weight models before using them for work. Some restrict commercial use.</li>
+  <li><b>Local still needs policy approval.</b> Data never leaves the machine, but model provenance and licences still matter to employers.</li>
+  <li><b>Keep models tidy</b>: they are several GB each (<code>ollama rm</code>, LM Studio's model manager).</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (30 min)</span>
+<ol>
+  <li>Install Ollama or LM Studio. Pull a ~3B model and an ~8B model (4-bit).</li>
+  <li>Run <code>bench.py</code> against both. Compare speed and pass rate.</li>
+  <li>Point the Store Assistant (page 04, <code>--live</code>) at each. Which one calls tools reliably?</li>
+  <li>On a Mac: try the same model via <code>mlx_lm.server</code> and compare speed with Ollama.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Memory &asymp; parameters &times; bits/8 plus overhead. 4-bit quantisation makes 7&ndash;14B models laptop-friendly.</li>
+  <li>Ollama (simple), LM Studio (GUI), llama.cpp (engine) and MLX (Apple silicon) all expose OpenAI-compatible APIs.</li>
+  <li>Local is great for privacy, offline use, volume and learning. Frontier hosted models still win on hard tasks.</li>
+  <li>Benchmark on your own tasks, and check licences and policy.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

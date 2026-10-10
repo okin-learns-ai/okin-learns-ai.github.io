@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 2 Checkpoint Quiz | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L2 &middot; 15 &middot; Level 2 Checkpoint Quiz</h1>
+<p class="lead">20 questions covering all of Level 2. Aim for 16/20 (80%) or more, and finish the capstone, before starting Level 3.
+Reload the page to retry. Answer order is shuffled each time.</p>
+<div class="meta-row"><span class="pill level">Level 2</span><span class="pill time">20 min</span></div>
+
+<div class="quiz-score" id="quiz-score"></div>
+
+<h2>Prompts, structure, APIs (pages 01&ndash;03)</h2>
+
+<div class="quiz" data-answer="a"><div class="q">1. In a ticket-analysis chain, which step should NOT use an LLM?</div>
+<label><input type="radio" value="a">Counting how many tickets fall into each category</label>
+<label><input type="radio" value="b">Classifying each ticket's free text</label>
+<label><input type="radio" value="c">Summarising the top issue for managers</label>
+<label><input type="radio" value="d">Suggesting causes for the top issue</label>
+<div class="explain">Exact work (count, sort, join) belongs in code: cheaper, exact and testable. See <a href="01-advanced-prompt-patterns.html">page 01</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">2. Self-consistency means&hellip;</div>
+<label><input type="radio" value="a">Using the same system prompt everywhere</label>
+<label><input type="radio" value="b">Sampling the same prompt several times and taking the majority answer</label>
+<label><input type="radio" value="c">Setting temperature to 0</label>
+<label><input type="radio" value="d">Asking the model if it is consistent</label>
+<div class="explain">Low agreement between samples is also a useful signal to route a case to a human.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">3. Schema-enforced structured output guarantees&hellip;</div>
+<label><input type="radio" value="a">That the values are true</label>
+<label><input type="radio" value="b">That no retry will ever be needed</label>
+<label><input type="radio" value="c">That the output matches the schema's shape</label>
+<label><input type="radio" value="d">That business rules are satisfied</label>
+<div class="explain">Shape, not truth. Domain validation in code is still required. See <a href="02-structured-output.html">page 02</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">4. A field (e.g. order ID) may be missing from the input. Best schema design?</div>
+<label><input type="radio" value="a">Make it a required string</label>
+<label><input type="radio" value="b">Remove it from the schema</label>
+<label><input type="radio" value="c">Make it an integer</label>
+<label><input type="radio" value="d">Make it nullable and say "null if not stated, never guess"</label>
+<div class="explain">Required-but-absent fields push the model to invent values.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">5. Which HTTP status should your LLM client NOT retry?</div>
+<label><input type="radio" value="a">401 Unauthorized</label>
+<label><input type="radio" value="b">429 Too Many Requests</label>
+<label><input type="radio" value="c">503 Service Unavailable</label>
+<label><input type="radio" value="d">A connection timeout</label>
+<div class="explain">401 needs a credential fix. Retry 408/409/429/5xx and network errors with jittered back-off. See <a href="03-calling-llm-apis.html">page 03</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">6. <code>finish_reason == "length"</code> means&hellip;</div>
+<label><input type="radio" value="a">The answer is complete</label>
+<label><input type="radio" value="b">The output was cut off at max tokens</label>
+<label><input type="radio" value="c">The model refused</label>
+<label><input type="radio" value="d">A tool was called</label>
+<div class="explain">Treat it as an error for structured output. Raise the limit or shorten the task.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">7. To benefit from prompt caching, you should put&hellip;</div>
+<label><input type="radio" value="a">The user's question first</label>
+<label><input type="radio" value="b">Random IDs at the start of every prompt</label>
+<label><input type="radio" value="c">Stable content (system prompt, policies, tool definitions) first and variable content last</label>
+<label><input type="radio" value="d">Everything in one message with no system prompt</label>
+<div class="explain">Caches typically match identical prefixes.</div></div>
+
+<h2>Tools, embeddings, RAG (pages 04&ndash;06)</h2>
+
+<div class="quiz" data-answer="d"><div class="q">8. In tool calling, the <code>arguments</code> field of a tool call is&hellip;</div>
+<label><input type="radio" value="a">Always valid and safe to execute directly</label>
+<label><input type="radio" value="b">Executed by the model provider</label>
+<label><input type="radio" value="c">Ignored by the host</label>
+<label><input type="radio" value="d">Untrusted input (a JSON string) that your code must validate and authorise</label>
+<div class="explain">Treat it like HTTP parameters. See <a href="04-tool-calling.html">page 04</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">9. Which tool design is best for an inventory assistant?</div>
+<label><input type="radio" value="a"><code>check_inventory(sku, storeId)</code> with enums</label>
+<label><input type="radio" value="b"><code>run_sql(query)</code></label>
+<label><input type="radio" value="c"><code>do_anything(instruction)</code></label>
+<label><input type="radio" value="d">One tool that both reads stock and reserves it</label>
+<div class="explain">Specific, constrained tools. Keep reads and writes separate.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">10. You switch to a new embedding model. What must you do?</div>
+<label><input type="radio" value="a">Nothing</label>
+<label><input type="radio" value="b">Re-embed all documents, because vectors from different models aren't comparable</label>
+<label><input type="radio" value="c">Only re-embed new documents</label>
+<label><input type="radio" value="d">Lower the similarity threshold</label>
+<div class="explain">Store the model version with each vector. See <a href="05-embeddings-semantic-search.html">page 05</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">11. Users search for exact codes like "CASE-RUGGED" and semantic search misses them. Best fix?</div>
+<label><input type="radio" value="a">A bigger chat model</label>
+<label><input type="radio" value="b">Higher temperature</label>
+<label><input type="radio" value="c">Hybrid search: keyword + vector, fused with Reciprocal Rank Fusion</label>
+<label><input type="radio" value="d">Remove codes from the catalogue</label>
+<div class="explain">Keyword search excels at exact codes. RRF combines rankings without comparing raw scores.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">12. Where should per-user document permissions be enforced in RAG?</div>
+<label><input type="radio" value="a">In the prompt ("don't reveal confidential docs")</label>
+<label><input type="radio" value="b">In the model's fine-tuning</label>
+<label><input type="radio" value="c">After the answer is generated</label>
+<label><input type="radio" value="d">At retrieval time, by filtering what can be retrieved</label>
+<div class="explain">If it's never retrieved, it can't leak. See <a href="06-rag.html">page 06</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">13. A good RAG prompt should include&hellip;</div>
+<label><input type="radio" value="a">Delimited numbered sources, a citation requirement and an explicit "I can't find this" rule</label>
+<label><input type="radio" value="b">As many documents as fit in the context window</label>
+<label><input type="radio" value="c">"Use your general knowledge if unsure"</label>
+<label><input type="radio" value="d">No instructions, just the question</label>
+<div class="explain">Then verify citations in code.</div></div>
+
+<h2>Agents, skills, MCP (pages 07&ndash;09)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">14. In a test-first agent loop, what stops the agent "cheating"?</div>
+<label><input type="radio" value="a">A higher temperature</label>
+<label><input type="radio" value="b">Committing tests first, forbidding test edits (enforced by a hook/CI), and checking test strength</label>
+<label><input type="radio" value="c">Letting it write tests and code together without review</label>
+<label><input type="radio" value="d">Using a bigger model</label>
+<div class="explain">See <a href="07-agentic-coding-in-depth.html">page 07</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">15. Migrating Scala 2.13 &rarr; 3: what should you use before asking an agent to edit by hand?</div>
+<label><input type="radio" value="a">Nothing, agents are always best</label>
+<label><input type="radio" value="b">A rewrite of the whole codebase in one PR</label>
+<label><input type="radio" value="c">Compiler rewrites (<code>-source:3.0-migration -rewrite</code>) and migration tooling</label>
+<label><input type="radio" value="d">Deleting the tests</label>
+<div class="explain">Deterministic tools first. Agents handle the judgement calls left over.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">16. A skill rarely triggers. What do you change first?</div>
+<label><input type="radio" value="a">The folder name</label>
+<label><input type="radio" value="b">The scripts</label>
+<label><input type="radio" value="c">The licence field</label>
+<label><input type="radio" value="d">The description: what it does, when to use it, scope and negative scope</label>
+<div class="explain">Only name + description are visible up front. See <a href="08-skills-and-custom-agents.html">page 08</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">17. Why give each custom agent (planner, reviewer&hellip;) its own limited toolset?</div>
+<label><input type="radio" value="a">Least privilege and focus: a reviewer that can't edit can't "fix" by deleting tests</label>
+<label><input type="radio" value="b">It makes the model larger</label>
+<label><input type="radio" value="c">Tools are billed per agent</label>
+<label><input type="radio" value="d">It disables MCP</label>
+<div class="explain">Narrow roles plus artefact hand-offs keep contexts clean.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">18. What does Metals MCP give an agent working on Scala code?</div>
+<label><input type="radio" value="a">A faster LLM</label>
+<label><input type="radio" value="b">Compiler-backed tools: compile, run tests, inspect symbols, docs, find usages</label>
+<label><input type="radio" value="c">Access to production databases</label>
+<label><input type="radio" value="d">Automatic PR merging</label>
+<div class="explain">Real APIs instead of guesses. See <a href="09-configuring-mcp-servers.html">page 09</a>.</div></div>
+
+<h2>Testing, local models, data (pages 10&ndash;12)</h2>
+
+<div class="quiz" data-answer="c"><div class="q">19. A mutant "survived" in mutation testing. This means&hellip;</div>
+<label><input type="radio" value="a">The code has no bugs</label>
+<label><input type="radio" value="b">The mutation tool crashed</label>
+<label><input type="radio" value="c">Your tests didn't catch a deliberate bug, so there's a gap</label>
+<label><input type="radio" value="d">Coverage is 100%</label>
+<div class="explain">Feed survivors to AI to write tests from the spec. See <a href="10-ai-testing-and-review.html">page 10</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">20. How should you evaluate AI-generated SQL against golden questions?</div>
+<label><input type="radio" value="a">Compare SQL text exactly</label>
+<label><input type="radio" value="b">Ask the model if it is correct</label>
+<label><input type="radio" value="c">Check that it has no syntax errors</label>
+<label><input type="radio" value="d">Run both queries on a fixed dataset and compare the results</label>
+<div class="explain">Different SQL can be equally correct. Execution accuracy is what matters. See <a href="12-ai-for-data-engineering.html">page 12</a>.</div></div>
+
+<h2>What next?</h2>
+<div class="callout ok"><span class="c-title">Level 2 complete?</span>
+Scored 16+ and finished the <a href="14-capstone-store-assistant.html">capstone</a>? You're ready for
+<a href="../roadmap.html#l3">Level 3 &middot; Advanced</a>: building MCP servers and agents from scratch, evals, fine-tuning, LLMOps and AI security.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
