@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 5 Checkpoint Quiz | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 08 &middot; Level 5 Checkpoint Quiz</h1>
+<p class="lead">15 questions covering Level 5. Aim for 12/15 (80%). This is the last checkpoint &mdash; the real final exam is
+your published capstone. Reload to retry; answer order is shuffled each time.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">15 min</span></div>
+
+<div class="quiz-score" id="quiz-score"></div>
+
+<h2>Research &amp; interpretability (pages 01&ndash;02)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">1. The first pass of a paper should take about&hellip;</div>
+<label><input type="radio" value="a">An hour</label>
+<label><input type="radio" value="b">5&ndash;10 minutes &mdash; title, abstract, headings, figures, conclusion</label>
+<label><input type="radio" value="c">A full day</label>
+<label><input type="radio" value="d">As long as it takes to read every word</label>
+<div class="explain">Most papers deserve only pass 1. See <a href="01-reading-research.html">page 01</a>.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">2. A paper reports "+3% over baseline". Before crediting it, check&hellip;</div>
+<label><input type="radio" value="a">Nothing &mdash; published means proven</label>
+<label><input type="radio" value="b">Only that the code exists</label>
+<label><input type="radio" value="c">The baseline's strength, whether the benchmark leaked, and whether error bars overlap</label>
+<label><input type="radio" value="d">The authors' reputation</label>
+<div class="explain">Weak baselines, contamination and noise all fake "improvements".</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">3. An ablation tells you&hellip;</div>
+<label><input type="radio" value="a">Which parts of a method actually cause the improvement, by removing them one at a time</label>
+<label><input type="radio" value="b">How fast the model runs</label>
+<label><input type="radio" value="c">The model's size</label>
+<label><input type="radio" value="d">The training loss</label>
+<div class="explain">A result that survives ablations is robust; one needing all tricks is fragile.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">4. "Superposition" in interpretability means&hellip;</div>
+<label><input type="radio" value="a">Models are quantum</label>
+<label><input type="radio" value="b">Each neuron stores exactly one concept</label>
+<label><input type="radio" value="c">Models have too many parameters</label>
+<label><input type="radio" value="d">Concepts are stored as overlapping directions, not one-per-neuron</label>
+<div class="explain">That's why there's no neat "the X neuron". See <a href="02-interpretability-alignment.html">page 02</a>.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">5. A sparse autoencoder (SAE) is used to&hellip;</div>
+<label><input type="radio" value="a">Compress the training data</label>
+<label><input type="radio" value="b">Expand dense activations into many interpretable features</label>
+<label><input type="radio" value="c">Speed up inference</label>
+<label><input type="radio" value="d">Train the model</label>
+<div class="explain">The current leading tool for decomposing superposed features.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">6. "Reward hacking" is when a model&hellip;</div>
+<label><input type="radio" value="a">Refuses to answer</label>
+<label><input type="radio" value="b">Trains faster</label>
+<label><input type="radio" value="c">Optimises the measured metric in a way that defeats the actual goal</label>
+<label><input type="radio" value="d">Gets jailbroken</label>
+<div class="explain">E.g. hardcoding the expected test output instead of solving the task.</div></div>
+
+<h2>On-device &amp; multimodal (pages 03&ndash;04)</h2>
+
+<div class="quiz" data-answer="a"><div class="q">7. The biggest hardware advantage of Apple silicon for local AI is&hellip;</div>
+<label><input type="radio" value="a">Unified memory &mdash; CPU/GPU/ANE share it with no copying, so large models fit</label>
+<label><input type="radio" value="b">The most CPU cores</label>
+<label><input type="radio" value="c">The biggest GPU</label>
+<label><input type="radio" value="d">The fastest network</label>
+<div class="explain">See <a href="03-on-device-ai.html">page 03</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">8. On Apple platforms, the right tool for <b>shipping a model inside an app</b> is&hellip;</div>
+<label><input type="radio" value="a">MLX</label>
+<label><input type="radio" value="b">llama.cpp</label>
+<label><input type="radio" value="c">vLLM</label>
+<label><input type="radio" value="d">Core ML (converts to .mlpackage, routes to ANE/GPU)</label>
+<div class="explain">MLX is for dev/research; Core ML is the production path for apps.</div></div>
+
+<div class="quiz" data-answer="b"><div class="q">9. The hybrid on-device pattern means&hellip;</div>
+<label><input type="radio" value="a">Always use the cloud</label>
+<label><input type="radio" value="b">Small model on-device for most queries; escalate hard ones to a server model</label>
+<label><input type="radio" value="c">Never connect to the internet</label>
+<label><input type="radio" value="d">Run the biggest model possible on-device</label>
+<div class="explain">Privacy + instant latency for most, frontier power only when needed.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">10. A vision-language model fails most on&hellip;</div>
+<label><input type="radio" value="a">Describing a photo's overall content</label>
+<label><input type="radio" value="b">Reading a clear headline</label>
+<label><input type="radio" value="c">Fine print, dense tables, precise counting and exact positions</label>
+<label><input type="radio" value="d">Detecting whether an image is a photo</label>
+<div class="explain">See <a href="04-multimodal.html">page 04</a>.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">11. A voice-agent "cascade" architecture is&hellip;</div>
+<label><input type="radio" value="a">ASR &rarr; LLM &rarr; TTS: debuggable but higher latency</label>
+<label><input type="radio" value="b">Audio straight to audio with no text</label>
+<label><input type="radio" value="c">Several microphones</label>
+<label><input type="radio" value="d">A waterfall chart</label>
+<div class="explain">Speech-to-speech models cut latency but are newer and capture tone.</div></div>
+
+<h2>Adoption (page 05)</h2>
+
+<div class="quiz" data-answer="b"><div class="q">12. The first step in an AI rollout should be&hellip;</div>
+<label><input type="radio" value="a">Buying licences for everyone</label>
+<label><input type="radio" value="b">Measuring a baseline of task time and quality before AI</label>
+<label><input type="radio" value="c">Writing the policy</label>
+<label><input type="radio" value="d">A company-wide announcement</label>
+<div class="explain">No baseline = no way to prove any gain. See <a href="05-leading-ai-adoption.html">page 05</a>.</div></div>
+
+<div class="quiz" data-answer="d"><div class="q">13. The most reliable productivity metric is&hellip;</div>
+<label><input type="radio" value="a">Lines of code written</label>
+<label><input type="radio" value="b">Acceptance rate of suggestions</label>
+<label><input type="radio" value="c">"I feel faster" surveys</label>
+<label><input type="radio" value="d">Time + quality + cost on real tasks, measured against your own baseline</label>
+<div class="explain">LoC and acceptance don't equal correct work; feelings mislead.</div></div>
+
+<div class="quiz" data-answer="a"><div class="q">14. An AI usage policy works best when it&hellip;</div>
+<label><input type="radio" value="a">Is short and positive: what's allowed, what's not, and the review duty &mdash; with easy compliant paths</label>
+<label><input type="radio" value="b">Bans everything</label>
+<label><input type="radio" value="c">Is a 50-page document</label>
+<label><input type="radio" value="d">Says nothing</label>
+<div class="explain">A policy that blocks work drives shadow AI on personal devices.</div></div>
+
+<div class="quiz" data-answer="c"><div class="q">15. "Skill atrophy" as a team risk means&hellip;</div>
+<label><input type="radio" value="a">Tools get slower</label>
+<label><input type="radio" value="b">Models get worse over time</label>
+<label><input type="radio" value="c">If AI does all the writing, people never build the skill to review it &mdash; keep deliberate no-AI practice</label>
+<label><input type="radio" value="d">The licence expires</label>
+<div class="explain">Judgement and review are the durable skills; they need exercising.</div></div>
+
+<h2>You made it</h2>
+<div class="callout ok"><span class="c-title">All five levels complete</span>
+Score 12+ and finish your <a href="07-capstone.html">published capstone</a> and you've climbed the whole curriculum &mdash;
+from "what is a token" to building agents, reading research, and leading adoption. The field keeps moving; keep the
+learning-loop habit from Level 1 and you'll keep pace with it.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

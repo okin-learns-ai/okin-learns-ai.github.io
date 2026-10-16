@@ -7,7 +7,7 @@ window.SITE = {
   subtitle: "Beginner \u2192 Expert",
   dedication: "For My Wife Okin",
   author: "Sanat",
-  version: "Levels 1\u20134 complete",
+  version: "All 5 levels complete",
   updated: "2026-10-11"
 };
 
@@ -78,11 +78,13 @@ window.NAV = [
     { n: "10", title: "Level 4 Checkpoint Quiz", href: "l4/10-checkpoint.html" }
   ]},
   { group: "Level 5 \u00b7 Master & Specialist", level: 5, items: [
-    { title: "Reading & Reproducing Research Papers", href: "roadmap.html#l5", soon: true },
-    { title: "Interpretability & Alignment", href: "roadmap.html#l5", soon: true },
-    { title: "On-device AI (Apple silicon, Core ML, MLX)", href: "roadmap.html#l5", soon: true },
-    { title: "Multimodal: Vision, Speech, Video", href: "roadmap.html#l5", soon: true },
-    { title: "Leading AI Adoption in Teams", href: "roadmap.html#l5", soon: true },
-    { title: "Capstone Projects", href: "roadmap.html#l5", soon: true }
+    { n: "01", title: "Reading & Reproducing Research Papers", href: "l5/01-reading-research.html" },
+    { n: "02", title: "Interpretability & Alignment", href: "l5/02-interpretability-alignment.html" },
+    { n: "03", title: "On-device AI (Apple silicon, Core ML, MLX)", href: "l5/03-on-device-ai.html" },
+    { n: "04", title: "Multimodal: Vision, Speech & Video", href: "l5/04-multimodal.html" },
+    { n: "05", title: "Leading AI Adoption in Teams", href: "l5/05-leading-ai-adoption.html" },
+    { n: "06", title: "Level 5 Labs", href: "l5/06-labs.html" },
+    { n: "07", title: "Capstone: Publish a Speciality Project", href: "l5/07-capstone.html" },
+    { n: "08", title: "Level 5 Checkpoint Quiz", href: "l5/08-checkpoint.html" }
   ]}
 ];

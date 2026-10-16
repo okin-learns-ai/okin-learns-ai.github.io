@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Reading &amp; Reproducing Research Papers | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 01 &middot; Reading &amp; Reproducing Research Papers</h1>
+<p class="lead">Level 5 is where you stop learning only from tutorials and start learning from the frontier itself. Papers are
+where new capabilities first appear &mdash; but they're dense, assume context, and sometimes oversell. This page gives you a
+method: read in three passes, extract the claim, reproduce it small, and write up what you found.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">50 min</span><span class="pill">Track 20</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Read a paper in three passes instead of front-to-back and giving up.</li>
+  <li>Extract the falsifiable claim, the method, and the evidence.</li>
+  <li>Reproduce a small version of a result and run an ablation.</li>
+  <li>Use AI to read papers faster without letting it read <i>for</i> you.</li>
+  <li>Write a one-page summary a teammate could act on.</li>
+</ul></div>
+
+<h2>The three-pass read</h2>
+<p>Don't read a paper like a book. Keshav's "How to Read a Paper" gives the standard method:</p>
+<table>
+  <thead><tr><th>Pass</th><th>Time</th><th>Read</th><th>Goal</th></tr></thead>
+  <tbody>
+    <tr><td><b>1. Bird's eye</b></td><td>5&ndash;10 min</td><td>Title, abstract, intro, headings, figures, conclusion</td><td>Is this relevant to me? What category is it? What's the claim?</td></tr>
+    <tr><td><b>2. Grasp</b></td><td>~1 hour</td><td>Everything except proofs; study figures and tables</td><td>Understand the method and evidence; note what you'd need to verify</td></tr>
+    <tr><td><b>3. Reproduce</b></td><td>hours</td><td>Deep read; re-derive; reimplement</td><td>Could you rebuild it? Where are the hidden assumptions?</td></tr>
+  </tbody>
+</table>
+<p>Most papers deserve only pass 1. Pass 2 for papers you'll cite or build on. Pass 3 for the few that change how you work.</p>
+
+<h2>Extract the claim</h2>
+<p>Every paper makes a claim. Write it as a falsifiable sentence: <i>"Method X improves metric Y on benchmark Z by N%,
+compared to baseline B."</i> Then check:</p>
+<ul class="checklist">
+  <li><b>What's the baseline?</b> Beating a weak baseline proves little. Is it the prior state of the art, or a strawman?</li>
+  <li><b>Is the benchmark leaked?</b> Test data in the training set inflates scores (contamination, L4&middot;03).</li>
+  <li><b>Do the error bars overlap?</b> A 2% gain within noise is not a gain.</li>
+  <li><b>Does the claim match the abstract?</b> Abstracts sometimes claim more than the results section shows.</li>
+  <li><b>What did they <i>not</i> measure?</b> Cost, latency, failure modes are often absent.</li>
+</ul>
+
+<h2>Reproduce small, then ablate</h2>
+<p>You rarely need the full result. Reproduce the <b>mechanism</b> at toy scale &mdash; then <b>ablate</b>: remove one piece
+at a time to see which parts actually cause the effect. A result that only works with all 6 tricks is fragile; one that
+survives ablations is robust.</p>
+<pre data-lang="python" data-title="reproduce.py: a minimal reproduction + ablation skeleton" data-verify="run">
+def experiment(use_technique: bool, seed: int = 0) -> float:
+    """A reproduction harness: same task, technique on/off, fixed seeds.
+    Returns a score; compare across seeds, not single runs."""
+    import random
+    rng = random.Random(seed)
+    # Placeholder for the real task. Stand-in: technique adds a small boost.
+    base = 0.70 + rng.uniform(-0.02, 0.02)
+    return base + (0.05 if use_technique else 0.0)
+
+
+def run(n_seeds: int = 5) -> dict:
+    on = [experiment(True, s) for s in range(n_seeds)]
+    off = [experiment(False, s) for s in range(n_seeds)]
+    return {"with": sum(on) / n_seeds, "without": sum(off) / n_seeds}
+
+
+if __name__ == "__main__":
+    r = run()
+    print(f"with technique:    {r['with']:.3f}")
+    print(f"without technique: {r['without']:.3f}")
+    print(f"delta:             {r['with'] - r['without']:+.3f}")
+    assert r["with"] > r["without"]
+</pre>
+<p>The discipline: <b>same data, same seeds, only the technique differs.</b> Multiple seeds, because one lucky run proves
+nothing &mdash; the same rule as your eval suites (L3&middot;04).</p>
+
+<h2>Using AI to read papers (carefully)</h2>
+<div class="compare">
+  <div class="good"><h4>Great uses</h4>
+  <ul><li>"Explain this term/method at my level" for unfamiliar notation</li><li>"What assumptions does this make?" after your own first pass</li><li>"Write a summary of section 3" then check it against the paper</li><li>Generating a reproduction plan or pseudocode</li></ul></div>
+  <div class="bad"><h4>Dangerous uses</h4>
+  <ul><li>Letting the AI tell you the claim before you've read it (it'll rationalise)</li><li>Trusting its summary of results without checking the tables</li><li>Asking "is this paper good?" &mdash; sycophancy, not review</li></ul></div>
+</div>
+<p>Rule: use AI to <b>lower the entry cost</b>, not to <b>replace the read</b>. You'll internalise far less if it pre-digests
+everything.</p>
+
+<h2>Staying current without drowning</h2>
+<ul class="checklist">
+  <li><b>Curated feeds over firehose:</b> a few newsletters/aggregators, not every arXiv ping.</li>
+  <li><b>Pass 1 widely, pass 3 rarely.</b> Skim a dozen papers a month; deep-read one.</li>
+  <li><b>Keep a reading log:</b> claim, method, verdict, one-line takeaway per paper.</li>
+  <li><b>Prefer papers with code</b> &mdash; reproducible claims are worth more.</li>
+  <li><b>Talk it out:</b> a reading group or one colleague you explain papers to forces the third pass.</li>
+</ul>
+
+<h2>Write it up</h2>
+<p>After a pass-3 read or reproduction, write one page: claim, method, your reproduction, what held up, what didn't, and
+"should we care?" This is what turns reading into knowledge you can share &mdash; and it's the capstone shape for Level 5.</p>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Pick a famous paper (attention, RLHF, RAG). Do pass 1 only: write the claim in one falsifiable sentence.</li>
+  <li>Now pass 2: list the baseline, the metric, and one thing they didn't measure.</li>
+  <li>Use AI to explain one section you found hard &mdash; then verify its summary against the paper.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Read in three passes; most papers deserve only the first.</li>
+  <li>Extract a falsifiable claim; interrogate baseline, benchmark and error bars.</li>
+  <li>Reproduce the mechanism at toy scale; ablate to find what matters.</li>
+  <li>Use AI to lower entry cost, not to read for you.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 /* AI Mastery Docs offline cache. Author: Sanat. Generated from tools/sw.template.js by tools/build.py.
  * Strategy: network-first (always fresh when online), falling back to the cache when offline. */
-const CACHE = "ai-mastery-4dab96fd7019";
+const CACHE = "ai-mastery-9da49e5d61f4";
 const FILES = [
   "./",
   "assets/css/style.css",
@@ -64,6 +64,14 @@ const FILES = [
   "l4/08-labs.html",
   "l4/09-capstone.html",
   "l4/10-checkpoint.html",
+  "l5/01-reading-research.html",
+  "l5/02-interpretability-alignment.html",
+  "l5/03-on-device-ai.html",
+  "l5/04-multimodal.html",
+  "l5/05-leading-ai-adoption.html",
+  "l5/06-labs.html",
+  "l5/07-capstone.html",
+  "l5/08-checkpoint.html",
   "manifest.webmanifest",
   "roadmap.html"
 ];

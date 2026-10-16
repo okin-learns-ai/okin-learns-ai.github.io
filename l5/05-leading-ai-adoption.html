@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Leading AI Adoption in Teams | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 05 &middot; Leading AI Adoption in Teams</h1>
+<p class="lead">The last skill isn't technical: it's getting a team to actually use AI well, measuring whether it helped, and
+setting policy people follow. Most AI rollouts fail not on the tech but on adoption &mdash; no training, no measurement,
+unrealistic promises, or a ban that pushes people to shadow AI. This page is the playbook.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">50 min</span><span class="pill">Tracks 8, 19</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Run an AI adoption playbook: baseline, pilot, train, scale, measure.</li>
+  <li>Measure productivity honestly &mdash; without falling for the vanity metrics.</li>
+  <li>Design training that sticks (pairing, workflows, champions).</li>
+  <li>Write a sane AI usage policy people will actually follow.</li>
+  <li>Handle the human concerns: skill atrophy, job anxiety, uneven adoption.</li>
+</ul></div>
+
+<h2>Why rollouts fail</h2>
+<table>
+  <thead><tr><th>Failure mode</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td>Buy licences, declare victory</td><td>Tools installed, nobody's workflow changes, usage decays to zero</td></tr>
+    <tr><td>Hype the numbers</td><td>"30% faster!" with no baseline &mdash; credibility dies at the first bad output</td></tr>
+    <tr><td>Ban it</td><td>People use personal devices/accounts with no controls &mdash; worse than governed use</td></tr>
+    <tr><td>Mandate it</td><td>People perform compliance, resentment builds, gains don't</td></tr>
+    <tr><td>Ignore the humans</td><td> juniors stop learning, seniors fear displacement, quiet resistance</td></tr>
+  </tbody>
+</table>
+
+<h2>The adoption playbook</h2>
+<svg viewBox="0 0 720 90" class="diagram" role="img" aria-label="Adoption playbook">
+  <rect class="d-box" x="10" y="25" width="105" height="42" rx="6"/><text class="d-small" x="62" y="43" text-anchor="middle">1. baseline</text><text class="d-small" x="62" y="59" text-anchor="middle">measure now</text>
+  <line class="d-arrow" x1="115" y1="46" x2="128" y2="46"/>
+  <rect class="d-box2" x="131" y="25" width="105" height="42" rx="6"/><text class="d-small" x="183" y="43" text-anchor="middle">2. pilot</text><text class="d-small" x="183" y="59" text-anchor="middle">small team</text>
+  <line class="d-arrow" x1="236" y1="46" x2="249" y2="46"/>
+  <rect class="d-box3" x="252" y="25" width="105" height="42" rx="6"/><text class="d-small" x="304" y="43" text-anchor="middle">3. train</text><text class="d-small" x="304" y="59" text-anchor="middle">workflows</text>
+  <line class="d-arrow" x1="357" y1="46" x2="370" y2="46"/>
+  <rect class="d-box4" x="373" y="25" width="105" height="42" rx="6"/><text class="d-small" x="425" y="43" text-anchor="middle">4. scale</text><text class="d-small" x="425" y="59" text-anchor="middle">+ policy</text>
+  <line class="d-arrow" x1="478" y1="46" x2="491" y2="46"/>
+  <rect class="d-box" x="494" y="25" width="210" height="42" rx="6"/><text class="d-small" x="599" y="43" text-anchor="middle">5. measure honestly</text><text class="d-small" x="599" y="59" text-anchor="middle">vs. the baseline you took</text>
+</svg>
+<ol>
+  <li><b>Baseline first.</b> Before any AI, measure how long key tasks take and their quality. Without it, "AI saved us time" is unprovable.</li>
+  <li><b>Pilot small.</b> One willing team, real work, a few weeks. Find the workflows where AI genuinely helps.</li>
+  <li><b>Train on workflows, not features.</b> "Here's how to review a PR with AI" beats "here's what the chat box does".</li>
+  <li><b>Scale with champions.</b> Early adopters who share real wins (and failures) teach better than any deck.</li>
+  <li><b>Measure against the baseline.</b> Honestly &mdash; see below.</li>
+</ol>
+
+<h2>Measuring productivity honestly</h2>
+<div class="callout warn"><span class="c-title">The hard truth about "X% faster"</b></span>
+Vendor studies claim huge gains; independent studies of experienced devs on real codebases show far more modest &mdash;
+sometimes even negative &mdash; net effects once review and rework are counted. Your own baseline is the only number that
+matters.</div>
+<table>
+  <thead><tr><th>Metric</th><th>Trap</th><th>Better</th></tr></thead>
+  <tbody>
+    <tr><td>Lines of code</td><td>AI generates lots of code &mdash; much of it wrong or unnecessary</td><td>Tasks completed, cycle time</td></tr>
+    <tr><td>Keystrokes/acceptance rate</td><td>Accepting suggestions &ne; correct code</td><td>Defect rate, rework rate</td></tr>
+    <tr><td>Surveys ("I feel faster")</td><td>Feels faster even when it isn't</td><td>Objective task time + quality</td></tr>
+    <tr><td>Speed alone</td><td>Faster code, worse quality = net loss</td><td>Speed AND quality AND cost together</td></tr>
+  </tbody>
+</table>
+<p>Measure <b>time, quality and cost</b> on the same tasks, before and after. That's a believable number.</p>
+
+<h2>Training that sticks</h2>
+<ul class="checklist">
+  <li><b>Pair people</b> on real tasks with an AI tool &mdash; learning by doing beats watching slides.</li>
+  <li><b>Teach workflows, not features</b>: "review this PR", "debug this test", "write this migration" &mdash; the actual task shapes.</li>
+  <li><b>Share prompts and patterns</b> as team assets &mdash; a shared prompt/skill library compounds (L2&middot;01, L2&middot;08).</li>
+  <li><b>Internal docs and golden examples</b> &mdash; this very site is the kind of artefact that works.</li>
+  <li><b>Make room to fail cheaply</b> &mdash; a safe sandbox where experimenting is expected, not risky.</li>
+</ul>
+
+<h2>Writing the policy</h2>
+<ul class="checklist">
+  <li><b>What's allowed:</b> approved tools/models, what data may be used (the gateway's approved list, L4&middot;06).</li>
+  <li><b>What's not:</b> secrets, unreleased IP, personal data, anything regulated &mdash; named explicitly.</li>
+  <li><b>Disclosure:</b> when must AI-generated output be labelled or reviewed?</li>
+  <li><b>Review duty:</b> the human is accountable for AI output they ship. No "the AI did it".</li>
+  <li><b>Keep it short and positive:</b> "here's how to use it well" gets followed; "never do anything" gets ignored.</li>
+</ul>
+
+<h2>The human concerns</h2>
+<ul>
+  <li><b>Skill atrophy:</b> if AI does all the writing, juniors never build the skill to review it. Deliberately keep "no-AI" practice and rotate who does the hard parts by hand.</li>
+  <li><b>Job anxiety:</b> be honest about what AI changes; hiding it breeds distrust. The durable skills are judgement, review and system design &mdash; exactly what this curriculum teaches.</li>
+  <li><b>Uneven adoption:</b> a few power users pull ahead; pair them with others rather than letting a gap ossify.</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (60 min)</span>
+<ol>
+  <li>Take one real team task. Measure it without AI (time + quality), then with AI. Write the honest delta.</li>
+  <li>Draft a 1-page AI usage policy for a team you know. Would people actually follow it?</li>
+  <li>Sketch a 4-week adoption plan for that team: pilot group, training format, success metrics.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Adoption fails on people and measurement, not the tech.</li>
+  <li>Baseline before AI, pilot small, train on workflows, scale with champions, measure honestly.</li>
+  <li>"X% faster" claims are unreliable; measure time + quality + cost on real tasks yourself.</li>
+  <li>Short, positive policy; the human who ships AI output stays accountable for it.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>On-device AI: Apple Silicon, Core ML &amp; MLX | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 03 &middot; On-device AI: Apple Silicon, Core ML &amp; MLX</h1>
+<p class="lead">Running models on the device &mdash; not a server &mdash; is a different discipline: hard memory limits, battery
+budgets, the Neural Engine alongside CPU and GPU, and privacy as a feature. This page is a deep dive into on-device inference,
+centred on Apple silicon (unified memory, Core ML, MLX), with the general principles that apply to any edge device.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">60 min</span><span class="pill">Tracks 13, 18</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain why on-device inference is a different engineering problem than server inference.</li>
+  <li>Use Apple silicon's unified memory, ANE and bandwidth characteristics.</li>
+  <li>Choose between Core ML, MLX and llama.cpp for a given task.</li>
+  <li>Apply on-device constraints: quantisation, power, thermal, model size.</li>
+  <li>Design privacy-preserving features that need no server.</li>
+</ul></div>
+
+<h2>Why on-device is different</h2>
+<table>
+  <thead><tr><th>Server</th><th>On-device</th></tr></thead>
+  <tbody>
+    <tr><td>Big GPUs, abundant power &amp; cooling</td><td>Watts and battery; thermal throttling</td></tr>
+    <tr><td>Memory for many large models</td><td>A few GB shared with the whole OS/apps</td></tr>
+    <tr><td>Throughput = serve many users</td><td>Latency for one user; responsiveness</td></tr>
+    <tr><td>Data leaves the device</td><td>Privacy: data never leaves. Works offline.</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><span class="c-title">The pitch</span>
+On-device wins when privacy is a requirement, latency must be instant, there's no connectivity, or per-token cost at scale is
+unacceptable. It loses when the task needs a frontier model. Increasingly the answer is <b>hybrid</b>: small model on-device
+for most things, a big model in the cloud for the hard cases.</div>
+
+<h2>Apple silicon's three engines</h2>
+<svg viewBox="0 0 720 140" class="diagram" role="img" aria-label="Apple silicon engines">
+  <rect class="d-box" x="20" y="40" width="200" height="60" rx="8"/><text class="d-title" x="120" y="62" text-anchor="middle">CPU</text><text class="d-small" x="120" y="82" text-anchor="middle">general, low-latency, control</text>
+  <rect class="d-box2" x="255" y="40" width="200" height="60" rx="8"/><text class="d-title" x="355" y="62" text-anchor="middle">GPU</text><text class="d-small" x="355" y="82" text-anchor="middle">parallel matrix work, flexible</text>
+  <rect class="d-box3" x="490" y="40" width="210" height="60" rx="8"/><text class="d-title" x="595" y="62" text-anchor="middle">Neural Engine (ANE)</text><text class="d-small" x="595" y="82" text-anchor="middle">ML ops, most power-efficient</text>
+  <text class="d-small" x="360" y="125" text-anchor="middle">all share unified memory — no copying between them</text>
+</svg>
+<ul>
+  <li><b>Unified memory</b> means no PCIe copy between CPU/GPU/ANE &mdash; a big advantage over PC architectures, and why Macs hold large models (L2&middot;11).</li>
+  <li><b>Memory bandwidth</b> is the decode bottleneck (L4&middot;04). Pro vs. Max vs. Ultra chips differ mostly in bandwidth, which is why a Max generates tokens faster.</li>
+  <li><b>ANE</b> is the most power-efficient for sustained ML but is less flexible than the GPU &mdash; Core ML decides where ops run.</li>
+</ul>
+
+<h2>The three ways to run a model on a Mac</h2>
+<table>
+  <thead><tr><th>Path</th><th>Best for</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><b>Core ML</b></td><td>Shipping in apps (iOS/macOS). Converts models to <code>.mlpackage</code>, routes ops to ANE/GPU/CPU.</td><td>Most integrated; powers on-device features; conversion step required</td></tr>
+    <tr><td><b>MLX</b></td><td>Research/dev on Apple silicon; familiar NumPy-like API; LoRA fine-tuning.</td><td>Fast iteration; <code>mlx-lm</code> for LLMs; not the production path for apps</td></tr>
+    <tr><td><b>llama.cpp</b></td><td>Portable GGUF inference, works everywhere incl. Mac (Metal).</td><td>Simple, universal; not Apple-specific-optimised like Core ML</td></tr>
+  </tbody>
+</table>
+
+<h2>The on-device constraint checklist</h2>
+<ul class="checklist">
+  <li><b>Size:</b> a phone/tablet budget is ~1&ndash;4 GB for the model. Quantise hard (4-bit, sometimes 3&ndash;2-bit) and consider distillation (L3&middot;06).</li>
+  <li><b>Power:</b> sustained inference drains battery and heats the device &rarr; thermal throttling. Prefer ANE for sustained work.</li>
+  <li><b>First-token latency:</b> users feel it instantly. Small models, prefix caching, streaming output all help.</li>
+  <li><b>Model format:</b> Core ML wants <code>.mlpackage</code>; MLX wants its own; llama.cpp wants GGUF. Conversion is a step in the pipeline.</li>
+  <li><b>Quality at small size:</b> a 3B on-device model won't match a frontier model &mdash; scope the task to what small models do well.</li>
+</ul>
+
+<h2>Framework Models API (Apple's on-device LLM)</h2>
+<p>On Apple platforms there's a system-provided foundation model exposed to apps (Apple Intelligence's on-device model).
+Characteristics that matter for design:</p>
+<ul class="checklist">
+  <li>It runs on-device, is free to the app, and preserves privacy by design.</li>
+  <li>It's a <b>small model</b>: good for summarising, extraction, structured output and short text &mdash; not a frontier reasoner.</li>
+  <li>Guided generation gives structured output directly; tool calling lets it invoke app functions.</li>
+  <li>When it's not enough, the design is hybrid: on-device for most, escalate to a server model for hard cases (with user consent).</li>
+</ul>
+
+<h2>Design pattern: the hybrid on-device app</h2>
+<pre data-lang="python" data-title="hybrid.py: on-device first, escalate to cloud when needed" data-verify="run">
+CONFIDENCE_FLOOR = 0.75
+
+
+def on_device(query: str) -> dict:
+    """Small local model: cheap, private, offline. Returns a confidence."""
+    # stand-in for Core ML / MLX model output
+    simple = len(query.split()) &lt;= 8
+    return {"answer": f"local answer for {query[:24]!r}",
+            "confidence": 0.9 if simple else 0.5}
+
+
+def cloud(query: str) -> dict:
+    return {"answer": f"cloud answer for {query[:24]!r}", "confidence": 0.98}
+
+
+def answer(query: str) -> dict:
+    r = on_device(query)
+    if r["confidence"] >= CONFIDENCE_FLOOR:
+        r["via"] = "on-device"
+        return r
+    r = cloud(query)            # escalate only the hard cases
+    r["via"] = "cloud"
+    return r
+
+
+if __name__ == "__main__":
+    for q in ["return policy?", "write a detailed comparison of our five return edge cases"]:
+        r = answer(q)
+        print(f"{r['via']:>9} ({r['confidence']})  {q[:40]}")
+    assert answer("hi")["via"] == "on-device"
+    assert answer("a very long complex question with so many words indeed")["via"] == "cloud"
+</pre>
+<p>Most queries stay private and instant on-device; only hard ones hit the network. This is the architecture pattern behind
+privacy-first AI features.</p>
+
+<h2>Privacy as a feature</h2>
+<p>On-device inference isn't just a constraint &mdash; it's a product capability: "your data never leaves the device." Health,
+personal documents, offline fieldwork and regulated industries all pay a premium for it. When you can answer "where does the
+data go?" with "nowhere", a whole class of L4&middot;07 concerns disappears.</p>
+
+<div class="callout tip"><span class="c-title">Try it (60 min, needs a Mac for parts)</span>
+<ol>
+  <li>Run the same prompt through an on-device model (<code>mlx_lm</code> or a small Ollama model) and a frontier model. What does the small one do well? Where does it fall over?</li>
+  <li>Measure tokens/s and battery/power feel during a long generation vs. a server call.</li>
+  <li>Sketch the hybrid router for a real feature: which queries stay on-device, which escalate?</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>On-device is a different regime: watts, memory, thermals and privacy, not throughput.</li>
+  <li>Apple silicon = CPU + GPU + ANE over unified memory; bandwidth sets decode speed.</li>
+  <li>Core ML for shipping apps, MLX for research/dev on Mac, llama.cpp for portability.</li>
+  <li>Design hybrid: small on-device model for most, escalate hard cases to the cloud.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

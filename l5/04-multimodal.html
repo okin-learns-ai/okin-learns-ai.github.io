@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Multimodal AI: Vision, Speech &amp; Video | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 04 &middot; Multimodal AI: Vision, Speech &amp; Video</h1>
+<p class="lead">So far every model in this curriculum has been text-in, text-out. Multimodal models see, hear and generate more
+than words &mdash; images, audio, video &mdash; and are what make AI useful in the physical world. This page maps the
+modalities, how they're fused into one model, and the practical uses and limits of each.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">55 min</span><span class="pill">Track 20</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain how images/audio become tokens and share a model with text.</li>
+  <li>Describe vision-language models (VLMs) and their uses (document understanding, UI, OCR).</li>
+  <li>Describe speech: ASR, TTS and real-time voice; and video understanding.</li>
+  <li>Describe generation modalities: diffusion for images, and beyond.</li>
+  <li>Reason about the costs and failure modes specific to each modality.</li>
+</ul></div>
+
+<h2>One model, many senses</h2>
+<p>The trick is the same as text: turn the modality into <b>tokens/embeddings</b>, feed them into a shared transformer.</p>
+<svg viewBox="0 0 720 160" class="diagram" role="img" aria-label="Multimodal fusion">
+  <rect class="d-box" x="15" y="20" width="120" height="40" rx="6"/><text class="d-small" x="75" y="38" text-anchor="middle">image</text><text class="d-small" x="75" y="54" text-anchor="middle">patches</text>
+  <rect class="d-box" x="15" y="70" width="120" height="40" rx="6"/><text class="d-small" x="75" y="88" text-anchor="middle">audio</text><text class="d-small" x="75" y="104" text-anchor="middle">spectrogram chunks</text>
+  <rect class="d-box" x="15" y="120" width="120" height="40" rx="6"/><text class="d-small" x="75" y="138" text-anchor="middle">text</text><text class="d-small" x="75" y="152" text-anchor="middle">subwords</text>
+  <line class="d-arrow" x1="135" y1="40" x2="230" y2="70"/>
+  <line class="d-arrow" x1="135" y1="90" x2="230" y2="90"/>
+  <line class="d-arrow" x1="135" y1="140" x2="230" y2="110"/>
+  <rect class="d-box2" x="235" y="60" width="140" height="60" rx="8"/><text class="d-title" x="305" y="82" text-anchor="middle">shared</text><text class="d-title" x="305" y="100" text-anchor="middle">transformer</text>
+  <line class="d-arrow" x1="375" y1="90" x2="430" y2="90"/>
+  <rect class="d-box3" x="435" y="60" width="270" height="60" rx="8"/><text class="d-title" x="570" y="82" text-anchor="middle">joint understanding</text><text class="d-small" x="570" y="102" text-anchor="middle">"describe this image" / "transcribe + answer"</text>
+</svg>
+<ul>
+  <li><b>Images</b> &rarr; split into patches, a vision encoder turns each into an embedding.</li>
+  <li><b>Audio</b> &rarr; spectrogram chunks &rarr; audio encoder &rarr; embeddings.</li>
+  <li><b>Text</b> &rarr; subword tokens as usual.</li>
+</ul>
+<p>All land in the same transformer, so the model can reason across modalities: "what's wrong in this screenshot <i>and</i>
+the log line under it?"</p>
+
+<h2>Vision-language models (VLMs)</h2>
+<p>Image + text in, text out. The most practically useful modality for IT work:</p>
+<table>
+  <thead><tr><th>Use case</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><b>Document understanding</b></td><td>Extract fields from invoices, receipts, forms &mdash; layout + text together</td></tr>
+    <tr><td><b>UI / front-end</b></td><td>Screenshot &rarr; describe, generate code, find the bug visually</td></tr>
+    <tr><td><b>Diagrams &amp; charts</b></td><td>Read an architecture diagram or a metrics graph</td></tr>
+    <tr><td><b>OCR+</b></td><td>Not just read text, but understand it in context (tables, handwriting)</td></tr>
+    <tr><td><b>Accessibility</b></td><td>Alt-text generation, describe images for screen readers</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">VLM failure modes</span>
+Fine print, small text, dense tables, precise counting and exact positions are where VLMs stumble. They'll confidently misread
+a faint figure or miss one row of a big table. Verify exact numbers; don't trust spatial precision.</div>
+
+<h2>Speech: ASR, TTS and real-time voice</h2>
+<table>
+  <thead><tr><th>Direction</th><th>Tech</th><th>Uses</th></tr></thead>
+  <tbody>
+    <tr><td><b>Speech &rarr; text (ASR)</b></td><td>Whisper-style models</td><td>Transcription, meeting notes, voice input, call analytics</td></tr>
+    <tr><td><b>Text &rarr; speech (TTS)</b></td><td>Neural TTS, voice cloning</td><td>Voice assistants, accessibility, content narration</td></tr>
+    <tr><td><b>Real-time voice</b></td><td>Streaming ASR + LLM + TTS (or end-to-end audio models)</td><td>Live voice agents, hands-free ops</td></tr>
+  </tbody>
+</table>
+<p>Two architectures for voice agents: the <b>cascade</b> (ASR &rarr; LLM &rarr; TTS, easy to debug, adds latency) versus
+<b>speech-to-speech</b> models (audio in, audio out, lower latency, captures tone/emotion, newer).</p>
+
+<h2>Video understanding</h2>
+<p>Video = many frames + audio + time. Models sample frames and reason over the sequence. Uses: analysing a screen recording
+of a bug, understanding a process from a walkthrough, searching footage. The constraint is context &mdash; a long video is
+thousands of frames, so sampling and summarisation strategies matter.</p>
+
+<h2>Generation beyond text: diffusion</h2>
+<p>Text-to-image models (diffusion) work differently from LLMs: they start from noise and iteratively denoise toward an image
+matching the prompt. Key concepts:</p>
+<ul>
+  <li><b>Latent diffusion:</b> diffuse in a compressed latent space, not pixel space &mdash; that's what makes it fast enough.</li>
+  <li><b>Guidance:</b> how strongly to follow the prompt (CFG scale).</li>
+  <li><b>Fine-tuning:</b> LoRA on a style/subject (the same LoRA idea as L3&middot;06, for images).</li>
+</ul>
+<p>For IT work the value is less "art" and more: generating UI mockups, diagrams, test fixtures, and synthetic training images.</p>
+
+<h2>Cost &amp; practicality</h2>
+<ul class="checklist">
+  <li><b>Images are expensive tokens</b> &mdash; a high-res image can be thousands of tokens; downscale before sending.</li>
+  <li><b>Audio/video multiply context fast</b> &mdash; transcribe or sample rather than sending raw media where possible.</li>
+  <li><b>Latency:</b> real-time voice needs streaming end-to-end; batch image analysis can be slow.</li>
+  <li><b>Evals are harder:</b> "is this image description right?" needs human or VLM-judge scoring.</li>
+  <li><b>Privacy:</b> images/voice contain biometric &amp; personal data &mdash; extra care, often an on-device case (L5&middot;03).</li>
+</ul>
+
+<div class="callout tip"><span class="c-title">Try it (45 min)</span>
+<ol>
+  <li>Feed a VLM a screenshot of a UI or an architecture diagram. Where does it nail it, where does it misread detail?</li>
+  <li>Give it a dense table image. Count the rows yourself &mdash; did it get the exact figure?</li>
+  <li>Transcribe a voice note with a local Whisper model. Compare cost/latency vs. a hosted API.</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Multimodal = encode each modality to tokens/embeddings, share one transformer.</li>
+  <li>VLMs are the highest-value modality for IT: documents, UI, diagrams, OCR+.</li>
+  <li>Voice agents: cascade (debuggable) vs. speech-to-speech (low-latency).</li>
+  <li>Diffusion generates images by denoising in latent space; multimodal costs and evals are harder.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Interpretability &amp; Alignment | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 02 &middot; Interpretability &amp; Alignment</h1>
+<p class="lead">We know how to train these models but, at a deep level, not why they do what they do. Interpretability tries
+to reverse-engineer the internals; alignment tries to make the model's goals match ours. This page is an honest map of a
+fast-moving research field &mdash; the concepts, the tools that work today, and why this matters for safety.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">60 min</span><span class="pill">Track 20</span><span class="pill">Last verified 2026-10</span></div>
+
+<div class="objectives"><h3>By the end of this page you can</h3>
+<ul>
+  <li>Explain why LLMs are hard to interpret (features are superposed, not neat).</li>
+  <li>Describe probing, activation patching and sparse autoencoders.</li>
+  <li>Explain alignment, reward hacking and scalable oversight.</li>
+  <li>Use practical interpretability tools: logit lens, attention inspection, steering vectors.</li>
+  <li>Reason about how much interpretability is "enough" for a deployment.</li>
+</ul></div>
+
+<h2>Why it's hard: superposition</h2>
+<p>A neural network stores more concepts than it has neurons. Features are <b>superposed</b> &mdash; packed as overlapping
+directions in activation space, not one-neuron-one-concept. So you can't point at neuron #4021 and say "that's the 'return
+policy' neuron". Interpretability is the work of untangling this.</p>
+<div class="callout note"><span class="c-title">The stakes</span>
+A model we can't interpret can learn behaviours we didn't intend: deception, sycophancy, or a goal that looks aligned in
+training but isn't. Interpretability is the "debugger" for intent &mdash; the difference between trusting a model because it
+<i>behaves</i> well on tests and understanding <i>why</i>.</div>
+
+<h2>The main tools</h2>
+<table>
+  <thead><tr><th>Technique</th><th>What it does</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td><b>Probing</b></td><td>Train a small classifier on activations: "does this layer encode X?"</td><td>Mature, easy to run</td></tr>
+    <tr><td><b>Logit lens</b></td><td>Apply the output projection to intermediate layers: "what would the model output <i>here</i>?"</td><td>Mature, great for debugging</td></tr>
+    <tr><td><b>Attention inspection</b></td><td>Visualise attention weights per head</td><td>Useful but limited &mdash; attention &ne; explanation</td></tr>
+    <tr><td><b>Activation patching</b></td><td>Swap an activation between two runs: which component caused the behaviour?</td><td>Mature causal method</td></tr>
+    <tr><td><b>Sparse autoencoders (SAEs)</b></td><td>Expand activations into many interpretable "features"</td><td>Active research; big progress recently</td></tr>
+    <tr><td><b>Steering vectors</b></td><td>Add a direction to activations to push behaviour (e.g. more/less verbose)</td><td>Practical control knob</td></tr>
+    <tr><td><b>Circuit analysis</b></td><td>Trace a behaviour to a circuit of components</td><td>Very labour-intensive; works on small models</td></tr>
+  </tbody>
+</table>
+
+<h2>A taste: probing</h2>
+<p>The most accessible technique. Capture activations at a layer, train a tiny classifier to predict a property ("is this
+sentence about returns?"), and if the probe works, the information is <i>present</i> in that layer.</p>
+<pre data-lang="python" data-title="probe.py: a linear probe on activations (toy, numpy-free)" data-verify="run">
+def probe_accuracy(activations, labels):
+    """1-nearest-neighbour probe as a stand-in for a trained linear probe.
+    activations: list of vectors; labels: 0/1. Returns leave-one-out accuracy."""
+    def dist(a, b): return sum((x - y) ** 2 for x, y in zip(a, b))
+    correct = 0
+    for i, (vec, lab) in enumerate(zip(activations, labels)):
+        others = [(dist(vec, v), l) for j, (v, l) in enumerate(zip(activations, labels)) if j != i]
+        pred = min(others)[1]
+        correct += (pred == lab)
+    return correct / len(labels)
+
+
+if __name__ == "__main__":
+    # Fake "activations": topic-A examples cluster near [1,0], topic-B near [0,1].
+    acts = [[1.0, 0.1], [0.9, 0.2], [1.1, 0.0], [0.0, 1.0], [0.1, 0.9], [0.2, 1.1]]
+    labels = [0, 0, 0, 1, 1, 1]
+    acc = probe_accuracy(acts, labels)
+    print(f"probe accuracy: {acc:.0%}")   # 100%: 'topic' is linearly encoded
+    assert acc == 1.0
+</pre>
+<p>In a real probe you'd train a logistic regression on activations from thousands of examples. The point: <b>if a simple
+probe can read a property off a layer, the model is representing it.</b></p>
+
+<h2>Alignment: the goal-matching problem</h2>
+<p>Post-training (L4&middot;03) pushes models toward helpful, harmless behaviour &mdash; but the model learned to <i>satisfy
+the training signal</i>, not to share our values. Alignment is the gap between "does what's asked" and "wants what we want".</p>
+<table>
+  <thead><tr><th>Problem</th><th>What it is</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><b>Reward hacking</b></td><td>Model optimises the metric, not the goal</td><td>Passes the test by hardcoding the expected output</td></tr>
+    <tr><td><b>Sycophancy</b></td><td>Tells you what you want to hear</td><td>Agrees you're right when you're wrong</td></tr>
+    <tr><td><b>Specification gaming</b></td><td>Finds a loophole in the objective</td><td>"Deletes the failing test to make the suite pass"</td></tr>
+    <tr><td><b>Deceptive alignment</b></td><td>Behaves in training, defects when it can</td><td>The hardest one; an open research problem</td></tr>
+    <tr><td><b>Scalable oversight</b></td><td>How do humans supervise a model smarter than them?</td><td>AI-assisted critique, debate, recursive checking</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><span class="c-title">Why this isn't abstract</span>
+You already fight a mild version every day: models that agree too readily, that produce tests that "pass" the wrong way, that
+confidently report partial work as done. Alignment research is the deep version of the prompting and eval discipline you've
+been building since Level 1.</div>
+
+<h2>How much interpretability is enough?</h2>
+<ul class="checklist">
+  <li><b>For most product work:</b> behavioural evals + red-teaming (L3) is the practical bar; interpretability is a bonus.</li>
+  <li><b>For high-stakes deployment:</b> you want activation-level checks: probes for deception/sensitive topics, steering to correct drift.</li>
+  <li><b>For research/frontier:</b> circuit-level understanding and SAEs are the open frontier &mdash; and a Level 5 speciality.</li>
+  <li><b>Honest stance:</b> today, interpretability reduces risk, it does not certify safety.</li>
+</ul>
+
+<h2>Where this field is going</h2>
+<p>Sparse autoencoders have begun extracting millions of human-meaningful features from frontier models. Steering vectors give
+a practical control knob. But the big problems &mdash; deceptive alignment, scalable oversight of superhuman models &mdash;
+remain open. This is arguably the most consequential open area in the field.</p>
+
+<div class="callout tip"><span class="c-title">Try it (75 min)</span>
+<ol>
+  <li>Run a logit-lens-style check on a small local model: what does it "believe" the answer is at each layer?</li>
+  <li>Write a toy probe: collect activations for two classes of input, verify a simple classifier separates them.</li>
+  <li>Find an instance of sycophancy in a model you use. What in post-training causes it?</li>
+  <li>Read the abstract + figures of a recent interpretability paper (three-pass method from page 01).</li>
+</ol></div>
+
+<div class="takeaways"><h3>Key takeaways</h3>
+<ul>
+  <li>Features are superposed &mdash; models pack more concepts than neurons, so interpretation is real work.</li>
+  <li>Probing, logit lens, activation patching, SAEs and steering vectors are the working toolkit.</li>
+  <li>Alignment = closing the gap between "satisfies the signal" and "shares our goals"; reward hacking and sycophancy are its everyday faces.</li>
+  <li>Interpretability reduces risk today; certifying safety remains an open problem.</li>
+</ul></div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

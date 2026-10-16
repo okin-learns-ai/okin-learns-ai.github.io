@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sanat">
+<title>Level 5 Labs | AI Mastery</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<!-- pwa -->
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icons/icon-180.png">
+<meta name="theme-color" content="#5a3fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AI Mastery">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>try{document.documentElement.setAttribute("data-theme",JSON.parse(localStorage.getItem("aim-theme"))||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"))}catch(e){}</script>
+</head>
+<body data-root="../">
+<article class="content" id="content">
+
+<h1>L5 &middot; 06 &middot; Level 5 Labs</h1>
+<p class="lead">Five labs, one per Level 5 page. These are the least prescriptive labs in the curriculum &mdash; at Master level
+you're doing research and judgement work, not following recipes. Each produces a real artefact you can show. Expect
+8&ndash;14 hours plus whatever your capstone needs.</p>
+<div class="meta-row"><span class="pill level">Level 5</span><span class="pill time">8&ndash;14 h total</span></div>
+
+<table>
+  <thead><tr><th>#</th><th>Lab</th><th>Page</th><th>Time</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Deep-read and reproduce a paper</td><td>01</td><td>120 min+</td></tr>
+    <tr><td>2</td><td>Probe a model's internals</td><td>02</td><td>90 min</td></tr>
+    <tr><td>3</td><td>On-device vs. cloud bake-off</td><td>03</td><td>75 min</td></tr>
+    <tr><td>4</td><td>Multimodal task eval</td><td>04</td><td>60 min</td></tr>
+    <tr><td>5</td><td>An adoption pilot plan</td><td>05</td><td>75 min</td></tr>
+  </tbody>
+</table>
+
+<h2>Lab 1 &middot; Deep-read and reproduce a paper</h2>
+<ol>
+  <li>Pick a paper relevant to your work (RAG, attention, a reasoning method, an eval technique).</li>
+  <li>Pass 1 and 2: write the claim as a falsifiable sentence, note baseline + metric + what they didn't measure.</li>
+  <li>Pass 3: reproduce the <i>mechanism</i> at toy scale (page 01's harness). Run at least one ablation.</li>
+  <li>Write the one-page summary: claim, method, your reproduction, verdict.</li>
+</ol>
+<p><b>Success:</b> a written reproduction with at least one ablation and a "does the claim hold?" verdict.</p>
+
+<h2>Lab 2 &middot; Probe a model's internals</h2>
+<ol>
+  <li>Pick a local model (Ollama/MLX) or an interpretability-friendly small model.</li>
+  <li>Capture activations for two classes of input (e.g. questions vs. statements). Train or apply a simple probe.</li>
+  <li>Try a logit-lens check or a steering vector if your tooling supports it.</li>
+  <li>Find one sycophancy or reward-hacking instance and describe which post-training choice caused it.</li>
+</ol>
+<p><b>Success:</b> evidence a property is encoded in the activations, plus a written alignment observation.</p>
+
+<h2>Lab 3 &middot; On-device vs. cloud bake-off</h2>
+<ol>
+  <li>Pick 5 real tasks from your domain (summarise, extract, classify, answer).</li>
+  <li>Run on a small on-device model (Core ML / MLX / Ollama) and a hosted model.</li>
+  <li>Record quality, latency, and which tasks the small model handles vs. needs the cloud.</li>
+  <li>Design the hybrid router for a real feature; write the privacy case for it.</li>
+</ol>
+<p><b>Success:</b> a measured split of what stays on-device vs. what escalates, with a reason per task.</p>
+
+<h2>Lab 4 &middot; Multimodal task eval</h2>
+<ol>
+  <li>Pick a real multimodal task (screenshot&rarr;bug report, document&rarr;fields, diagram&rarr;description).</li>
+  <li>Build a small eval set (10&ndash;20 items) with known-correct answers.</li>
+  <li>Score a VLM; find its specific failure modes (fine print, counting, spatial precision).</li>
+  <li>Decide: is it reliable enough for your use case? With what checks?</li>
+</ol>
+<p><b>Success:</b> an eval score for a multimodal task and a written list of its failure modes.</p>
+
+<h2>Lab 5 &middot; An adoption pilot plan</h2>
+<ol>
+  <li>Choose a real team and one workflow (code review, debugging, docs, testing).</li>
+  <li>Define the baseline measurement and the 4-week pilot: group, training format, champion.</li>
+  <li>Write the 1-page usage policy for it.</li>
+  <li>Write how you'll measure success honestly and what would make you stop.</li>
+</ol>
+<p><b>Success:</b> a plan you'd actually run: baseline, pilot, policy, honest metrics, kill criteria.</p>
+
+<h2>Then the capstone</h2>
+<div class="callout ok"><span class="c-title">Ready?</span>
+The Level 5 capstone (page 07) is a speciality project you publish &mdash; the thing that marks mastery is producing knowledge
+or tools others can use.</div>
+
+</article>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>
